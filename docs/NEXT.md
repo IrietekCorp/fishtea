@@ -4,14 +4,15 @@ Written 2026-09-21 at the hand-off from the design/build session. Read `CLAUDE.m
 
 ## State at hand-off
 
-- Commits: `2ff0d03` framework, `b40d957` PostgreSQL 18, `1d66877` README, plus this file.
+- Commits: `2ff0d03` framework, `b40d957` PostgreSQL 18, `1d66877` README, `52f72da` this file, then the Ink operator console.
 - Verified: 50 tests (`spec`, `core`, `http`, `program`, all five templates) on PostgreSQL 18.6 / pgvector 0.8.6; the needle Phase 4 test (6) against a local pool; `tsc` clean; `bun run build` for the UI; scaffolding from answer files for ecommerce (affiliate-only) and portfolio, then running them headless.
 - Bench (warm pool, 20 iterations): every budget green, 100/100 text utterances answered. `packages/bench/baseline.json`.
 - Not verified: the React UI in a browser; the eBay adapter against the live API; `bun run up` from a clean machine.
+- The operator console was rebuilt on Ink after @clack/prompts proved unusable under Bun (see docs/DESIGN.md). Eight pty-driven tests cover rendering, navigation, typing, the key lock, the interview and spec writes.
 
 ## Work list, in priority order
 
-### 1. Click through the UI (half a day)
+### 1. Click through the web UI (half a day)
 `packages/ui/e2e/README.md` is the checklist; `walkthrough.spec.ts` is a Playwright spec (`bunx playwright install chromium`, needs `@playwright/test` and `@axe-core/playwright` added to `packages/ui`). Start `bun run dev --app templates/ecommerce` and `cd packages/ui && bun run dev`. Expect problems in: the form vessel's nested `shipTo` fields and enum selects (`src/vessels/form.tsx`), the timeline vessel with the verification template's mixed events, and the SSE reconnect (`src/lib/client.ts` never retries).
 
 ### 2. Bring the Compose stack up from clean (half a day)
@@ -23,6 +24,8 @@ Written 2026-09-21 at the hand-off from the design/build session. Read `CLAUDE.m
 - UI: products with `affiliateUrl` and `stock = 0` need a "buy at vendor" treatment. `packages/ui/src/fields.tsx` treats fields by name; add one for `affiliateUrl` and let the list/card vessels show it as the primary action.
 
 ### 4. Small correctness items (hours each)
+- The console's Spec screen can add a shape but not an entity or a call; both are the same wizard shape (`packages/tui/src/screens/spec.tsx`, the `addShape` mode).
+- `packages/tui/src/screens/run.tsx` shells out to `bun <cli> headless|bench` by path; if the CLI grows a `--json` streaming mode, show it in a pane instead of suspending.
 - `packages/cli/src/serve.ts` watches `spec.json` only; edits to `calls/*.sql|ts` need a restart. Watch the `calls/` dir too and re-run `engine.reload`.
 - Verification archetype has no verifier persona (the DB enforces who may attest, so it is safe). To give verifiers their own greeting: add an `identity.tags`/`roles` lookup in `Engine.identity()` (`packages/core/src/engine.ts`) fed from a column on the customer entity, then `verifier: { when: "identity.roles has 'verifier'" }` — the persona expression language (`packages/core/src/persona.ts`) needs a `has` operator for arrays.
 - `packages/core/src/http.ts` rate limiter is in-memory per process; fine for one core, note it if you scale out.

@@ -14,7 +14,7 @@
     "paths": {
       "@fishtea/spec": ["./packages/spec/src/index.ts"],
       "@fishtea/core": ["./packages/core/src/index.ts"],
-      "@fishtea/tui": ["./packages/tui/src/index.ts"],
+      "@fishtea/tui": ["./packages/tui/src/index.tsx"],
       "@fishtea/bench": ["./packages/bench/src/index.ts"]
     }
   },

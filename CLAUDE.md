@@ -7,7 +7,8 @@ Describe a business once in `spec.json`; derive the data layer, the classifier's
 ```bash
 bun install
 docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18
-bun test packages                 # spec + core + http + camp (needs the container above on :5434)
+bun test packages                 # spec + core + http + templates + tui (needs the container above on :5434)
+bun test packages/tui             # the console, driven through a pty
 bun run validate --app templates/ecommerce
 bun run headless --app templates/ecommerce --script templates/ecommerce/scripts/walkthrough.json   # DATABASE_URL, lexical classifier
 bun run dev --app templates/ecommerce # core on :3000 (FISHTEA_INTENT=needle + CLASSIFIER_URL for the real classifier)
@@ -24,7 +25,7 @@ bunx tsc -p tsconfig.json --noEmit
 - `packages/core` — engine (`engine.ts`: utter/resume/persona/gate/write-confirm), trail service, planner, call executors, classifier clients (needle pool, lexical dev), Hono transport, headless runner.
 - `packages/classifier` — Python needle3 pool (`needle_service.py`), `contract.md` with the Phase 0 findings.
 - `packages/cli` — `fishtea` binary: new/validate/derive/migrate/seed/serve/headless/tui/up/bench/notify. `new.ts` scaffolds apps; `serve.ts` hot-reloads; `edit.ts` patches sections.
-- `packages/tui` — @clack/prompts console: onboard, edit (scoped / $EDITOR / add shape / regenerate), run (status, restart, migrate, unmet, notify, compose).
+- `packages/tui` — the operator console, built on Ink (React for terminals). Five screens on number keys: Dashboard, Spec (browse, scoped value edit, `$EDITOR`, add a shape), Conversations (visitors, trails, unmet channel, notify), Run (migrate, seed, reload, restart, compose, headless, bench), Onboard (the archetype interview). Driven in tests through a real pty: `packages/tui/test/pty-drive.py`. Never use `node:readline` here — Bun echoes it twice (docs/DESIGN.md).
 - `packages/ui` — Vite + React + Tailwind v4; seven vessels; container with understood-line, verify strip, next chips, live region.
 - `packages/bench` — harness, `budgets.json`, conventional multi-page baseline.
 - `templates/ecommerce`, `templates/program` — the two samples; also the `commerce` and `program` templates.

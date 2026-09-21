@@ -80,7 +80,11 @@ async function main() {
       const template = String(flags.template ?? "");
       if (!template) throw new Error(`pick a template: ${listTemplates(FISHTEA_HOME).map((t) => t.name).join(", ")} (or run: fishtea tui → Onboard)`);
       let answers: Record<string, unknown> | undefined = typeof flags.answers === "string" ? JSON.parse(readFileSync(resolve(flags.answers), "utf8")) : undefined;
-      if (flags.interactive === true) { const { interview } = await import("@fishtea/tui"); answers = await interview(FISHTEA_HOME, template, { name: typeof flags.name === "string" ? flags.name : undefined }); }
+      if (flags.interactive === true) {
+        const { interview } = await import("@fishtea/tui");
+        const subject = typeof flags.name === "string" ? flags.name : id.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+        answers = await interview(FISHTEA_HOME, template, { name: subject });
+      }
       const out = await scaffold({ id, template, dir: typeof flags.dir === "string" ? flags.dir : undefined, name: typeof flags.name === "string" ? flags.name : undefined, doc: typeof flags.doc === "string" ? flags.doc : undefined, fishteaHome: FISHTEA_HOME, force: flags.force === true, answers });
       console.log(pc.green(`✓ created ${out.dir} from the ${out.template} archetype${out.answered.length ? ` (${out.answered.length} answers applied)` : " (defaults; run the TUI to onboard)"}`));
       console.log(`\n  cd ${out.dir}\n  cp .env.example .env\n  bun run up        # docker compose: db + classifier + core + ui\n  bun run tui       # edit the spec, restart, regenerate sections\n  bun run dev       # core only, against a local Postgres (DATABASE_URL)\n`);

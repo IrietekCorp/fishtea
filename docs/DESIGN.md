@@ -43,6 +43,35 @@ Full contract: `packages/classifier/contract.md`.
 
 100/100 text utterances answered (the bench counts pour kinds so a fast `ask` cannot pass as a fast answer). The whole scripted task (10 requests, 32 KB of JSON) takes 1.3 s p50; the classifier is ~90 % of it. The conventional baseline as scripted (24 requests, 467 KB) measures server time only — no browser parse or render — so it is not yet the task-completion comparison the blueprint asks for; a Playwright run of `bench/conventional` is the remaining step. Warm-up matters: a cold worker switching subsets costs 0.7–3.7 s depending on machine load, and the first bench run after a reload showed every text utterance timing out until the pool had settled; `/reload` now warms in the background, one worker at a time.
 
+## The operator console is Ink, not a prompt library
+
+The blueprint suggested "@clack/prompts for flows and ink if a persistent screen is wanted". The first build
+used clack and was unusable: **under Bun, `node:readline` echoes every keystroke**, so typing `hello` rendered
+`hheelllloo` and the prompt resolved `undefined`. Measured with a pty harness (`packages/tui/test/pty-drive.py`):
+`process.stdin.setRawMode(true)` works correctly under Bun on its own, and Ink — which reads stdin directly and
+never touches readline — takes the same keystrokes cleanly. So the console is [Ink](https://github.com/vadimdemedes/ink)
+(React for terminals, the same mental model as `packages/ui`), rendered as a persistent screen in the terminal's
+alternate buffer.
+
+What that bought, beyond correct typing:
+
+- A standing frame: service dots for core, classifier and database refreshing every five seconds, and a spec
+  version in the header, so the operator always knows what they are pointed at.
+- Five screens on number keys — Dashboard, Spec, Conversations, Run, Onboard — instead of a prompt tree that has
+  to be re-walked from the top after every action.
+- Conversations reads the trail store directly, so visitors, their turns and the unmet channel are visible with
+  the core offline.
+- `$EDITOR` and `docker compose logs` suspend the console (leave the alternate buffer, drop raw mode) and restore
+  it afterwards.
+
+Two bugs the pty harness caught that a human would have hit immediately, both now covered by tests: a form
+control kept its state across questions because React reused the component (fixed with a per-question `key`), and
+a stray LF from the terminal landed inside a single-line field (fixed by filtering control characters).
+
+**A global shortcut may not be a character a field could want.** Text controls take a key lock while mounted, so
+typing `q4q4` into a field does not quit or switch screens; and `tab` is deliberately not a global, because the
+Conversations screen uses it for its own tabs.
+
 ## Postgres version
 
 The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector:pg18`** (PostgreSQL 18.6 at the time of writing); the suite passes on it unchanged. PostgreSQL 19 was still in beta (`postgres:19beta3`) and pgvector had no pg19 image, so 18 is the newest GA option. An existing `pgdata` volume created by pg16 cannot be started by pg18: dump and restore, or `docker compose down -v` for a throwaway stack.

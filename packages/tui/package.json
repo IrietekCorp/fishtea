@@ -2,7 +2,18 @@
   "name": "@fishtea/tui",
   "version": "1.0.0",
   "type": "module",
-  "main": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@clack/prompts": "^0.9.1", "@fishtea/spec": "workspace:*", "@fishtea/core": "workspace:*", "picocolors": "^1.1.1" }
+  "main": "src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "dependencies": {
+    "@fishtea/spec": "workspace:*",
+    "@fishtea/core": "workspace:*",
+    "ink": "^5.1.0",
+    "react": "^18.3.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12"
+  }
 }

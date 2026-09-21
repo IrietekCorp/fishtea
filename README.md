@@ -38,12 +38,26 @@ The generated directory holds `spec.json`, `calls/`, `seed/`, `rules/`, `scripts
 
 ```bash
 bun run up                   # builds the images; db (:5432) + classifier pool (:8081) + core (:3000) + ui (:5173)
-bun run tui                  # operator console: edit sections, restart, migrate, unmet channel, notify
+bun run tui                  # the operator console (see below)
 bun run logs core            # or: classifier, ui, db
 bun run down                 # add -v to drop the data volume
 ```
 
 Open http://localhost:5173. `curl http://localhost:3000/` returns the resumed conversation as JSON; `curl http://localhost:3000/healthz` shows db + classifier status. `bun run restart` restarts core; entity edits made in the TUI prompt for a migration.
+
+### The operator console
+
+`bun run tui` opens a persistent console for the application in the current directory. Five screens, on the number keys:
+
+| key | screen | what it is for |
+|---|---|---|
+| `1` | Dashboard | core, classifier and database status, refreshed every few seconds; what to do next |
+| `2` | Spec | browse every section, edit one value at a time, open a section in `$EDITOR`, add a shape. Edits validate, bump that section's version and hot-reload the core |
+| `3` | Conversations | visitors and their trails, and the unmet channel: what people asked that the spec could not answer. `n` sends a notification |
+| `4` | Run | migrate, seed, reload, restart, Compose up/down/logs, the headless walkthrough, the bench |
+| `5` | Onboard | create another application from an archetype, answering its interview |
+
+`r` refreshes, `q` quits, `/` filters a list, `esc` steps back. Typing in a field never triggers a shortcut.
 
 ## Run without Docker (core only)
 
@@ -141,7 +155,7 @@ visitor utterance ─▶ persona (from the trail) ─▶ tool list filtered by a
 - `packages/core` — trail, persona, planner, pour, notifications (SSE), Hono transport, headless runner.
 - `packages/classifier` — the needle3 worker pool (Python). `contract.md` has the measured findings.
 - `packages/cli` — `fishtea` (templates · new · validate · derive · migrate · seed · serve · headless · tui · up · bench). `new.ts` applies an archetype's interview answers to its spec.
-- `packages/tui` — onboard, edit a section (scoped prompts, `$EDITOR`, add a shape, regenerate from template), run (status, restart, migrate, unmet channel, notify).
+- `packages/tui` — the operator console (Ink): live service status, spec browsing and editing, the trail and the unmet channel, migrations and Compose, and the archetype interview.
 - `packages/ui` — React + Tailwind; seven vessels; understood line; verify strip; next chips; live region.
 - `packages/bench` — budgets enforced, conventional multi-page baseline measured alongside.
 
