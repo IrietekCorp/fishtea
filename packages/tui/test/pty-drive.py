@@ -22,7 +22,7 @@ if pid == 0:
     os.environ.pop("CI", None)
     os.execvp(cmd[0], cmd)
     os._exit(1)
-fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 44, 112, 0, 0))
+fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", int(os.environ.get("PTY_ROWS", 44)), int(os.environ.get("PTY_COLS", 112)), 0, 0))
 
 buf = b""
 
