@@ -43,6 +43,10 @@ Full contract: `packages/classifier/contract.md`.
 
 100/100 text utterances answered (the bench counts pour kinds so a fast `ask` cannot pass as a fast answer). The whole scripted task (10 requests, 32 KB of JSON) takes 1.3 s p50; the classifier is ~90 % of it. The conventional baseline as scripted (24 requests, 467 KB) measures server time only — no browser parse or render — so it is not yet the task-completion comparison the blueprint asks for; a Playwright run of `bench/conventional` is the remaining step. Warm-up matters: a cold worker switching subsets costs 0.7–3.7 s depending on machine load, and the first bench run after a reload showed every text utterance timing out until the pool had settled; `/reload` now warms in the background, one worker at a time.
 
+## Postgres version
+
+The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector:pg18`** (PostgreSQL 18.6 at the time of writing); the suite passes on it unchanged. PostgreSQL 19 was still in beta (`postgres:19beta3`) and pgvector had no pg19 image, so 18 is the newest GA option. An existing `pgdata` volume created by pg16 cannot be started by pg18: dump and restore, or `docker compose down -v` for a throwaway stack.
+
 ## Known unknowns still open
 
 1. Per-keystroke classification load at scale: measured single-stream only. The pool is CPU-bound; `NEEDLE_WORKERS` ≈ cores/2 is a guess.

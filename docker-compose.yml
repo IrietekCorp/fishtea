@@ -2,7 +2,7 @@
 # applications carry their own docker-compose.yml pointing back at this checkout (see packages/cli/src/new.ts).
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     environment: { POSTGRES_USER: fishtea, POSTGRES_PASSWORD: fishtea, POSTGRES_DB: fishtea }
     volumes: [ "pgdata:/var/lib/postgresql/data" ]
     ports: [ "${FISHTEA_DB_PORT:-5432}:5432" ]

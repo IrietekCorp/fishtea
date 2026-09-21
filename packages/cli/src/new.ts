@@ -164,7 +164,7 @@ export function composeFile(home: string): string {
   return `# One Compose stack = one business (D15). The framework image is built from FISHTEA_HOME; this directory is mounted at /app.
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     environment: { POSTGRES_USER: fishtea, POSTGRES_PASSWORD: fishtea, POSTGRES_DB: fishtea }
     volumes: [ "pgdata:/var/lib/postgresql/data" ]
     ports: [ "\${FISHTEA_DB_PORT:-5432}:5432" ]
