@@ -1,0 +1,18 @@
+[
+ {
+  "id": "em_jane",
+  "email": "jane@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "consent": "none",
+  "consentAt": null
+ },
+ {
+  "id": "em_sam",
+  "email": "sam@example.com",
+  "firstName": "Sam",
+  "lastName": "Lee",
+  "consent": "granted",
+  "consentAt": "2026-09-01T00:00:00Z"
+ }
+]

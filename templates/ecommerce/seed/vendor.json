@@ -1,0 +1,35 @@
+[
+ {
+  "id": "v_local",
+  "name": "House catalog",
+  "adapter": "local",
+  "config": null,
+  "commissionPct": null,
+  "lastSyncAt": null,
+  "status": "active"
+ },
+ {
+  "id": "v_mock",
+  "name": "Mock vendor feed",
+  "adapter": "mock",
+  "config": {
+   "topic": "scarf",
+   "category": "scarf",
+   "count": 4
+  },
+  "commissionPct": 4,
+  "lastSyncAt": null,
+  "status": "active"
+ },
+ {
+  "id": "v_csv",
+  "name": "CSV feed (example)",
+  "adapter": "csv",
+  "config": {
+   "file": "seed/feed.csv"
+  },
+  "commissionPct": 5,
+  "lastSyncAt": null,
+  "status": "paused"
+ }
+]

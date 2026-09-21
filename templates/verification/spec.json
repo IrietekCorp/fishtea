@@ -1,0 +1,989 @@
+{
+  "fishtea": "1.0",
+  "business": {
+    "id": "verification",
+    "name": "Example Verify",
+    "doc": "Employee engagement verification: employers, lenders and background checkers confirm that a person worked (or works) somewhere, in what role, over what period \u2014 with the employee's consent, an auditable trail and no more data than the request needs.",
+    "locale": "en-US",
+    "currency": "USD",
+    "version": "2026.09.21-1"
+  },
+  "entities": {
+    "version": "2026.09.21-1",
+    "organization": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string",
+          "doc": "email domain that identifies verifiers of this org"
+        },
+        "verifierEmails": {
+          "type": "string[]",
+          "doc": "people allowed to attest for this org"
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "active",
+            "suspended"
+          ],
+          "default": "active"
+        }
+      },
+      "unique": [
+        "domain"
+      ]
+    },
+    "employee": {
+      "doc": "The subject of a verification. Minimal identity; matched by email + last name, never exposed in full to a requester.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "email": {
+          "type": "email"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "consent": {
+          "type": "enum",
+          "values": [
+            "none",
+            "granted",
+            "revoked"
+          ],
+          "default": "none"
+        },
+        "consentAt": {
+          "type": "timestamp",
+          "optional": true
+        }
+      },
+      "unique": [
+        "email"
+      ]
+    },
+    "engagement": {
+      "doc": "One period of employment or contract with an organization.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "employeeId": {
+          "type": "id"
+        },
+        "organizationId": {
+          "type": "id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "enum",
+          "values": [
+            "employee",
+            "contractor",
+            "intern"
+          ],
+          "default": "employee"
+        },
+        "startDate": {
+          "type": "date"
+        },
+        "endDate": {
+          "type": "date",
+          "optional": true
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "current",
+            "ended",
+            "disputed"
+          ],
+          "default": "current"
+        }
+      },
+      "index": [
+        "employeeId",
+        "organizationId"
+      ]
+    },
+    "requester": {
+      "doc": "Who is asking. The customer record.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "email": {
+          "type": "email"
+        },
+        "name": {
+          "type": "string",
+          "optional": true
+        },
+        "organization": {
+          "type": "string",
+          "optional": true
+        },
+        "purpose": {
+          "type": "enum",
+          "values": [
+            "employment",
+            "lending",
+            "tenancy",
+            "background",
+            "other"
+          ],
+          "default": "other"
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "unique": [
+        "email"
+      ]
+    },
+    "verificationRequest": {
+      "doc": "A request walks: requested \u2192 consent-pending \u2192 attesting \u2192 verified | declined | expired.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "requesterId": {
+          "type": "id"
+        },
+        "employeeEmail": {
+          "type": "email"
+        },
+        "employeeLastName": {
+          "type": "string"
+        },
+        "organizationName": {
+          "type": "string"
+        },
+        "claimTitle": {
+          "type": "string",
+          "optional": true
+        },
+        "claimStart": {
+          "type": "date",
+          "optional": true
+        },
+        "claimEnd": {
+          "type": "date",
+          "optional": true
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "requested",
+            "consent-pending",
+            "attesting",
+            "verified",
+            "declined",
+            "expired"
+          ],
+          "default": "requested"
+        },
+        "result": {
+          "type": "json",
+          "optional": true,
+          "doc": "{ titleMatches, datesMatch, note } \u2014 only what the request asked"
+        },
+        "events": {
+          "type": "json"
+        },
+        "createdAt": {
+          "type": "timestamp"
+        },
+        "expiresAt": {
+          "type": "timestamp"
+        }
+      },
+      "index": [
+        "requesterId",
+        "status",
+        "employeeEmail"
+      ]
+    },
+    "attestation": {
+      "doc": "A verifier's statement about an engagement, tied to a request.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "requestId": {
+          "type": "id"
+        },
+        "verifierEmail": {
+          "type": "email"
+        },
+        "confirms": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "text",
+          "optional": true
+        },
+        "at": {
+          "type": "timestamp"
+        }
+      },
+      "index": [
+        "requestId"
+      ]
+    },
+    "faq": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "text"
+        },
+        "order": {
+          "type": "int",
+          "default": 0
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "embed": [
+        "question",
+        "answer"
+      ]
+    }
+  },
+  "calls": {
+    "version": "2026.09.21-1",
+    "requester.upsert": {
+      "kind": "mutation",
+      "in": {
+        "email": "email",
+        "visitorId": "id",
+        "name": "string?",
+        "organization": "string?",
+        "purpose": "string=other"
+      },
+      "out": "requester",
+      "impl": {
+        "sql": "requester_upsert.sql"
+      }
+    },
+    "requester.byVisitor": {
+      "kind": "query",
+      "in": {
+        "visitorId": "id"
+      },
+      "out": "requester?",
+      "impl": {
+        "sql": "requester_by_visitor.sql"
+      }
+    },
+    "request.create": {
+      "kind": "mutation",
+      "in": {
+        "requesterId": "id",
+        "employeeEmail": "email",
+        "employeeLastName": "string",
+        "organizationName": "string",
+        "claimTitle": "string?",
+        "claimStart": "date?",
+        "claimEnd": "date?",
+        "purpose": "string",
+        "ttlDays": "int"
+      },
+      "out": "verificationRequest",
+      "impl": {
+        "sql": "request_create.sql"
+      },
+      "transaction": true
+    },
+    "request.get": {
+      "kind": "query",
+      "in": {
+        "requestId": "id",
+        "requesterId": "id"
+      },
+      "out": "verificationRequest?",
+      "impl": {
+        "sql": "request_get.sql"
+      }
+    },
+    "request.listMine": {
+      "kind": "query",
+      "in": {
+        "requesterId": "id"
+      },
+      "out": "json",
+      "impl": {
+        "sql": "request_list_mine.sql",
+        "doc": "{ requests: [...], events: [...] }"
+      }
+    },
+    "request.forVerifier": {
+      "kind": "query",
+      "in": {
+        "verifierEmail": "email"
+      },
+      "out": "json",
+      "impl": {
+        "sql": "request_for_verifier.sql",
+        "doc": "Requests in 'attesting' for orgs where this email is a verifier, with the matching engagement."
+      }
+    },
+    "consent.record": {
+      "kind": "mutation",
+      "in": {
+        "employeeEmail": "email",
+        "granted": "boolean"
+      },
+      "out": {
+        "ok": "boolean",
+        "moved": "int"
+      },
+      "impl": {
+        "sql": "consent_record.sql",
+        "doc": "Employee grants/revokes; consent-pending requests move to attesting or declined."
+      }
+    },
+    "attest.record": {
+      "kind": "mutation",
+      "in": {
+        "requestId": "id",
+        "verifierEmail": "email",
+        "confirms": "boolean",
+        "note": "string?"
+      },
+      "out": "attestation",
+      "impl": {
+        "sql": "attest_record.sql"
+      }
+    },
+    "verify.resolve": {
+      "kind": "compute",
+      "doc": "The rules: does the attestation plus the engagement on file satisfy the claim? Produces the minimal result the request asked for.",
+      "in": {
+        "request": "verificationRequest?",
+        "attestation": "attestation",
+        "engagement": "json"
+      },
+      "out": {
+        "status": "string",
+        "result": "json"
+      },
+      "impl": {
+        "module": "verify_resolve.ts"
+      }
+    },
+    "request.finish": {
+      "kind": "mutation",
+      "in": {
+        "requestId": "id",
+        "status": "string",
+        "result": "json"
+      },
+      "out": "verificationRequest",
+      "impl": {
+        "sql": "request_finish.sql"
+      }
+    },
+    "engagement.match": {
+      "kind": "query",
+      "in": {
+        "requestId": "id"
+      },
+      "out": "json",
+      "impl": {
+        "sql": "engagement_match.sql"
+      }
+    },
+    "faq.search": {
+      "kind": "query",
+      "in": {
+        "text": "string",
+        "limit": "int=3"
+      },
+      "out": "faq[]",
+      "impl": {
+        "sql": "faq_search.sql"
+      }
+    }
+  },
+  "rules": {
+    "version": "2026.09.21-1",
+    "consent": {
+      "required": true,
+      "ttlDays": 14,
+      "doc": "No attestation without the employee's consent. Requests expire unanswered after ttlDays."
+    },
+    "disclosure": {
+      "fieldsByPurpose": {
+        "employment": [
+          "titleMatches",
+          "datesMatch"
+        ],
+        "lending": [
+          "datesMatch",
+          "current"
+        ],
+        "tenancy": [
+          "current"
+        ],
+        "background": [
+          "titleMatches",
+          "datesMatch"
+        ],
+        "other": [
+          "datesMatch"
+        ]
+      },
+      "neverDisclose": [
+        "salary",
+        "reasonForLeaving",
+        "performance"
+      ]
+    },
+    "retention": {
+      "requestDays": 365,
+      "attestationDays": 730
+    },
+    "writes": {
+      "confirmAlways": true,
+      "minConfidence": 0.85
+    },
+    "classify": {
+      "budgetMs": 1000,
+      "floor": 0.35,
+      "contextTurns": 6
+    },
+    "calls": {
+      "timeoutMs": 250
+    },
+    "familiarity": {
+      "threshold": 0.82
+    },
+    "trail": {
+      "sessionGapHours": 4
+    }
+  },
+  "shapes": {
+    "version": "2026.09.21-1",
+    "howItWorks": {
+      "asks": "How verification works: consent, what gets disclosed, how long it takes",
+      "input": {
+        "question": {
+          "type": "string",
+          "doc": "the question, verbatim"
+        }
+      },
+      "answer": "faq[]",
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "requester"
+      ],
+      "plan": [
+        {
+          "call": "faq.search",
+          "with": {
+            "text": "$question"
+          }
+        }
+      ],
+      "vessel": "list",
+      "phrase": "About: $question",
+      "triggers": [
+        "how does",
+        "what do you disclose",
+        "how long",
+        "is it legal",
+        "consent"
+      ],
+      "next": [
+        {
+          "label": "Start a verification",
+          "shape": "requestVerification"
+        }
+      ]
+    },
+    "becomeKnown": {
+      "asks": "Identify yourself as a requester (email, organization, purpose)",
+      "input": {
+        "email": "email",
+        "name": "string?",
+        "organization": "string?",
+        "purpose": "enum:employment|lending|tenancy|background|other=other"
+      },
+      "answer": {
+        "ok": "boolean",
+        "email": "string"
+      },
+      "effect": "write",
+      "allow": [
+        "stranger",
+        "known"
+      ],
+      "plan": [
+        {
+          "id": "r",
+          "call": "requester.upsert",
+          "with": {
+            "email": "$email",
+            "visitorId": "$visitor.id",
+            "name": "$name",
+            "organization": "$organization",
+            "purpose": "$purpose"
+          }
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "email": "$r.email"
+      },
+      "triggers": [
+        "my email is",
+        "I'm from",
+        "we are"
+      ],
+      "next": [
+        {
+          "label": "Start a verification",
+          "shape": "requestVerification"
+        }
+      ]
+    },
+    "requestVerification": {
+      "asks": "Request verification that someone worked at an organization",
+      "input": {
+        "employeeEmail": {
+          "type": "email",
+          "doc": "the employee's email"
+        },
+        "employeeLastName": "string",
+        "organizationName": "string",
+        "claimTitle": "string?",
+        "claimStart": "date?",
+        "claimEnd": "date?"
+      },
+      "answer": {
+        "ok": "boolean",
+        "request": "verificationRequest",
+        "summary": "string"
+      },
+      "effect": "write",
+      "allow": [
+        "requester"
+      ],
+      "plan": [
+        {
+          "id": "me",
+          "call": "requester.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "r",
+          "call": "request.create",
+          "with": {
+            "requesterId": "$me.id",
+            "employeeEmail": "$employeeEmail",
+            "employeeLastName": "$employeeLastName",
+            "organizationName": "$organizationName",
+            "claimTitle": "$claimTitle",
+            "claimStart": "$claimStart",
+            "claimEnd": "$claimEnd",
+            "purpose": "$me.purpose",
+            "ttlDays": 14
+          },
+          "after": [
+            "me"
+          ]
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "request": "$r",
+        "summary": "Request $r.id is $r.status; the employee has been asked for consent."
+      },
+      "triggers": [
+        "verify",
+        "confirm employment",
+        "did they work",
+        "check that"
+      ],
+      "next": [
+        {
+          "label": "Where do my requests stand?",
+          "shape": "myRequests"
+        }
+      ]
+    },
+    "myRequests": {
+      "asks": "Where my verification requests stand",
+      "input": {},
+      "answer": {
+        "requests": "json",
+        "events": "json"
+      },
+      "effect": "read",
+      "allow": [
+        "requester"
+      ],
+      "plan": [
+        {
+          "id": "me",
+          "call": "requester.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "l",
+          "call": "request.listMine",
+          "with": {
+            "requesterId": "$me.id"
+          },
+          "after": [
+            "me"
+          ]
+        }
+      ],
+      "assemble": {
+        "requests": "$l.requests",
+        "events": "$l.events"
+      },
+      "vessel": "timeline",
+      "phrase": "Your requests",
+      "triggers": [
+        "status",
+        "my requests",
+        "where do things stand"
+      ]
+    },
+    "giveConsent": {
+      "asks": "As the employee: grant or revoke consent for verifications about you",
+      "input": {
+        "employeeEmail": "email",
+        "granted": "boolean"
+      },
+      "answer": {
+        "ok": "boolean",
+        "moved": "int"
+      },
+      "effect": "write",
+      "allow": [
+        "stranger",
+        "known",
+        "requester"
+      ],
+      "plan": [
+        {
+          "call": "consent.record",
+          "with": {
+            "employeeEmail": "$employeeEmail",
+            "granted": "$granted"
+          }
+        }
+      ],
+      "phrase": "Consent recorded",
+      "triggers": [
+        "consent",
+        "I agree",
+        "I allow",
+        "revoke"
+      ]
+    },
+    "pendingAttestations": {
+      "asks": "As a verifier: requests waiting for my attestation",
+      "input": {},
+      "answer": "json",
+      "effect": "read",
+      "allow": [
+        "requester"
+      ],
+      "plan": [
+        {
+          "id": "me",
+          "call": "requester.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "p",
+          "call": "request.forVerifier",
+          "with": {
+            "verifierEmail": "$me.email"
+          },
+          "after": [
+            "me"
+          ]
+        }
+      ],
+      "assemble": "$p",
+      "vessel": "list",
+      "triggers": [
+        "waiting for me",
+        "pending",
+        "attest"
+      ],
+      "next": [
+        {
+          "label": "Attest {item.id}",
+          "shape": "attest",
+          "args": {
+            "requestId": "$item.id"
+          },
+          "each": "answer"
+        }
+      ]
+    },
+    "attest": {
+      "asks": "As a verifier: confirm or deny an engagement for a request",
+      "input": {
+        "requestId": "id",
+        "confirms": "boolean",
+        "note": "string?"
+      },
+      "answer": {
+        "ok": "boolean",
+        "request": "verificationRequest",
+        "result": "json"
+      },
+      "effect": "write",
+      "allow": [
+        "requester"
+      ],
+      "plan": [
+        {
+          "id": "me",
+          "call": "requester.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "a",
+          "call": "attest.record",
+          "with": {
+            "requestId": "$requestId",
+            "verifierEmail": "$me.email",
+            "confirms": "$confirms",
+            "note": "$note"
+          },
+          "after": [
+            "me"
+          ]
+        },
+        {
+          "id": "req",
+          "call": "request.get",
+          "with": {
+            "requestId": "$requestId",
+            "requesterId": "*"
+          }
+        },
+        {
+          "id": "e",
+          "call": "engagement.match",
+          "with": {
+            "requestId": "$requestId"
+          }
+        },
+        {
+          "id": "v",
+          "call": "verify.resolve",
+          "with": {
+            "request": "$req",
+            "attestation": "$a",
+            "engagement": "$e"
+          },
+          "after": [
+            "a",
+            "req",
+            "e"
+          ]
+        },
+        {
+          "id": "f",
+          "call": "request.finish",
+          "with": {
+            "requestId": "$requestId",
+            "status": "$v.status",
+            "result": "$v.result"
+          },
+          "after": [
+            "v"
+          ]
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "request": "$f",
+        "result": "$v.result"
+      },
+      "triggers": [
+        "confirm",
+        "deny",
+        "attest"
+      ]
+    }
+  },
+  "personas": {
+    "version": "2026.09.21-1",
+    "requester": {
+      "when": "identity.email != null"
+    },
+    "known": {
+      "when": "identity.cookie != null || identity.issuedUrl != null"
+    },
+    "stranger": {
+      "when": "true"
+    }
+  },
+  "envelope": {
+    "version": "2026.09.21-1",
+    "accept": [
+      "referrer",
+      "utm_source",
+      "utm_campaign",
+      "cookie",
+      "issuedUrl",
+      "userAgent",
+      "locale"
+    ],
+    "greeting": {
+      "stranger": {
+        "shape": "howItWorks",
+        "hint": "Verifying someone's employment? Or here to give consent or attest? Tell me which.",
+        "offer": [
+          "becomeKnown",
+          "giveConsent"
+        ]
+      },
+      "known": {
+        "resume": true,
+        "offer": [
+          "becomeKnown",
+          "howItWorks"
+        ]
+      },
+      "requester": {
+        "resume": true,
+        "offer": [
+          "requestVerification",
+          "myRequests",
+          "pendingAttestations"
+        ]
+      }
+    }
+  },
+  "notifications": {
+    "version": "2026.09.21-1",
+    "consent.requested": {
+      "to": "visitor",
+      "text": "{organization} has been asked to verify your engagement for {purpose}. Grant or revoke consent any time."
+    },
+    "request.verified": {
+      "to": "visitor",
+      "text": "Request {request.id} is {request.status}.",
+      "next": [
+        {
+          "shape": "myRequests"
+        }
+      ]
+    },
+    "attestation.pending": {
+      "to": "operator",
+      "text": "{count} requests are waiting for a verifier."
+    },
+    "unmet.daily": {
+      "to": "operator",
+      "text": "{count} things were asked for that we couldn't answer.",
+      "next": [
+        {
+          "shape": "op.unmetReport"
+        }
+      ]
+    }
+  },
+  "operator": {
+    "version": "2026.09.21-1",
+    "shapes": {
+      "op.unmetReport": {
+        "asks": "What did people ask for that we couldn't answer?",
+        "input": {
+          "since": "string=7d"
+        },
+        "answer": "json",
+        "effect": "read",
+        "allow": [
+          "operator"
+        ],
+        "vessel": "list"
+      },
+      "op.editSection": {
+        "asks": "Edit a section of the spec",
+        "input": {
+          "section": "enum:business|entities|calls|rules|shapes|personas|envelope|notifications|operator",
+          "patch": "json"
+        },
+        "answer": {
+          "ok": "boolean",
+          "version": "string"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      },
+      "op.restart": {
+        "asks": "Restart the core",
+        "input": {},
+        "answer": {
+          "ok": "boolean"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      },
+      "op.notify": {
+        "asks": "Send a notification to a visitor",
+        "input": {
+          "visitorId": "id",
+          "text": "string"
+        },
+        "answer": {
+          "ok": "boolean"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      }
+    }
+  }
+}

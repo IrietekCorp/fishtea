@@ -1,0 +1,74 @@
+[
+ {
+  "id": "sk_1",
+  "name": "TypeScript",
+  "level": "expert",
+  "years": 12,
+  "category": "backend",
+  "evidence": "Bun/Node services, typed end to end; the Fishtea engine is TypeScript."
+ },
+ {
+  "id": "sk_2",
+  "name": "Postgres",
+  "level": "expert",
+  "years": 14,
+  "category": "data",
+  "evidence": "Schema design, migrations, query tuning; pgvector for retrieval."
+ },
+ {
+  "id": "sk_3",
+  "name": "React",
+  "level": "strong",
+  "years": 9,
+  "category": "frontend",
+  "evidence": "Accessible component systems; seven-vessel UI kits."
+ },
+ {
+  "id": "sk_4",
+  "name": "Product design",
+  "level": "strong",
+  "years": 10,
+  "category": "design",
+  "evidence": "Conversation-first interfaces; ran discovery with real customers."
+ },
+ {
+  "id": "sk_5",
+  "name": "Python",
+  "level": "working",
+  "years": 8,
+  "category": "backend",
+  "evidence": "Services and data tooling; the needle3 classifier pool."
+ },
+ {
+  "id": "sk_6",
+  "name": "Leadership",
+  "level": "strong",
+  "years": 7,
+  "category": "leadership",
+  "evidence": "Led teams of 4\u20138; hiring, planning, honest retros."
+ },
+ {
+  "id": "sk_7",
+  "name": "Machine learning",
+  "level": "working",
+  "years": 4,
+  "category": "data",
+  "evidence": "Small on-device models in products; evaluation harnesses, not research."
+ },
+ {
+  "id": "sk_8",
+  "name": "Go",
+  "level": "familiar",
+  "years": 2,
+  "category": "backend",
+  "evidence": "Read and patched services; not a daily language."
+ },
+ {
+  "id": "sk_9",
+  "name": "Accessibility",
+  "level": "strong",
+  "years": 6,
+  "category": "frontend",
+  "evidence": "WCAG AA as an architecture property, not a pass at the end."
+ }
+]

@@ -1,0 +1,103 @@
+import type { TypeSpec } from "./types.ts";
+
+export interface EntityDef {
+  doc?: string;
+  fields: Record<string, TypeSpec>;
+  index?: string[];
+  embed?: string[];
+  unique?: string[];
+}
+
+export interface CallDef {
+  kind: "query" | "mutation" | "compute" | "external";
+  doc?: string;
+  in: Record<string, TypeSpec>;
+  out: TypeSpec;
+  impl: { sql?: string; module?: string; url?: string; doc?: string };
+  transaction?: boolean;
+}
+
+export interface PlanStep {
+  id?: string;
+  call: string;
+  with?: Record<string, unknown>;
+  after?: string[];
+}
+
+export interface NextDef {
+  label?: string;
+  shape: string;
+  args?: Record<string, unknown>;
+  each?: string;
+}
+
+export type VesselName = "list" | "card" | "detail" | "compare" | "timeline" | "confirm";
+
+export interface ShapeDef {
+  asks: string;
+  doc?: string;
+  input: Record<string, TypeSpec>;
+  answer: TypeSpec;
+  effect: "read" | "write";
+  allow: string[];
+  plan?: PlanStep[];
+  assemble?: unknown;
+  phrase?: string;
+  vessel?: VesselName;
+  next?: NextDef[];
+  triggers?: string[];
+}
+
+export interface GreetingDef { shape?: string; hint?: string; resume?: boolean; offer?: string[] }
+
+export interface NotificationDef { to: "visitor" | "operator"; text: string; doc?: string; next?: NextDef[] }
+
+export interface Spec {
+  fishtea: string;
+  business: { id: string; name: string; doc?: string; locale?: string; currency?: string; version: string };
+  entities: { version: string; doc?: string } & Record<string, EntityDef | string | undefined>;
+  calls: { version: string; doc?: string } & Record<string, CallDef | string | undefined>;
+  rules: {
+    version: string;
+    doc?: string;
+    writes?: { confirmAlways?: boolean; minConfidence?: number };
+    classify?: { budgetMs?: number; floor?: number; contextTurns?: number };
+    calls?: { timeoutMs?: number };
+    familiarity?: { threshold?: number };
+    [k: string]: unknown;
+  };
+  shapes: { version: string; doc?: string } & Record<string, ShapeDef | string | undefined>;
+  personas: { version: string; doc?: string } & Record<string, { when: string; doc?: string } | string | undefined>;
+  envelope: { version: string; doc?: string; accept: string[]; greeting: Record<string, GreetingDef> };
+  notifications?: { version: string; doc?: string } & Record<string, NotificationDef | string | undefined>;
+  operator?: { version: string; doc?: string; shapes?: Record<string, ShapeDef> };
+}
+
+const META = new Set(["version", "doc"]);
+
+/** Iterate the named members of a sectioned map, skipping `version` and `doc`. */
+export function members<T>(section: Record<string, unknown> | undefined): [string, T][] {
+  if (!section) return [];
+  return Object.entries(section).filter(([k]) => !META.has(k)) as [string, T][];
+}
+
+export const entities = (s: Spec) => members<EntityDef>(s.entities);
+export const calls = (s: Spec) => members<CallDef>(s.calls);
+export const shapes = (s: Spec) => members<ShapeDef>(s.shapes);
+export const personas = (s: Spec) => members<{ when: string; doc?: string }>(s.personas);
+export const notifications = (s: Spec) => members<NotificationDef>(s.notifications);
+export const operatorShapes = (s: Spec): [string, ShapeDef][] => Object.entries(s.operator?.shapes ?? {});
+
+export function getShape(s: Spec, name: string): ShapeDef | undefined {
+  const consumer = (s.shapes as any)[name];
+  if (consumer && typeof consumer === "object") return consumer as ShapeDef;
+  return s.operator?.shapes?.[name];
+}
+export function getCall(s: Spec, name: string): CallDef | undefined {
+  const c = (s.calls as any)[name];
+  return c && typeof c === "object" ? (c as CallDef) : undefined;
+}
+export function getEntity(s: Spec, name: string): EntityDef | undefined {
+  const e = (s.entities as any)[name];
+  return e && typeof e === "object" ? (e as EntityDef) : undefined;
+}

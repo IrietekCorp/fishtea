@@ -1,0 +1,86 @@
+[
+ {
+  "id": "faq_1",
+  "question": "What will my child actually build?",
+  "answer": "Each participant picks a track on Monday: an AI Storybook, an AI Game, an AI Explainer Video, or an AI App or Website. They build it all week and present it at the Friday Family Showcase.",
+  "order": 0,
+  "isActive": true
+ },
+ {
+  "id": "faq_2",
+  "question": "What ages is the program for?",
+  "answer": "Ages 8 to 14. The August week is for teens 13 to 16. Groups are split by age within a session.",
+  "order": 1,
+  "isActive": true
+ },
+ {
+  "id": "faq_3",
+  "question": "How much does it cost?",
+  "answer": "$450 per participant for the week. Siblings get 15% off the second enrollment. Sponsor-funded scholarships are available; ask us and we'll walk you through it.",
+  "order": 2,
+  "isActive": true
+ },
+ {
+  "id": "faq_4",
+  "question": "What are the daily hours?",
+  "answer": "9:00 AM to 3:00 PM daily, Monday through Friday. Drop-off opens at 8:45 AM.",
+  "order": 3,
+  "isActive": true
+ },
+ {
+  "id": "faq_5",
+  "question": "What is the staff-to-student ratio?",
+  "answer": "One coach for every five participants, with a maximum of 15 participants per session.",
+  "order": 4,
+  "isActive": true
+ },
+ {
+  "id": "faq_6",
+  "question": "Does my child need a laptop?",
+  "answer": "A laptop or tablet helps but isn't required. We lend devices for the week; request one when you register.",
+  "order": 5,
+  "isActive": true
+ },
+ {
+  "id": "faq_7",
+  "question": "Is lunch provided?",
+  "answer": "Participants bring their own lunch and a water bottle. We provide a morning snack. Tell us about allergies when you register.",
+  "order": 6,
+  "isActive": true
+ },
+ {
+  "id": "faq_8",
+  "question": "Is the program safe? How do you handle AI content?",
+  "answer": "All AI tools run in supervised, kid-safe modes with content filters, and coaches sit with every group. Participants never use personal accounts.",
+  "order": 7,
+  "isActive": true
+ },
+ {
+  "id": "faq_9",
+  "question": "What is your refund policy?",
+  "answer": "Full refund up to 14 days before the session starts; 50% up to 7 days before; after that we can move you to another week if there is space.",
+  "order": 8,
+  "isActive": true
+ },
+ {
+  "id": "faq_10",
+  "question": "Where is the program?",
+  "answer": "the main campus. The exact address and parking instructions are sent the week before the session.",
+  "order": 9,
+  "isActive": true
+ },
+ {
+  "id": "faq_11",
+  "question": "Do you offer scholarships?",
+  "answer": "Yes. Local sponsors fund full ($450) and partial scholarships. Apply from the conversation after you register; we review within a week.",
+  "order": 10,
+  "isActive": true
+ },
+ {
+  "id": "faq_12",
+  "question": "Is there a parent information event?",
+  "answer": "Yes, a virtual parent info session on May 29, 2026 at 5:00 PM ET. Leave your email and we'll send the link.",
+  "order": 11,
+  "isActive": true
+ }
+]

@@ -1,0 +1,28 @@
+{
+  "fishtea": "1.0",
+  "business": { "id": "blank", "name": "Blank", "doc": "Start here when no archetype fits: one entity, one read shape, one write shape. Add entities, calls and shapes with the TUI.", "locale": "en-US", "currency": "USD", "version": "2026.09.21-1" },
+  "entities": {
+    "version": "2026.09.21-1",
+    "item": { "doc": "Rename me. The description is what the classifier extracts against.", "fields": { "id": { "type": "id" }, "name": { "type": "string" }, "description": { "type": "text" }, "tags": { "type": "string[]" }, "createdAt": { "type": "timestamp" } }, "index": ["tags"], "embed": ["name", "description", "tags"] },
+    "customer": { "fields": { "id": { "type": "id" }, "email": { "type": "email" }, "name": { "type": "string", "optional": true }, "createdAt": { "type": "timestamp" } }, "unique": ["email"] }
+  },
+  "calls": {
+    "version": "2026.09.21-1",
+    "items.search": { "kind": "query", "in": { "text": "string?", "tags": "string[]?", "limit": "int=12" }, "out": "item[]", "impl": { "sql": "items_search.sql" } },
+    "customer.upsert": { "kind": "mutation", "in": { "email": "email", "visitorId": "id", "name": "string?" }, "out": "customer", "impl": { "sql": "customer_upsert.sql" } }
+  },
+  "rules": { "version": "2026.09.21-1", "writes": { "confirmAlways": true, "minConfidence": 0.85 }, "classify": { "budgetMs": 1000, "floor": 0.35, "contextTurns": 6 }, "calls": { "timeoutMs": 250 }, "familiarity": { "threshold": 0.82 }, "trail": { "sessionGapHours": 4 } },
+  "shapes": {
+    "version": "2026.09.21-1",
+    "findItems": { "asks": "Find items by what they are or a tag", "input": { "text": { "type": "string?", "doc": "what the visitor is looking for" }, "tag": "string?" }, "answer": "item[]", "effect": "read", "allow": ["stranger", "known", "customer"], "plan": [ { "call": "items.search", "with": { "text": "$text", "tags": "[$tag]" } } ], "phrase": "Items {text? matching \"$text\"} {tag? tagged $tag}" },
+    "becomeKnown": { "asks": "Save your email so we can keep this conversation", "input": { "email": "email", "name": "string?" }, "answer": { "ok": "boolean", "email": "string" }, "effect": "write", "allow": ["stranger", "known"], "plan": [ { "id": "c", "call": "customer.upsert", "with": { "email": "$email", "visitorId": "$visitor.id", "name": "$name" } } ], "assemble": { "ok": true, "email": "$c.email" }, "triggers": ["my email is", "remember me"] }
+  },
+  "personas": { "version": "2026.09.21-1", "customer": { "when": "identity.email != null" }, "known": { "when": "identity.cookie != null || identity.issuedUrl != null" }, "stranger": { "when": "true" } },
+  "envelope": { "version": "2026.09.21-1", "accept": ["referrer", "utm_source", "utm_campaign", "cookie", "issuedUrl", "userAgent", "locale"], "greeting": { "stranger": { "shape": "findItems", "hint": "What are you looking for?", "offer": ["becomeKnown"] }, "known": { "resume": true, "offer": ["findItems"] }, "customer": { "resume": true, "offer": ["findItems"] } } },
+  "notifications": { "version": "2026.09.21-1", "unmet.daily": { "to": "operator", "text": "{count} things were asked for that we couldn't answer.", "next": [ { "shape": "op.unmetReport" } ] } },
+  "operator": { "version": "2026.09.21-1", "shapes": {
+    "op.unmetReport": { "asks": "What did people ask for that we couldn't answer?", "input": { "since": "string=7d" }, "answer": "json", "effect": "read", "allow": ["operator"], "vessel": "list" },
+    "op.editSection": { "asks": "Edit a section of the spec", "input": { "section": "enum:business|entities|calls|rules|shapes|personas|envelope|notifications|operator", "patch": "json" }, "answer": { "ok": "boolean", "version": "string" }, "effect": "write", "allow": ["operator"] },
+    "op.restart": { "asks": "Restart the core", "input": {}, "answer": { "ok": "boolean" }, "effect": "write", "allow": ["operator"] },
+    "op.notify": { "asks": "Send a notification to a visitor", "input": { "visitorId": "id", "text": "string" }, "answer": { "ok": "boolean" }, "effect": "write", "allow": ["operator"] } } }
+}

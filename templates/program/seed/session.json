@@ -1,0 +1,60 @@
+[
+ {
+  "id": "june-22",
+  "name": "June 22\u201326, 2026",
+  "startDate": "2026-06-22",
+  "endDate": "2026-06-26",
+  "capacity": 15,
+  "price": 450,
+  "ageMin": 8,
+  "ageMax": 14,
+  "hours": "9:00 AM \u2013 3:00 PM",
+  "location": "Main campus",
+  "tracks": [
+   "AI Storybook",
+   "AI Game",
+   "AI Explainer Video",
+   "AI App or Website"
+  ],
+  "status": "active",
+  "description": "Week one. Participants pick a track on Monday, build all week with a 1:5 staff ratio, and present at the Friday Family Showcase."
+ },
+ {
+  "id": "july-27",
+  "name": "July 27\u201331, 2026",
+  "startDate": "2026-07-27",
+  "endDate": "2026-07-31",
+  "capacity": 15,
+  "price": 450,
+  "ageMin": 8,
+  "ageMax": 14,
+  "hours": "9:00 AM \u2013 3:00 PM",
+  "location": "Main campus",
+  "tracks": [
+   "AI Storybook",
+   "AI Game",
+   "AI Explainer Video",
+   "AI App or Website"
+  ],
+  "status": "active",
+  "description": "Week two. Same curriculum, new cohort. Returning explorers go deeper on their track."
+ },
+ {
+  "id": "aug-10-teens",
+  "name": "August 10\u201314, 2026 (Teens)",
+  "startDate": "2026-08-10",
+  "endDate": "2026-08-14",
+  "capacity": 12,
+  "price": 450,
+  "ageMin": 13,
+  "ageMax": 16,
+  "hours": "9:00 AM \u2013 3:00 PM",
+  "location": "Main campus",
+  "tracks": [
+   "AI App or Website",
+   "AI Game"
+  ],
+  "status": "active",
+  "description": "A teens-only week focused on shipping a real app or game."
+ }
+]

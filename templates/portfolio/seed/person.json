@@ -1,0 +1,14 @@
+[
+ {
+  "id": "me",
+  "name": "Example Person",
+  "headline": "Product engineer who ships end to end",
+  "summary": "Fifteen years building products from the database to the pixel, mostly in small teams that had to move fast without breaking trust. Happiest when the problem is unclear and the customer is real.",
+  "location": "Remote",
+  "availability": "selective",
+  "links": {
+   "github": "https://github.com/example",
+   "site": "https://example.dev"
+  }
+ }
+]

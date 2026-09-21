@@ -1,0 +1,79 @@
+[
+  {
+    "note": "a parent arrives from the school newsletter"
+  },
+  {
+    "arrive": true
+  },
+  {
+    "text": "which week works for a 10 year old"
+  },
+  {
+    "text": "how much does it cost for 2 kids"
+  },
+  {
+    "text": "what do the kids actually build"
+  },
+  {
+    "text": "is lunch provided"
+  },
+  {
+    "shape": "registerCamper",
+    "args": {
+      "sessionId": "june-22",
+      "firstName": "Ada",
+      "age": 10
+    }
+  },
+  {
+    "shape": "becomeKnown",
+    "args": {
+      "email": "parent@example.com",
+      "parentFirstName": "Sam"
+    },
+    "confirm": true
+  },
+  {
+    "text": "register my daughter"
+  },
+  {
+    "shape": "registerCamper",
+    "args": {
+      "sessionId": "june-22",
+      "firstName": "Ada",
+      "age": 10,
+      "experience": "some"
+    },
+    "confirm": true
+  },
+  {
+    "shape": "registerCamper",
+    "args": {
+      "sessionId": "june-22",
+      "firstName": "Leo",
+      "age": 12
+    },
+    "confirm": true
+  },
+  {
+    "shape": "registerCamper",
+    "args": {
+      "sessionId": "june-22",
+      "firstName": "Tiny",
+      "age": 6
+    },
+    "confirm": true
+  },
+  {
+    "text": "where do things stand"
+  },
+  {
+    "text": "who sponsors scholarships"
+  },
+  {
+    "text": "schedule for june-22"
+  },
+  {
+    "text": "what's the weather"
+  }
+]

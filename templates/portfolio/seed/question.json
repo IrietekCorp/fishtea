@@ -1,0 +1,104 @@
+[
+ {
+  "id": "q_1",
+  "topic": "working style",
+  "question": "How do you like to work?",
+  "answer": "Small teams, short loops, real customers in the room. I write things down and ship weekly.",
+  "followUps": [
+   "q_2",
+   "q_5"
+  ],
+  "order": 0
+ },
+ {
+  "id": "q_2",
+  "topic": "working style",
+  "question": "How do you handle disagreement?",
+  "answer": "Say it early, argue with evidence, commit fully once decided, and put a date on when we'll revisit.",
+  "followUps": [
+   "q_3"
+  ],
+  "order": 1
+ },
+ {
+  "id": "q_3",
+  "topic": "leadership",
+  "question": "What kind of leader are you?",
+  "answer": "Player-coach. I set direction, remove blockers, and stay close enough to the code to smell trouble.",
+  "followUps": [
+   "q_6"
+  ],
+  "order": 2
+ },
+ {
+  "id": "q_4",
+  "topic": "strengths",
+  "question": "What are you best at?",
+  "answer": "Turning an unclear problem into a shippable first version, and then measuring whether it worked.",
+  "followUps": [
+   "q_7",
+   "q_1"
+  ],
+  "order": 3
+ },
+ {
+  "id": "q_5",
+  "topic": "weaknesses",
+  "question": "What are you not good at?",
+  "answer": "Long, slow consensus processes. I get impatient and have to manage it. I'm also not a Go or mobile specialist.",
+  "followUps": [
+   "q_2"
+  ],
+  "order": 4
+ },
+ {
+  "id": "q_6",
+  "topic": "leadership",
+  "question": "How do you grow people?",
+  "answer": "Give real ownership early, pair on the hard parts, and make feedback boring by making it frequent.",
+  "followUps": [
+   "q_3"
+  ],
+  "order": 5
+ },
+ {
+  "id": "q_7",
+  "topic": "technical",
+  "question": "What's your technical sweet spot?",
+  "answer": "TypeScript and Postgres end to end, with just enough ML to make a product smarter without making it flaky.",
+  "followUps": [
+   "q_8"
+  ],
+  "order": 6
+ },
+ {
+  "id": "q_8",
+  "topic": "technical",
+  "question": "How do you approach AI in products?",
+  "answer": "Small models with hard budgets, rules that stay in code, and a fallback that's still a good experience.",
+  "followUps": [
+   "q_7"
+  ],
+  "order": 7
+ },
+ {
+  "id": "q_9",
+  "topic": "availability",
+  "question": "Are you available?",
+  "answer": "Selectively. Open to a principal role or a hard problem with a real customer; not open to relocation.",
+  "followUps": [
+   "q_10"
+  ],
+  "order": 8
+ },
+ {
+  "id": "q_10",
+  "topic": "availability",
+  "question": "What are you looking for next?",
+  "answer": "A product where the interface can be honest about what it knows. Remote, small team, real stakes.",
+  "followUps": [
+   "q_9"
+  ],
+  "order": 9
+ }
+]

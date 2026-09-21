@@ -1,0 +1,38 @@
+[
+ {
+  "id": "ex_1",
+  "organization": "Example Labs",
+  "title": "Principal engineer",
+  "startDate": "2022-01-01",
+  "endDate": null,
+  "summary": "Own the platform and the hardest product bets.",
+  "highlights": [
+   "Shipped the conversation-first stack",
+   "Hired and grew the platform team"
+  ]
+ },
+ {
+  "id": "ex_2",
+  "organization": "Startup Co",
+  "title": "Engineering lead",
+  "startDate": "2018-03-01",
+  "endDate": "2021-12-31",
+  "summary": "First engineering hire to a team of eight.",
+  "highlights": [
+   "Zero-to-one product",
+   "SOC 2 in year two"
+  ]
+ },
+ {
+  "id": "ex_3",
+  "organization": "Agency",
+  "title": "Senior developer",
+  "startDate": "2012-06-01",
+  "endDate": "2018-02-28",
+  "summary": "Client work across retail and education.",
+  "highlights": [
+   "Dozens of launches",
+   "Learned to say no"
+  ]
+ }
+]

@@ -1,0 +1,3 @@
+sourceId,name,description,brand,category,tags,price,currency,stock,imageUrl,affiliateUrl
+feed-001,Linen Tote,"A roomy linen tote, natural colour",FeedBrand,bag,linen|summer|easy,38,USD,0,https://picsum.photos/seed/feed1/480/480,https://vendor.example/feed-001
+feed-002,Chrome Cuff,"Polished chrome cuff bracelet",FeedBrand,bracelet,chrome|bold|y2k,29,USD,0,https://picsum.photos/seed/feed2/480/480,https://vendor.example/feed-002

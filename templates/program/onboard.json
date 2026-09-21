@@ -1,0 +1,123 @@
+{
+  "doc": "Onboarding interview for a sessions-based program.",
+  "questions": [
+    {
+      "id": "name",
+      "ask": "Program name",
+      "path": "business.name",
+      "type": "string",
+      "default": "{{name}}"
+    },
+    {
+      "id": "doc",
+      "ask": "One sentence: what is the program and who is it for?",
+      "path": "business.doc",
+      "type": "text",
+      "default": "A sessions-based program."
+    },
+    {
+      "id": "price",
+      "ask": "Price per participant per session",
+      "path": "rules.pricing.perCamper",
+      "type": "number",
+      "default": 450,
+      "also": [
+        {
+          "path": "entities.session.fields.price.default"
+        }
+      ]
+    },
+    {
+      "id": "sibling",
+      "ask": "Sibling/second-registration discount (%)",
+      "path": "rules.pricing.siblingDiscountPct",
+      "type": "number",
+      "default": 15
+    },
+    {
+      "id": "ageMin",
+      "ask": "Minimum age",
+      "path": "rules.program.ageMin",
+      "type": "int",
+      "default": 8,
+      "also": [
+        {
+          "path": "entities.session.fields.ageMin.default"
+        }
+      ]
+    },
+    {
+      "id": "ageMax",
+      "ask": "Maximum age",
+      "path": "rules.program.ageMax",
+      "type": "int",
+      "default": 14,
+      "also": [
+        {
+          "path": "entities.session.fields.ageMax.default"
+        }
+      ]
+    },
+    {
+      "id": "capacity",
+      "ask": "Capacity per session",
+      "path": "rules.program.capacity",
+      "type": "int",
+      "default": 15,
+      "also": [
+        {
+          "path": "entities.session.fields.capacity.default"
+        }
+      ]
+    },
+    {
+      "id": "hours",
+      "ask": "Daily hours",
+      "path": "rules.program.hours",
+      "type": "string",
+      "default": "9:00 AM \u2013 3:00 PM",
+      "also": [
+        {
+          "path": "entities.session.fields.hours.default"
+        }
+      ]
+    },
+    {
+      "id": "location",
+      "ask": "Location",
+      "path": "entities.session.fields.location.default",
+      "type": "string",
+      "default": "Main campus"
+    },
+    {
+      "id": "tracks",
+      "ask": "Tracks participants choose between (comma separated)",
+      "type": "list",
+      "default": "Track A, Track B, Track C",
+      "path": "entities.session.fields.tracks.doc",
+      "apply": "joinDoc"
+    },
+    {
+      "id": "devices",
+      "ask": "Equipment you lend (comma separated)",
+      "type": "list",
+      "default": "laptop, tablet",
+      "path": "entities.deviceLoan.fields.device",
+      "apply": "enum"
+    },
+    {
+      "id": "seed",
+      "ask": "Keep the example sessions, schedule, sponsors and FAQ as placeholders to edit?",
+      "type": "boolean",
+      "default": true,
+      "apply": "keepSeed"
+    },
+    {
+      "id": "greeting",
+      "ask": "Greeting for a first-time visitor",
+      "path": "envelope.greeting.stranger.hint",
+      "type": "string",
+      "default": "How old is your participant, and which week works? Or ask us anything."
+    }
+  ]
+}

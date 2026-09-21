@@ -1,0 +1,46 @@
+[
+ {
+  "note": "a visitor arrives from LinkedIn"
+ },
+ {
+  "arrive": true
+ },
+ {
+  "text": "what are you best at"
+ },
+ {
+  "text": "skills in backend"
+ },
+ {
+  "text": "projects using Postgres"
+ },
+ {
+  "text": "run the interview"
+ },
+ {
+  "text": "work history"
+ },
+ {
+  "shape": "becomeKnown",
+  "args": {
+   "email": "recruiter@example.com",
+   "organization": "Acme"
+  },
+  "confirm": true
+ },
+ {
+  "text": "we're hiring a senior TypeScript engineer with Go and Kubernetes experience to lead a platform team"
+ },
+ {
+  "shape": "getInTouch",
+  "args": {
+   "email": "recruiter@example.com",
+   "intent": "hire",
+   "message": "Let's talk."
+  },
+  "confirm": true
+ },
+ {
+  "text": "what's the weather"
+ }
+]

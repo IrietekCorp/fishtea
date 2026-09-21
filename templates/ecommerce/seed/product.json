@@ -1,0 +1,1316 @@
+[
+ {
+  "id": "p_coral_hoops",
+  "vendorId": "v_local",
+  "sourceId": "p_coral_hoops",
+  "name": "Coral Enamel Hoops",
+  "description": "Chunky enamel hoops in a sun-warmed coral. Lightweight for their size, so you forget they're on until someone compliments them. They pull a plain black dress into brunch territory and hold their own against a printed slip.",
+  "brand": "Example Store",
+  "category": "earrings",
+  "tags": [
+   "bold",
+   "brunch",
+   "color-block",
+   "date night",
+   "dopamine",
+   "dopamine dressing",
+   "festival",
+   "playful",
+   "resort",
+   "y2k"
+  ],
+  "attributes": {
+   "colors": [
+    "coral",
+    "orange"
+   ],
+   "energy": 8
+  },
+  "price": 42,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_coral_hoops/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "featured",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_pearl_drop",
+  "vendorId": "v_local",
+  "sourceId": "p_pearl_drop",
+  "name": "Baroque Pearl Drop Earrings",
+  "description": "Irregular freshwater baroque pearls on slim gold-fill hooks. Quiet enough for the office, luminous enough for a wedding. The pearls are asymmetric on purpose; that's the charm. Pairs with a white shirt and with black silk.",
+  "brand": "Example Store",
+  "category": "earrings",
+  "tags": [
+   "effortless",
+   "interview",
+   "office",
+   "parisian",
+   "polished",
+   "quiet",
+   "quiet luxury",
+   "quiet-luxury",
+   "soft",
+   "tonal",
+   "wedding"
+  ],
+  "attributes": {
+   "colors": [
+    "white",
+    "gold"
+   ],
+   "energy": 3
+  },
+  "price": 68,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_pearl_drop/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_brass_threaders",
+  "vendorId": "v_local",
+  "sourceId": "p_brass_threaders",
+  "name": "Brass Threader Earrings",
+  "description": "Fine brass chains that thread through the ear and hang like a pencil line. Minimal, architectural, almost invisible from across the room and precise up close. Wear with a cropped jacket or a turtleneck.",
+  "brand": "Example Store",
+  "category": "earrings",
+  "tags": [
+   "clean",
+   "gallery",
+   "japanese-minimal",
+   "monochrome",
+   "office",
+   "precise",
+   "quiet",
+   "quiet luxury",
+   "scandi",
+   "wfh"
+  ],
+  "attributes": {
+   "colors": [
+    "brass",
+    "gold"
+   ],
+   "energy": 3
+  },
+  "price": 36,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_brass_threaders/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_chrome_studs",
+  "vendorId": "v_local",
+  "sourceId": "p_chrome_studs",
+  "name": "Chrome Ball Studs",
+  "description": "Mirror-polished chrome balls the size of a pea. They catch light like a disco ball on a budget and go with everything from a hoodie to a sequin top. Y2K in the best way.",
+  "brand": "Example Store",
+  "category": "earrings",
+  "tags": [
+   "bold",
+   "brunch",
+   "chrome",
+   "club",
+   "dopamine dressing",
+   "festival",
+   "fierce",
+   "playful",
+   "streetwear",
+   "y2k"
+  ],
+  "attributes": {
+   "colors": [
+    "silver",
+    "chrome"
+   ],
+   "energy": 9
+  },
+  "price": 24,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 30,
+  "imageUrl": "https://picsum.photos/seed/p_chrome_studs/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_tortoise_drops",
+  "vendorId": "v_local",
+  "sourceId": "p_tortoise_drops",
+  "name": "Tortoiseshell Acetate Drops",
+  "description": "Hand-polished acetate in a warm tortoise, cut into long ovals. They swing when you walk. Library-lit, autumnal, made for a camel coat and a stack of books.",
+  "brand": "Example Store",
+  "category": "earrings",
+  "tags": [
+   "brass",
+   "dark academia",
+   "dark-academia",
+   "dinner",
+   "gallery",
+   "moody",
+   "office",
+   "polished",
+   "tortoise",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "brown",
+    "amber"
+   ],
+   "energy": 5
+  },
+  "price": 38,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_tortoise_drops/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_linen_scrunchie",
+  "vendorId": "v_local",
+  "sourceId": "p_linen_scrunchie",
+  "name": "Washed Linen Scrunchie",
+  "description": "Soft, stone-washed linen in oat. Holds a low bun without creasing and looks like you meant it. The hair equivalent of a cotton sundress.",
+  "brand": "Example Store",
+  "category": "hair",
+  "tags": [
+   "brunch",
+   "calm",
+   "cottagecore",
+   "floral",
+   "linen",
+   "picnic",
+   "resort",
+   "soft",
+   "wfh"
+  ],
+  "attributes": {
+   "colors": [
+    "oat",
+    "cream"
+   ],
+   "energy": 2
+  },
+  "price": 14,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 40,
+  "imageUrl": "https://picsum.photos/seed/p_linen_scrunchie/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_claw_clip",
+  "vendorId": "v_local",
+  "sourceId": "p_claw_clip",
+  "name": "Marbled Claw Clip",
+  "description": "Oversized claw clip in a cream-and-caramel marble acetate. Holds thick hair through a whole workday. The lazy-elegant twist, made easy.",
+  "brand": "Example Store",
+  "category": "hair",
+  "tags": [
+   "easy",
+   "effortless",
+   "gym",
+   "office",
+   "parisian",
+   "polished",
+   "quiet luxury",
+   "tonal",
+   "wfh"
+  ],
+  "attributes": {
+   "colors": [
+    "cream",
+    "caramel"
+   ],
+   "energy": 4
+  },
+  "price": 18,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 25,
+  "imageUrl": "https://picsum.photos/seed/p_claw_clip/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_silk_scarf",
+  "vendorId": "v_local",
+  "sourceId": "p_silk_scarf",
+  "name": "Silk Twill Scarf, Hand-rolled",
+  "description": "A 90cm silk twill square in navy with a hand-drawn chain print. Hand-rolled hem. Tie it at the neck, on a bag handle, or as a headscarf on a windy ferry. The most versatile object in the drawer.",
+  "brand": "Example Store",
+  "category": "scarf",
+  "tags": [
+   "classic",
+   "heirloom",
+   "italian-tailoring",
+   "office",
+   "parisian",
+   "polished",
+   "quiet luxury",
+   "structured",
+   "travel",
+   "wedding"
+  ],
+  "attributes": {
+   "colors": [
+    "navy",
+    "gold"
+   ],
+   "energy": 5
+  },
+  "price": 95,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_silk_scarf/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "featured",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_cashmere_wrap",
+  "vendorId": "v_local",
+  "sourceId": "p_cashmere_wrap",
+  "name": "Featherweight Cashmere Wrap",
+  "description": "A two-ply cashmere wrap in stone, big enough to be a blanket on a plane and light enough to knot as a scarf. Tonal, plush, the sort of thing you're annoyed at yourself for not buying sooner.",
+  "brand": "Example Store",
+  "category": "scarf",
+  "tags": [
+   "calm",
+   "cashmere",
+   "dinner",
+   "luxe",
+   "office",
+   "quiet luxury",
+   "quiet-luxury",
+   "scandi",
+   "soft",
+   "tonal",
+   "travel"
+  ],
+  "attributes": {
+   "colors": [
+    "stone",
+    "grey"
+   ],
+   "energy": 2
+  },
+  "price": 140,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 8,
+  "imageUrl": "https://picsum.photos/seed/p_cashmere_wrap/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_bandana",
+  "vendorId": "v_local",
+  "sourceId": "p_bandana",
+  "name": "Faded Bandana",
+  "description": "A cotton bandana in a sun-faded indigo paisley. Neck, wrist, hair, bag. Softens with every wash. The festival essential that also reads workwear.",
+  "brand": "Example Store",
+  "category": "scarf",
+  "tags": [
+   "boho",
+   "canvas",
+   "cottagecore",
+   "easy",
+   "festival",
+   "gorpcore",
+   "picnic",
+   "playful",
+   "streetwear",
+   "travel",
+   "workwear"
+  ],
+  "attributes": {
+   "colors": [
+    "indigo",
+    "blue"
+   ],
+   "energy": 6
+  },
+  "price": 16,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 50,
+  "imageUrl": "https://picsum.photos/seed/p_bandana/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_wool_beret",
+  "vendorId": "v_local",
+  "sourceId": "p_wool_beret",
+  "name": "Wool Felt Beret",
+  "description": "A structured wool-felt beret in charcoal. Sits at an angle without pins. Instantly Parisian; instantly dark academia if you add the tortoise glasses.",
+  "brand": "Example Store",
+  "category": "hat",
+  "tags": [
+   "autumn walk",
+   "dark academia",
+   "dark-academia",
+   "dinner",
+   "gallery",
+   "moody",
+   "parisian",
+   "polished",
+   "structured",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "charcoal",
+    "black"
+   ],
+   "energy": 4
+  },
+  "price": 44,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_wool_beret/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_bucket_hat",
+  "vendorId": "v_local",
+  "sourceId": "p_bucket_hat",
+  "name": "Ripstop Bucket Hat",
+  "description": "A packable ripstop bucket hat in olive with a chin cord. Technical fabric, off-duty attitude. Wear it to the trailhead or to the coffee line.",
+  "brand": "Example Store",
+  "category": "hat",
+  "tags": [
+   "bold",
+   "easy",
+   "festival",
+   "gorpcore",
+   "hike",
+   "sporty",
+   "technical",
+   "travel",
+   "utility"
+  ],
+  "attributes": {
+   "colors": [
+    "olive",
+    "green"
+   ],
+   "energy": 7
+  },
+  "price": 34,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 20,
+  "imageUrl": "https://picsum.photos/seed/p_bucket_hat/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_raffia_visor",
+  "vendorId": "v_local",
+  "sourceId": "p_raffia_visor",
+  "name": "Raffia Visor",
+  "description": "A hand-woven raffia visor with a wide brim and an open crown for the hair you spent time on. Beach club at 11, lunch at 1.",
+  "brand": "Example Store",
+  "category": "hat",
+  "tags": [
+   "beach",
+   "brunch",
+   "coastal",
+   "cottagecore",
+   "playful",
+   "raffia",
+   "resort",
+   "sun",
+   "sunny"
+  ],
+  "attributes": {
+   "colors": [
+    "natural",
+    "straw"
+   ],
+   "energy": 6
+  },
+  "price": 38,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 15,
+  "imageUrl": "https://picsum.photos/seed/p_raffia_visor/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_tote",
+  "vendorId": "v_local",
+  "sourceId": "p_tote",
+  "name": "Structured Leather Tote",
+  "description": "A pebbled leather tote in black with a stiff base, so it stands up on the floor. Fits a laptop and a paperback. Ages well. The bag you carry for a decade.",
+  "brand": "Example Store",
+  "category": "bag",
+  "tags": [
+   "confident",
+   "interview",
+   "italian-tailoring",
+   "office",
+   "polished",
+   "quiet luxury",
+   "quiet-luxury",
+   "structured",
+   "tonal",
+   "travel"
+  ],
+  "attributes": {
+   "colors": [
+    "black"
+   ],
+   "energy": 5
+  },
+  "price": 320,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 6,
+  "imageUrl": "https://picsum.photos/seed/p_tote/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "featured",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_baguette",
+  "vendorId": "v_local",
+  "sourceId": "p_baguette",
+  "name": "Croc-embossed Baguette Bag",
+  "description": "A small shoulder bag in chocolate croc-embossed leather with a short strap. Sits under the arm. Y2K silhouette, grown-up finish. Holds phone, card, lipstick, nothing else, which is the point.",
+  "brand": "Example Store",
+  "category": "bag",
+  "tags": [
+   "bold",
+   "brunch",
+   "chrome",
+   "club",
+   "date night",
+   "fierce",
+   "parisian",
+   "playful",
+   "y2k"
+  ],
+  "attributes": {
+   "colors": [
+    "chocolate",
+    "brown"
+   ],
+   "energy": 8
+  },
+  "price": 88,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_baguette/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_canvas_crossbody",
+  "vendorId": "v_local",
+  "sourceId": "p_canvas_crossbody",
+  "name": "Waxed Canvas Crossbody",
+  "description": "A waxed cotton canvas crossbody in olive with brass hardware and a wide webbing strap. Water beads off it. Utility without the costume.",
+  "brand": "Example Store",
+  "category": "bag",
+  "tags": [
+   "canvas",
+   "easy",
+   "gorpcore",
+   "hike",
+   "practical",
+   "travel",
+   "utility",
+   "wfh",
+   "workwear"
+  ],
+  "attributes": {
+   "colors": [
+    "olive",
+    "brass"
+   ],
+   "energy": 5
+  },
+  "price": 72,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 14,
+  "imageUrl": "https://picsum.photos/seed/p_canvas_crossbody/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_beaded_bag",
+  "vendorId": "v_local",
+  "sourceId": "p_beaded_bag",
+  "name": "Hand-beaded Evening Pouch",
+  "description": "A small pouch beaded by hand in a gradient from ivory to blush, with a slim chain. Catches every light in the room. For the wedding you're not the bride at.",
+  "brand": "Example Store",
+  "category": "bag",
+  "tags": [
+   "artisan",
+   "boho",
+   "cottagecore",
+   "date night",
+   "floral",
+   "gala",
+   "playful",
+   "romantic",
+   "soft",
+   "wedding"
+  ],
+  "attributes": {
+   "colors": [
+    "ivory",
+    "blush"
+   ],
+   "energy": 6
+  },
+  "price": 110,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 5,
+  "imageUrl": "https://picsum.photos/seed/p_beaded_bag/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_nylon_sling",
+  "vendorId": "v_local",
+  "sourceId": "p_nylon_sling",
+  "name": "Ripstop Sling Bag",
+  "description": "A cross-body sling in black ripstop with a magnetic buckle and a hidden card slot. Hands-free, weightless, built for a festival or a crowded train.",
+  "brand": "Example Store",
+  "category": "bag",
+  "tags": [
+   "bold",
+   "easy",
+   "festival",
+   "gorpcore",
+   "gym",
+   "sporty",
+   "streetwear",
+   "technical",
+   "travel"
+  ],
+  "attributes": {
+   "colors": [
+    "black"
+   ],
+   "energy": 8
+  },
+  "price": 58,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 22,
+  "imageUrl": "https://picsum.photos/seed/p_nylon_sling/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_signet",
+  "vendorId": "v_local",
+  "sourceId": "p_signet",
+  "name": "Engraved Signet Ring Bracelet",
+  "description": "A slim brass cuff with a signet plate you can have engraved. Heirloom weight, wearable daily. Reads old library, reads new tailoring.",
+  "brand": "Example Store",
+  "category": "bracelet",
+  "tags": [
+   "brass",
+   "dark academia",
+   "dark-academia",
+   "dinner",
+   "gallery",
+   "heirloom",
+   "moody",
+   "office",
+   "polished",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "brass"
+   ],
+   "energy": 4
+  },
+  "price": 64,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 9,
+  "imageUrl": "https://picsum.photos/seed/p_signet/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_tennis",
+  "vendorId": "v_local",
+  "sourceId": "p_tennis",
+  "name": "Cubic Zirconia Tennis Bracelet",
+  "description": "A single row of bright cubic zirconia in rhodium plate. Sparkle that reads as real from three feet. Wedding, gala, or a white T-shirt on a Tuesday.",
+  "brand": "Example Store",
+  "category": "bracelet",
+  "tags": [
+   "date night",
+   "gala",
+   "luxe",
+   "polished",
+   "quiet luxury",
+   "quiet-luxury",
+   "structured",
+   "tonal",
+   "wedding"
+  ],
+  "attributes": {
+   "colors": [
+    "silver"
+   ],
+   "energy": 6
+  },
+  "price": 120,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 7,
+  "imageUrl": "https://picsum.photos/seed/p_tennis/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_beaded_stack",
+  "vendorId": "v_local",
+  "sourceId": "p_beaded_stack",
+  "name": "Glass Bead Stack, Set of 5",
+  "description": "Five stretch bracelets in tomato red, cobalt, marigold, jade and lilac. Wear them all or split them up. Instant dopamine.",
+  "brand": "Example Store",
+  "category": "bracelet",
+  "tags": [
+   "boho",
+   "bold",
+   "brunch",
+   "color-block",
+   "dopamine",
+   "dopamine dressing",
+   "festival",
+   "picnic",
+   "playful"
+  ],
+  "attributes": {
+   "colors": [
+    "red",
+    "blue",
+    "yellow",
+    "green",
+    "lilac"
+   ],
+   "energy": 9
+  },
+  "price": 28,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 35,
+  "imageUrl": "https://picsum.photos/seed/p_beaded_stack/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_leather_wrap",
+  "vendorId": "v_local",
+  "sourceId": "p_leather_wrap",
+  "name": "Wrap Leather Bracelet",
+  "description": "A long strip of vegetable-tanned leather that wraps three times, with a brass hook. Darkens with wear. Workshop, not runway.",
+  "brand": "Example Store",
+  "category": "bracelet",
+  "tags": [
+   "artisan",
+   "boho",
+   "easy",
+   "gorpcore",
+   "grounded",
+   "hike",
+   "travel",
+   "utility",
+   "wfh",
+   "workwear"
+  ],
+  "attributes": {
+   "colors": [
+    "tan",
+    "brass"
+   ],
+   "energy": 4
+  },
+  "price": 32,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 18,
+  "imageUrl": "https://picsum.photos/seed/p_leather_wrap/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_chain_cuff",
+  "vendorId": "v_local",
+  "sourceId": "p_chain_cuff",
+  "name": "Chunky Chrome Chain Cuff",
+  "description": "A wide curb-chain cuff in polished chrome. Heavy in the hand, loud on the wrist, perfect with a black hoodie or a slip dress. The piece that makes an outfit an outfit.",
+  "brand": "Example Store",
+  "category": "bracelet",
+  "tags": [
+   "bold",
+   "chrome",
+   "chunky",
+   "club",
+   "date night",
+   "festival",
+   "fierce",
+   "streetwear",
+   "y2k"
+  ],
+  "attributes": {
+   "colors": [
+    "chrome",
+    "silver"
+   ],
+   "energy": 9
+  },
+  "price": 46,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 11,
+  "imageUrl": "https://picsum.photos/seed/p_chain_cuff/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_locket",
+  "vendorId": "v_local",
+  "sourceId": "p_locket",
+  "name": "Oval Locket Necklace",
+  "description": "A brass oval locket on a fine 20-inch chain. Holds two tiny photos. Feels inherited even when it's new. Pairs with a collared shirt or a knit.",
+  "brand": "Example Store",
+  "category": "necklace",
+  "tags": [
+   "autumn walk",
+   "brass",
+   "dark academia",
+   "dark-academia",
+   "dinner",
+   "gallery",
+   "heirloom",
+   "moody",
+   "romantic",
+   "soft",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "brass",
+    "gold"
+   ],
+   "energy": 3
+  },
+  "price": 78,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 10,
+  "imageUrl": "https://picsum.photos/seed/p_locket/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_pendant_pearl",
+  "vendorId": "v_local",
+  "sourceId": "p_pendant_pearl",
+  "name": "Single Pearl Pendant",
+  "description": "One round freshwater pearl on a hair-thin gold-fill chain. The necklace for people who don't wear necklaces. Sits at the collarbone, disappears into a turtleneck, reappears at dinner.",
+  "brand": "Example Store",
+  "category": "necklace",
+  "tags": [
+   "clean",
+   "interview",
+   "japanese-minimal",
+   "office",
+   "polished",
+   "quiet",
+   "quiet luxury",
+   "quiet-luxury",
+   "soft",
+   "tonal",
+   "wedding"
+  ],
+  "attributes": {
+   "colors": [
+    "white",
+    "gold"
+   ],
+   "energy": 2
+  },
+  "price": 56,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 16,
+  "imageUrl": "https://picsum.photos/seed/p_pendant_pearl/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_shell_necklace",
+  "vendorId": "v_local",
+  "sourceId": "p_shell_necklace",
+  "name": "Puka Shell and Bead Necklace",
+  "description": "Bleached puka shells and tiny wooden beads on a cord. Beach, boardwalk, the last week of August. Lands on the collarbone and smells faintly of sunscreen in your memory.",
+  "brand": "Example Store",
+  "category": "necklace",
+  "tags": [
+   "beach",
+   "boho",
+   "coastal",
+   "cottagecore",
+   "easy",
+   "festival",
+   "resort",
+   "sun",
+   "sunny"
+  ],
+  "attributes": {
+   "colors": [
+    "white",
+    "natural"
+   ],
+   "energy": 7
+  },
+  "price": 26,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 24,
+  "imageUrl": "https://picsum.photos/seed/p_shell_necklace/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_layered_chain",
+  "vendorId": "v_local",
+  "sourceId": "p_layered_chain",
+  "name": "Layered Chrome Chain Set",
+  "description": "Three chrome chains in ascending length, joined at one clasp so they never tangle. Bike chain to paperclip, top to bottom. Streetwear staple, weekend armor.",
+  "brand": "Example Store",
+  "category": "necklace",
+  "tags": [
+   "bold",
+   "brunch",
+   "chrome",
+   "chunky",
+   "club",
+   "festival",
+   "fierce",
+   "streetwear",
+   "y2k"
+  ],
+  "attributes": {
+   "colors": [
+    "chrome",
+    "silver"
+   ],
+   "energy": 8
+  },
+  "price": 48,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 13,
+  "imageUrl": "https://picsum.photos/seed/p_layered_chain/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_ribbon_choker",
+  "vendorId": "v_local",
+  "sourceId": "p_ribbon_choker",
+  "name": "Velvet Ribbon Choker",
+  "description": "A black velvet ribbon with a tiny gold charm, tied at the back of the neck. Romantic, slightly gothic, entirely comfortable. Dinner, then somewhere with candles.",
+  "brand": "Example Store",
+  "category": "necklace",
+  "tags": [
+   "dark academia",
+   "dark-academia",
+   "date night",
+   "dinner",
+   "gala",
+   "moody",
+   "parisian",
+   "romantic",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "black",
+    "gold"
+   ],
+   "energy": 5
+  },
+  "price": 22,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 20,
+  "imageUrl": "https://picsum.photos/seed/p_ribbon_choker/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_wayfarer",
+  "vendorId": "v_local",
+  "sourceId": "p_wayfarer",
+  "name": "Acetate Wayfarer Sunglasses",
+  "description": "Thick tortoise acetate wayfarers with polarised green lenses. Classic proportions, slightly narrower than the original so they suit more faces. Espresso on a terrace.",
+  "brand": "Example Store",
+  "category": "sunglasses",
+  "tags": [
+   "beach",
+   "brunch",
+   "dark academia",
+   "easy",
+   "italian-tailoring",
+   "parisian",
+   "polished",
+   "quiet luxury",
+   "tortoise",
+   "travel",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "tortoise",
+    "green"
+   ],
+   "energy": 5
+  },
+  "price": 85,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 12,
+  "imageUrl": "https://picsum.photos/seed/p_wayfarer/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_shield",
+  "vendorId": "v_local",
+  "sourceId": "p_shield",
+  "name": "Chrome Shield Sunglasses",
+  "description": "A single-lens mirrored shield in chrome with a slim frame. Speed, attitude, 2003. Wear with a track jacket or with nothing but confidence.",
+  "brand": "Example Store",
+  "category": "sunglasses",
+  "tags": [
+   "bold",
+   "chrome",
+   "club",
+   "festival",
+   "fierce",
+   "gym",
+   "sporty",
+   "streetwear",
+   "y2k"
+  ],
+  "attributes": {
+   "colors": [
+    "chrome",
+    "silver"
+   ],
+   "energy": 10
+  },
+  "price": 54,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 9,
+  "imageUrl": "https://picsum.photos/seed/p_shield/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_round_wire",
+  "vendorId": "v_local",
+  "sourceId": "p_round_wire",
+  "name": "Round Wire Sunglasses",
+  "description": "Thin gold wire rounds with warm amber lenses. Soft, dreamy, slightly seventies. Sundress and a bicycle.",
+  "brand": "Example Store",
+  "category": "sunglasses",
+  "tags": [
+   "beach",
+   "boho",
+   "cottagecore",
+   "dreamy",
+   "festival",
+   "picnic",
+   "soft",
+   "sun",
+   "vintage"
+  ],
+  "attributes": {
+   "colors": [
+    "gold",
+    "amber"
+   ],
+   "energy": 5
+  },
+  "price": 48,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 15,
+  "imageUrl": "https://picsum.photos/seed/p_round_wire/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_sport_wrap",
+  "vendorId": "v_local",
+  "sourceId": "p_sport_wrap",
+  "name": "Wraparound Sport Sunglasses",
+  "description": "Lightweight wraparounds with grippy nose pads and interchangeable lenses. Trail-ready, then oddly good with a slip dress. The gorpcore crossover.",
+  "brand": "Example Store",
+  "category": "sunglasses",
+  "tags": [
+   "bold",
+   "festival",
+   "gorpcore",
+   "gym",
+   "hike",
+   "practical",
+   "sporty",
+   "technical",
+   "utility"
+  ],
+  "attributes": {
+   "colors": [
+    "black",
+    "orange"
+   ],
+   "energy": 8
+  },
+  "price": 62,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 10,
+  "imageUrl": "https://picsum.photos/seed/p_sport_wrap/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_field_watch",
+  "vendorId": "v_local",
+  "sourceId": "p_field_watch",
+  "name": "Canvas-strap Field Watch",
+  "description": "A 36mm field watch with a cream dial, luminous hands and an olive canvas strap. Reads at a glance, goes with everything in your closet. Trench coat and a train ticket.",
+  "brand": "Example Store",
+  "category": "watch",
+  "tags": [
+   "canvas",
+   "dark academia",
+   "gorpcore",
+   "grounded",
+   "hike",
+   "office",
+   "polished",
+   "travel",
+   "utility",
+   "vintage",
+   "workwear"
+  ],
+  "attributes": {
+   "colors": [
+    "olive",
+    "cream"
+   ],
+   "energy": 5
+  },
+  "price": 120,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 8,
+  "imageUrl": "https://picsum.photos/seed/p_field_watch/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_mesh_watch",
+  "vendorId": "v_local",
+  "sourceId": "p_mesh_watch",
+  "name": "Slim Mesh Watch",
+  "description": "A 32mm minimalist watch with a matte black dial on a fine steel mesh strap. No numerals, no noise. The watch version of a plain white T-shirt.",
+  "brand": "Example Store",
+  "category": "watch",
+  "tags": [
+   "clean",
+   "interview",
+   "japanese-minimal",
+   "monochrome",
+   "office",
+   "precise",
+   "quiet",
+   "quiet luxury",
+   "scandi",
+   "wfh"
+  ],
+  "attributes": {
+   "colors": [
+    "black",
+    "steel"
+   ],
+   "energy": 3
+  },
+  "price": 98,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 11,
+  "imageUrl": "https://picsum.photos/seed/p_mesh_watch/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_gold_bangle_watch",
+  "vendorId": "v_local",
+  "sourceId": "p_gold_bangle_watch",
+  "name": "Gold-tone Bangle Watch",
+  "description": "A hinged bangle watch in brushed gold-tone with a tiny champagne dial. Jewellery first, watch second. Wedding guest, anniversary dinner, brunch with the in-laws.",
+  "brand": "Example Store",
+  "category": "watch",
+  "tags": [
+   "dinner",
+   "gala",
+   "heirloom",
+   "italian-tailoring",
+   "luxe",
+   "polished",
+   "quiet luxury",
+   "quiet-luxury",
+   "wedding"
+  ],
+  "attributes": {
+   "colors": [
+    "gold",
+    "champagne"
+   ],
+   "energy": 6
+  },
+  "price": 140,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 5,
+  "imageUrl": "https://picsum.photos/seed/p_gold_bangle_watch/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ },
+ {
+  "id": "p_sold_out",
+  "vendorId": "v_local",
+  "sourceId": "p_sold_out",
+  "name": "Limited Coral Cuff",
+  "description": "A resin cuff in coral. Sold out; here so out-of-stock behaviour is exercised.",
+  "brand": "Example Store",
+  "category": "bracelet",
+  "tags": [
+   "bold",
+   "brunch",
+   "dopamine",
+   "dopamine dressing"
+  ],
+  "attributes": {
+   "colors": [
+    "coral"
+   ],
+   "energy": 8
+  },
+  "price": 70,
+  "currency": "USD",
+  "compareAtPrice": null,
+  "stock": 0,
+  "imageUrl": "https://picsum.photos/seed/p_sold_out/480/480",
+  "affiliateUrl": null,
+  "fulfilment": "local",
+  "status": "active",
+  "updatedAt": "2026-09-21T00:00:00Z"
+ }
+]

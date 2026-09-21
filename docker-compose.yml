@@ -1,0 +1,33 @@
+# Framework-repo stack: runs one of the sample apps (FISHTEA_APP_DIR, default templates/ecommerce). Generated
+# applications carry their own docker-compose.yml pointing back at this checkout (see packages/cli/src/new.ts).
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment: { POSTGRES_USER: fishtea, POSTGRES_PASSWORD: fishtea, POSTGRES_DB: fishtea }
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+    ports: [ "${FISHTEA_DB_PORT:-5432}:5432" ]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U fishtea"], interval: 3s, retries: 20 }
+  classifier:
+    build: { context: ., dockerfile: Dockerfile.classifier }
+    environment: { NEEDLE_WORKERS: "${NEEDLE_WORKERS:-3}", FISHTEA_SPEC: /app/spec.json }
+    volumes: [ "models:/models", "./${FISHTEA_APP_DIR:-templates/ecommerce}:/app:ro" ]   # weights cached across restarts
+    ports: [ "${FISHTEA_CLASSIFIER_PORT:-8081}:8081" ]
+    healthcheck: { test: ["CMD", "curl", "-fs", "http://localhost:8081/healthz"], interval: 5s, retries: 60 }
+  core:
+    build: { context: ., dockerfile: Dockerfile.core }
+    environment:
+      DATABASE_URL: postgres://fishtea:fishtea@db:5432/fishtea
+      CLASSIFIER_URL: http://classifier:8081
+      FISHTEA_APP: /app
+      FISHTEA_INTENT: needle
+      FISHTEA_STRICT: "${FISHTEA_STRICT:-0}"
+      FISHTEA_OPERATOR_TOKEN: "${FISHTEA_OPERATOR_TOKEN:-change-me}"
+    volumes: [ "./${FISHTEA_APP_DIR:-templates/ecommerce}:/app" ]   # the TUI edits spec.json here; core watches and hot-reloads non-entity sections
+    ports: [ "${FISHTEA_CORE_PORT:-3000}:3000" ]
+    depends_on: { db: { condition: service_healthy }, classifier: { condition: service_healthy } }
+  ui:
+    build: { context: ., dockerfile: Dockerfile.core, target: ui }
+    environment: { VITE_CORE_URL: "http://localhost:${FISHTEA_CORE_PORT:-3000}" }
+    ports: [ "${FISHTEA_UI_PORT:-5173}:5173" ]
+    depends_on: [ core ]
+volumes: { pgdata: {}, models: {} }

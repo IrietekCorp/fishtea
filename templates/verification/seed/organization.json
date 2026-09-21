@@ -1,0 +1,21 @@
+[
+ {
+  "id": "org_acme",
+  "name": "Acme Corp",
+  "domain": "acme.example",
+  "verifierEmails": [
+   "hr@acme.example",
+   "verifier@example.com"
+  ],
+  "status": "active"
+ },
+ {
+  "id": "org_globex",
+  "name": "Globex",
+  "domain": "globex.example",
+  "verifierEmails": [
+   "people@globex.example"
+  ],
+  "status": "active"
+ }
+]

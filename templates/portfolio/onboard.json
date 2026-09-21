@@ -1,0 +1,95 @@
+{
+  "doc": "Onboarding interview for a portfolio. Questions patch spec.json paths or seed rows.",
+  "questions": [
+    {
+      "id": "name",
+      "ask": "Whose portfolio is this? (full name)",
+      "path": "business.name",
+      "type": "string",
+      "default": "{{name}}",
+      "also": [
+        {
+          "seed": "person",
+          "field": "name"
+        }
+      ]
+    },
+    {
+      "id": "headline",
+      "ask": "Headline (one line, how you'd introduce yourself)",
+      "type": "string",
+      "default": "Product engineer who ships end to end",
+      "seed": "person",
+      "field": "headline"
+    },
+    {
+      "id": "summary",
+      "ask": "Summary (a short paragraph)",
+      "type": "text",
+      "default": "",
+      "seed": "person",
+      "field": "summary"
+    },
+    {
+      "id": "doc",
+      "ask": "Who visits, and what should they leave knowing?",
+      "path": "business.doc",
+      "type": "text",
+      "default": "A professional portfolio you can interview."
+    },
+    {
+      "id": "availability",
+      "ask": "Availability",
+      "type": "enum",
+      "values": [
+        "open",
+        "selective",
+        "unavailable"
+      ],
+      "default": "selective",
+      "seed": "person",
+      "field": "availability"
+    },
+    {
+      "id": "areas",
+      "ask": "Skill areas (comma separated) \u2014 become the categories visitors can ask by",
+      "type": "list",
+      "default": "backend, frontend, data, design, leadership",
+      "path": "shapes.skills.input.area.doc",
+      "apply": "joinDoc"
+    },
+    {
+      "id": "intents",
+      "ask": "What may visitors ask for?",
+      "type": "multi",
+      "values": [
+        "hire",
+        "collaborate",
+        "speak",
+        "other"
+      ],
+      "default": [
+        "hire",
+        "collaborate",
+        "speak",
+        "other"
+      ],
+      "path": "entities.contact.fields.intent",
+      "apply": "enum"
+    },
+    {
+      "id": "seed",
+      "ask": "Keep the example skills, projects and interview bank as placeholders to edit?",
+      "type": "boolean",
+      "default": true,
+      "apply": "keepSeed"
+    },
+    {
+      "id": "greeting",
+      "ask": "Greeting for a first-time visitor",
+      "path": "envelope.greeting.stranger.hint",
+      "type": "string",
+      "default": "Ask me anything \u2014 or let me run the interview."
+    }
+  ]
+}

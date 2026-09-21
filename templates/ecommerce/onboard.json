@@ -1,0 +1,125 @@
+{
+  "doc": "The onboarding interview for an ecommerce application. Each question patches a JSON path in spec.json (or a file). The TUI asks these in order; `fishtea new --answers file.json` answers them non-interactively; unanswered questions keep the template value.",
+  "questions": [
+    {
+      "id": "name",
+      "ask": "What is the store called?",
+      "path": "business.name",
+      "type": "string",
+      "default": "{{name}}"
+    },
+    {
+      "id": "doc",
+      "ask": "One sentence: what do you sell and to whom? (the classifier and the operator both read it)",
+      "path": "business.doc",
+      "type": "text",
+      "default": "An online store."
+    },
+    {
+      "id": "currency",
+      "ask": "Currency",
+      "path": "business.currency",
+      "type": "enum",
+      "values": [
+        "USD",
+        "EUR",
+        "GBP",
+        "CAD",
+        "AUD",
+        "JPY"
+      ],
+      "default": "USD"
+    },
+    {
+      "id": "categories",
+      "ask": "Product categories (comma separated). Becomes the vocabulary visitors can ask by.",
+      "path": "entities.product.fields.category",
+      "type": "list",
+      "apply": "enum",
+      "default": "earrings, necklace, bracelet, scarf, bag, hair, sunglasses, hat, watch"
+    },
+    {
+      "id": "tagsDoc",
+      "ask": "What do people shop by here? (mood, material, occasion, size\u2026) \u2014 one line, used as the tag hint for the classifier",
+      "path": "shapes.findProducts.input.tag.doc",
+      "type": "string",
+      "default": "a tag: mood, occasion, style or material"
+    },
+    {
+      "id": "fulfilment",
+      "ask": "How are orders fulfilled?",
+      "type": "enum",
+      "values": [
+        "local stock with checkout",
+        "affiliate links only (no cart)",
+        "both"
+      ],
+      "default": "both",
+      "apply": "fulfilment"
+    },
+    {
+      "id": "freeShipping",
+      "ask": "Free shipping over (amount, 0 = never)",
+      "path": "rules.pricing.freeShippingOver",
+      "type": "number",
+      "default": 75
+    },
+    {
+      "id": "flatShipping",
+      "ask": "Flat shipping otherwise",
+      "path": "rules.pricing.flatShipping",
+      "type": "number",
+      "default": 6.5
+    },
+    {
+      "id": "taxProvider",
+      "ask": "Tax",
+      "path": "rules.tax.provider",
+      "type": "enum",
+      "values": [
+        "table",
+        "none"
+      ],
+      "default": "table"
+    },
+    {
+      "id": "returns",
+      "ask": "Returns window in days",
+      "path": "rules.compliance.returnsWindowDays",
+      "type": "int",
+      "default": 30
+    },
+    {
+      "id": "vendors",
+      "ask": "Inventory sources to enable (credentials go in .env, never the spec)",
+      "type": "multi",
+      "values": [
+        "local",
+        "mock",
+        "csv",
+        "ebay",
+        "amazon",
+        "http"
+      ],
+      "default": [
+        "local",
+        "mock"
+      ],
+      "apply": "vendors"
+    },
+    {
+      "id": "seed",
+      "ask": "Keep the example catalog (36 accessories) as starter data?",
+      "type": "boolean",
+      "default": true,
+      "apply": "keepSeed"
+    },
+    {
+      "id": "greeting",
+      "ask": "Greeting for a first-time visitor",
+      "path": "envelope.greeting.stranger.hint",
+      "type": "string",
+      "default": "Tell us what you're looking for \u2014 or what it's for."
+    }
+  ]
+}

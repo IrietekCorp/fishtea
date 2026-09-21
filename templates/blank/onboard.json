@@ -1,0 +1,5 @@
+{ "doc": "Onboarding for a blank application: name it, describe it, name the first entity.", "questions": [
+  { "id": "name", "ask": "Application name", "path": "business.name", "type": "string", "default": "{{name}}" },
+  { "id": "doc", "ask": "One sentence: what does this application do, for whom?", "path": "business.doc", "type": "text", "default": "" },
+  { "id": "greeting", "ask": "Greeting for a first-time visitor", "path": "envelope.greeting.stranger.hint", "type": "string", "default": "What are you looking for?" }
+] }

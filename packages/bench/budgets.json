@@ -1,0 +1,13 @@
+{
+  "doc": "BLUEPRINT \u00a711 budgets, re-baselined after Phase 0 measured needle3 at 130\u2013270 ms per classification on CPU (the blueprint assumed 30\u201360 ms). Values are milliseconds at the given percentile. The build fails when a measured value exceeds its budget. text.answered.ratio is a floor: the share of scripted text utterances that produced an answer (not ask/form).",
+  "classify.p50": 350,
+  "classify.p95": 700,
+  "plan.single.p95": 40,
+  "utter.single.p95": 800,
+  "utter.bridge.p95": 900,
+  "resume.p95": 100,
+  "utter.structured.p95": 60,
+  "core.coldstart": 2000,
+  "pool.coldstart": 5000,
+  "text.answered.ratio": 0.9
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+packages/bench/results/
+templates/*/.fishtea/
+packages/classifier/.venv/
+__pycache__/
+models/

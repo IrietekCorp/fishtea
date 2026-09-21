@@ -1,0 +1,1202 @@
+[
+ {
+  "id": "ev_june-22_1_0900",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_1_0930",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_june-22_1_1045",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_june-22_1_1100",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_1_1215",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_1_1300",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_1_1415",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_june-22_1_1445",
+  "sessionId": "june-22",
+  "day": 1,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_2_0900",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_2_0930",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_june-22_2_1045",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_june-22_2_1100",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_2_1215",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_2_1300",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_2_1415",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_june-22_2_1445",
+  "sessionId": "june-22",
+  "day": 2,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_3_0900",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_3_0930",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_june-22_3_1045",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_june-22_3_1100",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_3_1215",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_3_1300",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_3_1415",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_june-22_3_1445",
+  "sessionId": "june-22",
+  "day": 3,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_4_0900",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_4_0930",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_june-22_4_1045",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_june-22_4_1100",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_4_1215",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_4_1300",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_4_1415",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_june-22_4_1445",
+  "sessionId": "june-22",
+  "day": 4,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_5_0900",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_5_0930",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_june-22_5_1045",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_june-22_5_1100",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_5_1215",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_june-22_5_1300",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_june-22_5_1415",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "Friday Family Showcase",
+  "description": "Families join for the showcase of the week's builds.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_june-22_5_1445",
+  "sessionId": "june-22",
+  "day": 5,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_1_0900",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_1_0930",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_july-27_1_1045",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_july-27_1_1100",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_1_1215",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_1_1300",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_1_1415",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_july-27_1_1445",
+  "sessionId": "july-27",
+  "day": 1,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_2_0900",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_2_0930",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_july-27_2_1045",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_july-27_2_1100",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_2_1215",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_2_1300",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_2_1415",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_july-27_2_1445",
+  "sessionId": "july-27",
+  "day": 2,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_3_0900",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_3_0930",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_july-27_3_1045",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_july-27_3_1100",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_3_1215",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_3_1300",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_3_1415",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_july-27_3_1445",
+  "sessionId": "july-27",
+  "day": 3,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_4_0900",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_4_0930",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_july-27_4_1045",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_july-27_4_1100",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_4_1215",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_4_1300",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_4_1415",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_july-27_4_1445",
+  "sessionId": "july-27",
+  "day": 4,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_5_0900",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_5_0930",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_july-27_5_1045",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_july-27_5_1100",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_5_1215",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_july-27_5_1300",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_july-27_5_1415",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "Friday Family Showcase",
+  "description": "Families join for the showcase of the week's builds.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_july-27_5_1445",
+  "sessionId": "july-27",
+  "day": 5,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_1_0900",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_1_0930",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_aug-10-teens_1_1045",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_aug-10-teens_1_1100",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_1_1215",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_1_1300",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_1_1415",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_aug-10-teens_1_1445",
+  "sessionId": "aug-10-teens",
+  "day": 1,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_2_0900",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_2_0930",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_aug-10-teens_2_1045",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_aug-10-teens_2_1100",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_2_1215",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_2_1300",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_2_1415",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_aug-10-teens_2_1445",
+  "sessionId": "aug-10-teens",
+  "day": 2,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_3_0900",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_3_0930",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_aug-10-teens_3_1045",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_aug-10-teens_3_1100",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_3_1215",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_3_1300",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_3_1415",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_aug-10-teens_3_1445",
+  "sessionId": "aug-10-teens",
+  "day": 3,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_4_0900",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_4_0930",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_aug-10-teens_4_1045",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_aug-10-teens_4_1100",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_4_1215",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_4_1300",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_4_1415",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "Leadership Lab",
+  "description": "Present a piece of your work; give and take feedback.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_aug-10-teens_4_1445",
+  "sessionId": "aug-10-teens",
+  "day": 4,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_5_0900",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "Launch",
+  "description": "Morning circle: today's mission and a two-minute AI demo.",
+  "startTime": "09:00",
+  "endTime": "09:30",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_5_0930",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "Academy",
+  "description": "Guided lesson on the day's concept: prompts, images, voice, agents.",
+  "startTime": "09:30",
+  "endTime": "10:45",
+  "location": "Academy Lab"
+ },
+ {
+  "id": "ev_aug-10-teens_5_1045",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "Break",
+  "description": null,
+  "startTime": "10:45",
+  "endTime": "11:00",
+  "location": "Gym Room"
+ },
+ {
+  "id": "ev_aug-10-teens_5_1100",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "The Lab",
+  "description": "Hands-on experiments in small groups with a coach at each station.",
+  "startTime": "11:00",
+  "endTime": "12:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_5_1215",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "Lunch",
+  "description": null,
+  "startTime": "12:15",
+  "endTime": "13:00",
+  "location": "Main Hall"
+ },
+ {
+  "id": "ev_aug-10-teens_5_1300",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "The Build",
+  "description": "Work on your project: storybook, game, explainer video, app or website.",
+  "startTime": "13:00",
+  "endTime": "14:15",
+  "location": "Track Stations"
+ },
+ {
+  "id": "ev_aug-10-teens_5_1415",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "Friday Family Showcase",
+  "description": "Families join for the showcase of the week's builds.",
+  "startTime": "14:15",
+  "endTime": "14:45",
+  "location": "Leadership Ring"
+ },
+ {
+  "id": "ev_aug-10-teens_5_1445",
+  "sessionId": "aug-10-teens",
+  "day": 5,
+  "title": "Debrief",
+  "description": "Wrap-up and pickup.",
+  "startTime": "14:45",
+  "endTime": "15:00",
+  "location": "Main Hall"
+ }
+]

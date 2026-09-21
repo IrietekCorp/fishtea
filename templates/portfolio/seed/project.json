@@ -1,0 +1,67 @@
+[
+ {
+  "id": "pr_1",
+  "name": "Fishtea",
+  "role": "Architect",
+  "summary": "A spec-driven framework: describe a business in JSON, derive the data layer, classifier tools, planner and UI.",
+  "outcome": "Two very different businesses derive from one engine with zero code changes; every classify call budgeted and measured.",
+  "skills": [
+   "TypeScript",
+   "Postgres",
+   "Product design",
+   "Machine learning"
+  ],
+  "year": 2026,
+  "url": null,
+  "imageUrl": null,
+  "featured": true
+ },
+ {
+  "id": "pr_2",
+  "name": "Mood shopping engine",
+  "role": "Lead engineer",
+  "summary": "An affiliate discovery site that turns how you feel into a shopping list.",
+  "outcome": "Merged three vendor APIs behind one scoring model; daily cache cut API cost 80%.",
+  "skills": [
+   "TypeScript",
+   "React",
+   "Product design"
+  ],
+  "year": 2025,
+  "url": null,
+  "imageUrl": null,
+  "featured": true
+ },
+ {
+  "id": "pr_3",
+  "name": "Camp registration",
+  "role": "Solo builder",
+  "summary": "Registration, sponsorship and a student portal for a kids' summer program.",
+  "outcome": "Ran two sold-out sessions; parents registered in under three minutes.",
+  "skills": [
+   "TypeScript",
+   "Postgres",
+   "Accessibility"
+  ],
+  "year": 2025,
+  "url": null,
+  "imageUrl": null,
+  "featured": false
+ },
+ {
+  "id": "pr_4",
+  "name": "Design system rollout",
+  "role": "Tech lead",
+  "summary": "Moved four product teams onto one accessible component library.",
+  "outcome": "Zero serious axe violations across the suite; 40% less UI code.",
+  "skills": [
+   "React",
+   "Accessibility",
+   "Leadership"
+  ],
+  "year": 2023,
+  "url": null,
+  "imageUrl": null,
+  "featured": false
+ }
+]

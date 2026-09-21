@@ -1,0 +1,8 @@
+{
+  "name": "@fishtea/bench",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@fishtea/core": "workspace:*", "hono": "^4.6.0" }
+}

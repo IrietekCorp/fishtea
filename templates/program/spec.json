@@ -1,0 +1,1312 @@
+{
+  "fishtea": "1.0",
+  "business": {
+    "id": "program",
+    "name": "Example Program",
+    "doc": "A sessions-based program (camp, course, workshop series): families or participants find a session that fits, register, apply for financial aid, borrow equipment and follow the schedule.",
+    "locale": "en-US",
+    "currency": "USD",
+    "version": "2026.09.21-1"
+  },
+  "entities": {
+    "version": "2026.09.21-1",
+    "doc": "Sessions, families/participants, registrations (multi-child), scholarships funded by sponsors, device loans, schedule events, FAQ.",
+    "session": {
+      "doc": "One camp week.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "date"
+        },
+        "endDate": {
+          "type": "date"
+        },
+        "capacity": {
+          "type": "int",
+          "default": 15,
+          "min": 1
+        },
+        "price": {
+          "type": "money",
+          "default": 450
+        },
+        "ageMin": {
+          "type": "int",
+          "default": 8
+        },
+        "ageMax": {
+          "type": "int",
+          "default": 14
+        },
+        "hours": {
+          "type": "string",
+          "default": "9:00 AM \u2013 3:00 PM"
+        },
+        "location": {
+          "type": "string",
+          "default": "Main campus"
+        },
+        "tracks": {
+          "type": "string[]",
+          "doc": "What participants choose between"
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "active",
+            "completed",
+            "cancelled"
+          ],
+          "default": "active"
+        },
+        "description": {
+          "type": "text"
+        }
+      },
+      "index": [
+        "status",
+        "startDate"
+      ],
+      "embed": [
+        "name",
+        "description",
+        "tracks"
+      ]
+    },
+    "family": {
+      "doc": "The parent or guardian. The customer record.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "email": {
+          "type": "email"
+        },
+        "parentFirstName": {
+          "type": "string",
+          "optional": true
+        },
+        "parentLastName": {
+          "type": "string",
+          "optional": true
+        },
+        "phone": {
+          "type": "string",
+          "optional": true
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "unique": [
+        "email"
+      ]
+    },
+    "camper": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "familyId": {
+          "type": "id"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string",
+          "optional": true
+        },
+        "age": {
+          "type": "int",
+          "min": 5,
+          "max": 18
+        },
+        "experience": {
+          "type": "enum",
+          "values": [
+            "none",
+            "some",
+            "lots"
+          ],
+          "default": "none"
+        },
+        "allergies": {
+          "type": "text",
+          "optional": true
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "index": [
+        "familyId"
+      ]
+    },
+    "registration": {
+      "doc": "A camper in a session. Status walks waitlisted \u2192 confirmed \u2192 paid \u2192 enrolled; withdrawn is terminal.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "familyId": {
+          "type": "id"
+        },
+        "camperId": {
+          "type": "id"
+        },
+        "sessionId": {
+          "type": "id"
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "waitlisted",
+            "confirmed",
+            "paid",
+            "enrolled",
+            "withdrawn",
+            "completed"
+          ],
+          "default": "confirmed"
+        },
+        "paymentStatus": {
+          "type": "enum",
+          "values": [
+            "unpaid",
+            "paid",
+            "sponsored"
+          ],
+          "default": "unpaid"
+        },
+        "price": {
+          "type": "money"
+        },
+        "siblingDiscount": {
+          "type": "money",
+          "default": 0
+        },
+        "events": {
+          "type": "json",
+          "doc": "[{at, status, note}]"
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "index": [
+        "sessionId",
+        "familyId",
+        "status"
+      ]
+    },
+    "scholarship": {
+      "doc": "A request for sponsor funding. Sponsors fund $450 full scholarships or partial amounts.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "registrationId": {
+          "type": "id"
+        },
+        "familyId": {
+          "type": "id"
+        },
+        "need": {
+          "type": "text"
+        },
+        "amountRequested": {
+          "type": "money",
+          "default": 450
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "applied",
+            "awarded",
+            "declined"
+          ],
+          "default": "applied"
+        },
+        "sponsorId": {
+          "type": "id",
+          "optional": true
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "index": [
+        "status",
+        "familyId"
+      ]
+    },
+    "sponsor": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "enum",
+          "values": [
+            "full",
+            "partial"
+          ]
+        },
+        "amount": {
+          "type": "money"
+        },
+        "websiteUrl": {
+          "type": "url",
+          "optional": true
+        },
+        "description": {
+          "type": "text",
+          "optional": true
+        }
+      }
+    },
+    "deviceLoan": {
+      "doc": "A laptop or tablet lent for the week.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "registrationId": {
+          "type": "id"
+        },
+        "familyId": {
+          "type": "id"
+        },
+        "device": {
+          "type": "enum",
+          "values": [
+            "laptop",
+            "tablet"
+          ]
+        },
+        "status": {
+          "type": "enum",
+          "values": [
+            "requested",
+            "approved",
+            "picked-up",
+            "returned"
+          ],
+          "default": "requested"
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "index": [
+        "familyId"
+      ]
+    },
+    "event": {
+      "doc": "Curriculum blocks (Launch, Academy, The Lab, The Build, Leadership Lab, Debrief) and the Friday Family Showcase.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "sessionId": {
+          "type": "id"
+        },
+        "day": {
+          "type": "int",
+          "min": 1,
+          "max": 5
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "text",
+          "optional": true
+        },
+        "startTime": {
+          "type": "string"
+        },
+        "endTime": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string",
+          "optional": true
+        }
+      },
+      "index": [
+        "sessionId"
+      ]
+    },
+    "faq": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "text"
+        },
+        "order": {
+          "type": "int",
+          "default": 0
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "embed": [
+        "question",
+        "answer"
+      ]
+    }
+  },
+  "calls": {
+    "version": "2026.09.21-1",
+    "sessions.list": {
+      "kind": "query",
+      "in": {
+        "age": "int?",
+        "from": "date?"
+      },
+      "out": "session[]",
+      "impl": {
+        "sql": "sessions_list.sql",
+        "doc": "Active sessions the age fits, with spotsLeft computed from enrolments."
+      }
+    },
+    "sessions.get": {
+      "kind": "query",
+      "in": {
+        "sessionId": "id"
+      },
+      "out": "session?",
+      "impl": {
+        "sql": "sessions_get.sql"
+      }
+    },
+    "schedule.list": {
+      "kind": "query",
+      "in": {
+        "sessionId": "id"
+      },
+      "out": "event[]",
+      "impl": {
+        "sql": "schedule_list.sql"
+      }
+    },
+    "faq.search": {
+      "kind": "query",
+      "in": {
+        "text": "string",
+        "limit": "int=5"
+      },
+      "out": "faq[]",
+      "impl": {
+        "sql": "faq_search.sql"
+      }
+    },
+    "sponsors.list": {
+      "kind": "query",
+      "in": {},
+      "out": "sponsor[]",
+      "impl": {
+        "sql": "sponsors_list.sql"
+      }
+    },
+    "family.upsert": {
+      "kind": "mutation",
+      "in": {
+        "email": "email",
+        "visitorId": "id",
+        "parentFirstName": "string?",
+        "parentLastName": "string?",
+        "phone": "string?"
+      },
+      "out": "family",
+      "impl": {
+        "sql": "family_upsert.sql",
+        "doc": "Also binds the visitor to the family (conversation.visitor.customer_id)."
+      }
+    },
+    "family.byVisitor": {
+      "kind": "query",
+      "in": {
+        "visitorId": "id"
+      },
+      "out": "family?",
+      "impl": {
+        "sql": "family_by_visitor.sql"
+      }
+    },
+    "camper.add": {
+      "kind": "mutation",
+      "in": {
+        "familyId": "id",
+        "firstName": "string",
+        "lastName": "string?",
+        "age": "int",
+        "experience": "string=none",
+        "allergies": "string?"
+      },
+      "out": "camper",
+      "impl": {
+        "sql": "camper_add.sql"
+      }
+    },
+    "enrol.check": {
+      "kind": "compute",
+      "doc": "The rules: age within the session's range, capacity not exceeded, sibling discount. Throws when the ground refuses.",
+      "in": {
+        "session": "session?",
+        "age": "int",
+        "familyId": "id",
+        "existingCount": "int"
+      },
+      "out": {
+        "ok": "boolean",
+        "price": "money",
+        "siblingDiscount": "money",
+        "status": "string"
+      },
+      "impl": {
+        "module": "enrol_check.ts"
+      }
+    },
+    "registrations.countByFamily": {
+      "kind": "query",
+      "in": {
+        "familyId": "id"
+      },
+      "out": {
+        "count": "int"
+      },
+      "impl": {
+        "sql": "registrations_count_by_family.sql"
+      }
+    },
+    "registration.create": {
+      "kind": "mutation",
+      "in": {
+        "familyId": "id",
+        "camperId": "id",
+        "sessionId": "id",
+        "status": "string",
+        "price": "money",
+        "siblingDiscount": "money"
+      },
+      "out": "registration",
+      "impl": {
+        "sql": "registration_create.sql"
+      },
+      "transaction": true
+    },
+    "registration.byFamily": {
+      "kind": "query",
+      "in": {
+        "familyId": "id"
+      },
+      "out": "json",
+      "impl": {
+        "sql": "registration_by_family.sql",
+        "doc": "All registrations for the family with camper and session names, plus a merged events timeline."
+      }
+    },
+    "scholarship.apply": {
+      "kind": "mutation",
+      "in": {
+        "familyId": "id",
+        "registrationId": "id",
+        "need": "string",
+        "amountRequested": "money=450"
+      },
+      "out": "scholarship",
+      "impl": {
+        "sql": "scholarship_apply.sql"
+      }
+    },
+    "device.request": {
+      "kind": "mutation",
+      "in": {
+        "familyId": "id",
+        "registrationId": "id",
+        "device": "string"
+      },
+      "out": "deviceLoan",
+      "impl": {
+        "sql": "device_request.sql"
+      }
+    },
+    "pricing.quote": {
+      "kind": "compute",
+      "in": {
+        "campers": "int=1"
+      },
+      "out": {
+        "campers": "int",
+        "each": "money",
+        "siblingDiscount": "money",
+        "total": "money",
+        "note": "string"
+      },
+      "impl": {
+        "module": "pricing_quote.ts"
+      }
+    }
+  },
+  "rules": {
+    "version": "2026.09.21-1",
+    "pricing": {
+      "perCamper": 450,
+      "siblingDiscountPct": 15,
+      "currencyRounding": "half-up"
+    },
+    "program": {
+      "ageMin": 8,
+      "ageMax": 14,
+      "capacity": 15,
+      "staffRatio": "1:5",
+      "hours": "9:00 AM \u2013 3:00 PM",
+      "showcase": "Friday Family Showcase"
+    },
+    "scholarships": {
+      "fullAmount": 450,
+      "requires": [
+        "need"
+      ]
+    },
+    "devices": {
+      "kinds": [
+        "laptop",
+        "tablet"
+      ],
+      "perCamper": 1
+    },
+    "writes": {
+      "confirmAlways": true,
+      "minConfidence": 0.85
+    },
+    "classify": {
+      "budgetMs": 1000,
+      "floor": 0.35,
+      "contextTurns": 6
+    },
+    "calls": {
+      "timeoutMs": 250
+    },
+    "familiarity": {
+      "threshold": 0.82
+    }
+  },
+  "shapes": {
+    "version": "2026.09.21-1",
+    "findSession": {
+      "asks": "Find a camp week that fits a child's age and the family's dates",
+      "input": {
+        "age": {
+          "type": "int?",
+          "doc": "the child's age in years"
+        },
+        "from": {
+          "type": "date?",
+          "doc": "earliest start date, YYYY-MM-DD"
+        }
+      },
+      "answer": "session[]",
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "call": "sessions.list",
+          "with": {
+            "age": "$age",
+            "from": "$from"
+          }
+        }
+      ],
+      "phrase": "Camp weeks {age? for a $age-year-old} {from? starting after $from}",
+      "next": [
+        {
+          "label": "Register for {item.name}",
+          "shape": "registerCamper",
+          "args": {
+            "sessionId": "$item.id"
+          },
+          "each": "answer"
+        },
+        {
+          "label": "See the daily schedule for {item.name}",
+          "shape": "sessionSchedule",
+          "args": {
+            "sessionId": "$item.id"
+          },
+          "each": "answer"
+        },
+        {
+          "label": "What does it cost?",
+          "shape": "quotePrice"
+        }
+      ],
+      "triggers": [
+        "which week",
+        "find a week",
+        "camp week",
+        "sessions",
+        "dates",
+        "when is camp"
+      ]
+    },
+    "askAboutCamp": {
+      "asks": "Answer a question about the camp: what kids build, safety, staff ratio, food, drop-off, refunds",
+      "input": {
+        "question": {
+          "type": "string",
+          "doc": "the parent's question, verbatim"
+        }
+      },
+      "answer": "faq[]",
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "call": "faq.search",
+          "with": {
+            "text": "$question"
+          }
+        }
+      ],
+      "phrase": "About: $question",
+      "next": [
+        {
+          "label": "Find a week",
+          "shape": "findSession"
+        },
+        {
+          "label": "What does it cost?",
+          "shape": "quotePrice"
+        }
+      ],
+      "triggers": [
+        "what do kids build",
+        "is it safe",
+        "lunch",
+        "refund",
+        "ratio",
+        "laptop",
+        "where is"
+      ]
+    },
+    "quotePrice": {
+      "asks": "How much the camp costs for one or more children, including the sibling discount",
+      "input": {
+        "campers": {
+          "type": "int=1",
+          "doc": "number of children to enrol"
+        }
+      },
+      "answer": {
+        "campers": "int",
+        "each": "money",
+        "siblingDiscount": "money",
+        "total": "money",
+        "note": "string"
+      },
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "call": "pricing.quote",
+          "with": {
+            "campers": "$campers"
+          }
+        }
+      ],
+      "phrase": "Price for $campers camper(s)",
+      "next": [
+        {
+          "label": "Find a week",
+          "shape": "findSession"
+        },
+        {
+          "label": "Apply for a scholarship",
+          "shape": "applyScholarship"
+        }
+      ],
+      "triggers": [
+        "how much",
+        "cost",
+        "price",
+        "pricing",
+        "discount"
+      ]
+    },
+    "sessionSchedule": {
+      "asks": "The daily schedule for a camp week",
+      "input": {
+        "sessionId": "id"
+      },
+      "answer": {
+        "events": "event[]"
+      },
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "id": "e",
+          "call": "schedule.list",
+          "with": {
+            "sessionId": "$sessionId"
+          }
+        }
+      ],
+      "assemble": {
+        "events": "$e"
+      },
+      "vessel": "timeline",
+      "next": [
+        {
+          "label": "Register for this week",
+          "shape": "registerCamper",
+          "args": {
+            "sessionId": "$sessionId"
+          }
+        }
+      ],
+      "triggers": [
+        "schedule",
+        "daily",
+        "what happens each day",
+        "itinerary"
+      ]
+    },
+    "sponsors": {
+      "asks": "Who sponsors scholarships",
+      "input": {},
+      "answer": "sponsor[]",
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "call": "sponsors.list",
+          "with": {}
+        }
+      ],
+      "next": [
+        {
+          "label": "Apply for a scholarship",
+          "shape": "applyScholarship"
+        }
+      ],
+      "triggers": [
+        "who sponsors",
+        "sponsors"
+      ]
+    },
+    "becomeKnown": {
+      "asks": "Leave a parent email so we can keep this conversation and send updates",
+      "input": {
+        "email": "email",
+        "parentFirstName": "string?",
+        "parentLastName": "string?",
+        "phone": "string?"
+      },
+      "answer": {
+        "ok": "boolean",
+        "email": "string"
+      },
+      "effect": "write",
+      "allow": [
+        "stranger",
+        "known"
+      ],
+      "plan": [
+        {
+          "id": "f",
+          "call": "family.upsert",
+          "with": {
+            "email": "$email",
+            "visitorId": "$visitor.id",
+            "parentFirstName": "$parentFirstName",
+            "parentLastName": "$parentLastName",
+            "phone": "$phone"
+          }
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "email": "$f.email"
+      },
+      "phrase": "We'll keep this conversation for $email",
+      "next": [
+        {
+          "label": "Find a week",
+          "shape": "findSession"
+        }
+      ],
+      "triggers": [
+        "my email is",
+        "remember me",
+        "keep in touch"
+      ]
+    },
+    "registerCamper": {
+      "asks": "Register a child for a camp week",
+      "input": {
+        "sessionId": "id",
+        "firstName": "string",
+        "lastName": "string?",
+        "age": "int",
+        "experience": "enum:none|some|lots=none",
+        "allergies": "string?"
+      },
+      "answer": {
+        "ok": "boolean",
+        "registration": "registration",
+        "camper": "camper",
+        "session": "session?"
+      },
+      "effect": "write",
+      "allow": [
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "id": "fam",
+          "call": "family.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "s",
+          "call": "sessions.get",
+          "with": {
+            "sessionId": "$sessionId"
+          }
+        },
+        {
+          "id": "n",
+          "call": "registrations.countByFamily",
+          "with": {
+            "familyId": "$fam.id"
+          },
+          "after": [
+            "fam"
+          ]
+        },
+        {
+          "id": "chk",
+          "call": "enrol.check",
+          "with": {
+            "session": "$s",
+            "age": "$age",
+            "familyId": "$fam.id",
+            "existingCount": "$n.count"
+          },
+          "after": [
+            "s",
+            "fam",
+            "n"
+          ]
+        },
+        {
+          "id": "c",
+          "call": "camper.add",
+          "with": {
+            "familyId": "$fam.id",
+            "firstName": "$firstName",
+            "lastName": "$lastName",
+            "age": "$age",
+            "experience": "$experience",
+            "allergies": "$allergies"
+          },
+          "after": [
+            "chk"
+          ]
+        },
+        {
+          "id": "r",
+          "call": "registration.create",
+          "with": {
+            "familyId": "$fam.id",
+            "camperId": "$c.id",
+            "sessionId": "$sessionId",
+            "status": "$chk.status",
+            "price": "$chk.price",
+            "siblingDiscount": "$chk.siblingDiscount"
+          },
+          "after": [
+            "c",
+            "chk"
+          ]
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "registration": "$r",
+        "camper": "$c",
+        "session": "$s"
+      },
+      "phrase": "$firstName, age $age, registered",
+      "next": [
+        {
+          "label": "Apply for a scholarship",
+          "shape": "applyScholarship",
+          "args": {
+            "registrationId": "$registration.id"
+          }
+        },
+        {
+          "label": "Borrow a device for the week",
+          "shape": "requestDevice",
+          "args": {
+            "registrationId": "$registration.id"
+          }
+        },
+        {
+          "label": "Where do things stand?",
+          "shape": "registrationStatus"
+        }
+      ],
+      "triggers": [
+        "register",
+        "sign up",
+        "enroll",
+        "enrol",
+        "book a spot"
+      ]
+    },
+    "applyScholarship": {
+      "asks": "Apply for a sponsor-funded scholarship",
+      "input": {
+        "registrationId": "id",
+        "need": "text",
+        "amountRequested": "money=450"
+      },
+      "answer": "scholarship",
+      "effect": "write",
+      "allow": [
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "id": "fam",
+          "call": "family.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "s",
+          "call": "scholarship.apply",
+          "with": {
+            "familyId": "$fam.id",
+            "registrationId": "$registrationId",
+            "need": "$need",
+            "amountRequested": "$amountRequested"
+          },
+          "after": [
+            "fam"
+          ]
+        }
+      ],
+      "assemble": "$s",
+      "next": [
+        {
+          "label": "Where do things stand?",
+          "shape": "registrationStatus"
+        }
+      ],
+      "triggers": [
+        "scholarship",
+        "financial aid",
+        "can't afford",
+        "sponsor"
+      ]
+    },
+    "requestDevice": {
+      "asks": "Borrow a laptop or tablet for the week",
+      "input": {
+        "registrationId": "id",
+        "device": "enum:laptop|tablet"
+      },
+      "answer": "deviceLoan",
+      "effect": "write",
+      "allow": [
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "id": "fam",
+          "call": "family.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "d",
+          "call": "device.request",
+          "with": {
+            "familyId": "$fam.id",
+            "registrationId": "$registrationId",
+            "device": "$device"
+          },
+          "after": [
+            "fam"
+          ]
+        }
+      ],
+      "assemble": "$d",
+      "next": [
+        {
+          "label": "Where do things stand?",
+          "shape": "registrationStatus"
+        }
+      ],
+      "triggers": [
+        "borrow",
+        "laptop",
+        "tablet",
+        "device"
+      ]
+    },
+    "registrationStatus": {
+      "asks": "Where things stand: registrations, payment, scholarship, device",
+      "input": {},
+      "answer": {
+        "registrations": "json",
+        "events": "json"
+      },
+      "effect": "read",
+      "allow": [
+        "parent",
+        "enrolled"
+      ],
+      "plan": [
+        {
+          "id": "fam",
+          "call": "family.byVisitor",
+          "with": {
+            "visitorId": "$visitor.id"
+          }
+        },
+        {
+          "id": "r",
+          "call": "registration.byFamily",
+          "with": {
+            "familyId": "$fam.id"
+          },
+          "after": [
+            "fam"
+          ]
+        }
+      ],
+      "assemble": {
+        "registrations": "$r.registrations",
+        "events": "$r.events"
+      },
+      "vessel": "timeline",
+      "phrase": "Your registrations",
+      "triggers": [
+        "status",
+        "where do things stand",
+        "my registration",
+        "did my payment"
+      ]
+    }
+  },
+  "personas": {
+    "version": "2026.09.21-1",
+    "enrolled": {
+      "when": "identity.email != null && trail.has('registration.create')"
+    },
+    "parent": {
+      "when": "identity.email != null"
+    },
+    "known": {
+      "when": "identity.cookie != null || identity.issuedUrl != null"
+    },
+    "stranger": {
+      "when": "true"
+    }
+  },
+  "envelope": {
+    "version": "2026.09.21-1",
+    "accept": [
+      "referrer",
+      "utm_source",
+      "utm_campaign",
+      "coupon",
+      "cookie",
+      "issuedUrl",
+      "userAgent",
+      "locale"
+    ],
+    "greeting": {
+      "stranger": {
+        "shape": "findSession",
+        "hint": "How old is your explorer, and which week works? Or ask us anything about the camp.",
+        "offer": [
+          "askAboutCamp",
+          "quotePrice",
+          "becomeKnown"
+        ]
+      },
+      "known": {
+        "resume": true,
+        "offer": [
+          "findSession",
+          "becomeKnown"
+        ]
+      },
+      "parent": {
+        "resume": true,
+        "offer": [
+          "findSession",
+          "registerCamper"
+        ]
+      },
+      "enrolled": {
+        "resume": true,
+        "offer": [
+          "registrationStatus",
+          "sessionSchedule"
+        ]
+      }
+    }
+  },
+  "notifications": {
+    "version": "2026.09.21-1",
+    "session.reminder": {
+      "to": "visitor",
+      "text": "{session.name} starts {session.startDate}. Drop-off is 9:00 AM.",
+      "next": [
+        {
+          "shape": "sessionSchedule",
+          "args": {
+            "sessionId": "$session.id"
+          }
+        }
+      ]
+    },
+    "scholarship.awarded": {
+      "to": "visitor",
+      "text": "Good news: a scholarship from {sponsor.name} covers {amount}.",
+      "next": [
+        {
+          "shape": "registrationStatus"
+        }
+      ]
+    },
+    "registration.received": {
+      "to": "operator",
+      "text": "{camper} registered for {session}.",
+      "next": [
+        {
+          "shape": "op.unmetReport"
+        }
+      ]
+    },
+    "unmet.daily": {
+      "to": "operator",
+      "text": "{count} things were asked for that we couldn't answer."
+    }
+  },
+  "operator": {
+    "version": "2026.09.21-1",
+    "shapes": {
+      "op.unmetReport": {
+        "asks": "What did people ask for that we couldn't answer?",
+        "input": {
+          "since": "string=7d"
+        },
+        "answer": "json",
+        "effect": "read",
+        "allow": [
+          "operator"
+        ],
+        "vessel": "list"
+      },
+      "op.editSection": {
+        "asks": "Edit a section of the spec",
+        "input": {
+          "section": "enum:business|entities|calls|rules|shapes|personas|envelope|notifications|operator",
+          "patch": "json"
+        },
+        "answer": {
+          "ok": "boolean",
+          "version": "string"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      },
+      "op.restart": {
+        "asks": "Restart the core with the current spec",
+        "input": {},
+        "answer": {
+          "ok": "boolean"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      },
+      "op.notify": {
+        "asks": "Send a notification to a visitor",
+        "input": {
+          "visitorId": "id",
+          "text": "string"
+        },
+        "answer": {
+          "ok": "boolean"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      }
+    }
+  }
+}

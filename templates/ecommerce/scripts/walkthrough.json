@@ -1,0 +1,77 @@
+[
+ {
+  "note": "stranger arrives"
+ },
+ {
+  "arrive": true
+ },
+ {
+  "text": "something bold for a wedding under 60"
+ },
+ {
+  "text": "what's trending"
+ },
+ {
+  "text": "check out"
+ },
+ {
+  "shape": "becomeKnown",
+  "args": {
+   "email": "jo@example.com",
+   "name": "Jo"
+  },
+  "confirm": true
+ },
+ {
+  "text": "compare p_pearl_drop and p_brass_threaders"
+ },
+ {
+  "text": "more like p_pearl_drop"
+ },
+ {
+  "shape": "addToCart",
+  "args": {
+   "productId": "p_pearl_drop"
+  },
+  "confirm": true
+ },
+ {
+  "text": "show my cart"
+ },
+ {
+  "text": "check out"
+ },
+ {
+  "shape": "checkout",
+  "args": {
+   "email": "jo@example.com",
+   "shipTo": {
+    "name": "Jo",
+    "line1": "1 Main St",
+    "city": "Austin",
+    "region": "TX",
+    "postal": "78701",
+    "country": "US"
+   }
+  },
+  "confirm": true
+ },
+ {
+  "note": "a second visit"
+ },
+ {
+  "newTrail": true
+ },
+ {
+  "arrive": true
+ },
+ {
+  "text": "quiet and polished for the office"
+ },
+ {
+  "text": "something bold for a wedding, again"
+ },
+ {
+  "text": "what's the weather"
+ }
+]

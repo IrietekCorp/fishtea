@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fishtea.dev/spec.schema.json",
+  "title": "Fishtea business spec",
+  "type": "object",
+  "required": ["fishtea", "business", "entities", "calls", "rules", "shapes", "personas", "envelope"],
+  "additionalProperties": false,
+  "properties": {
+    "fishtea": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+    "business": {
+      "type": "object",
+      "required": ["id", "name", "version"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,40}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "doc": { "type": "string" },
+        "locale": { "type": "string", "default": "en-US" },
+        "currency": { "type": "string", "default": "USD" },
+        "version": { "$ref": "#/$defs/version" }
+      }
+    },
+    "entities": {
+      "type": "object",
+      "required": ["version"],
+      "properties": { "version": { "$ref": "#/$defs/version" }, "doc": { "type": "string" } },
+      "additionalProperties": { "$ref": "#/$defs/entity" }
+    },
+    "calls": {
+      "type": "object",
+      "required": ["version"],
+      "properties": { "version": { "$ref": "#/$defs/version" }, "doc": { "type": "string" } },
+      "additionalProperties": { "$ref": "#/$defs/call" }
+    },
+    "rules": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": { "$ref": "#/$defs/version" },
+        "doc": { "type": "string" },
+        "writes": { "type": "object", "properties": { "confirmAlways": { "type": "boolean" }, "minConfidence": { "type": "number" } } },
+        "classify": { "type": "object", "properties": { "budgetMs": { "type": "integer" }, "floor": { "type": "number" }, "contextTurns": { "type": "integer" } } },
+        "calls": { "type": "object", "properties": { "timeoutMs": { "type": "integer" } } },
+        "familiarity": { "type": "object", "properties": { "threshold": { "type": "number" } } }
+      },
+      "additionalProperties": true
+    },
+    "shapes": {
+      "type": "object",
+      "required": ["version"],
+      "properties": { "version": { "$ref": "#/$defs/version" }, "doc": { "type": "string" } },
+      "additionalProperties": { "$ref": "#/$defs/shape" }
+    },
+    "personas": {
+      "type": "object",
+      "required": ["version"],
+      "properties": { "version": { "$ref": "#/$defs/version" }, "doc": { "type": "string" } },
+      "additionalProperties": { "type": "object", "required": ["when"], "properties": { "when": { "type": "string" }, "doc": { "type": "string" } } }
+    },
+    "envelope": {
+      "type": "object",
+      "required": ["version", "accept", "greeting"],
+      "properties": {
+        "version": { "$ref": "#/$defs/version" },
+        "doc": { "type": "string" },
+        "accept": { "type": "array", "items": { "type": "string" } },
+        "greeting": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "shape": { "type": "string" },
+              "hint": { "type": "string" },
+              "resume": { "type": "boolean" },
+              "offer": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "required": ["version"],
+      "properties": { "version": { "$ref": "#/$defs/version" }, "doc": { "type": "string" } },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["to", "text"],
+        "properties": {
+          "to": { "type": "string", "enum": ["visitor", "operator"] },
+          "text": { "type": "string" },
+          "doc": { "type": "string" },
+          "next": { "type": "array", "items": { "$ref": "#/$defs/next" } }
+        }
+      }
+    },
+    "operator": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": { "$ref": "#/$defs/version" },
+        "doc": { "type": "string" },
+        "shapes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/shape" } }
+      }
+    }
+  },
+  "$defs": {
+    "version": { "type": "string", "minLength": 1 },
+    "typeString": { "type": "string", "pattern": "^(enum:[^\\s\\[\\]?=]+|[A-Za-z_][A-Za-z0-9_]*)(\\[\\])?\\??(=.*)?$" },
+    "typeSpec": {
+      "anyOf": [
+        { "$ref": "#/$defs/typeString" },
+        { "type": "object", "required": ["type"], "properties": { "type": { "$ref": "#/$defs/typeString" }, "optional": { "type": "boolean" }, "default": {}, "values": { "type": "array", "items": { "type": "string" } }, "doc": { "type": "string" }, "min": { "type": "number" }, "max": { "type": "number" } }, "additionalProperties": false },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/typeSpec" } }
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "doc": { "type": "string" },
+        "fields": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/typeSpec" } },
+        "index": { "type": "array", "items": { "type": "string" } },
+        "embed": { "type": "array", "items": { "type": "string" } },
+        "unique": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "call": {
+      "type": "object",
+      "required": ["kind", "in", "out", "impl"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["query", "mutation", "compute", "external"] },
+        "doc": { "type": "string" },
+        "in": { "type": "object", "additionalProperties": { "$ref": "#/$defs/typeSpec" } },
+        "out": { "$ref": "#/$defs/typeSpec" },
+        "impl": {
+          "type": "object",
+          "properties": { "sql": { "type": "string" }, "module": { "type": "string" }, "url": { "type": "string" }, "doc": { "type": "string" } },
+          "additionalProperties": false
+        },
+        "transaction": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "required": ["call"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$" },
+        "call": { "type": "string" },
+        "with": { "type": "object" },
+        "after": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "next": {
+      "type": "object",
+      "required": ["shape"],
+      "properties": {
+        "label": { "type": "string" },
+        "shape": { "type": "string" },
+        "args": { "type": "object" },
+        "each": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "shape": {
+      "type": "object",
+      "required": ["asks", "input", "answer", "effect", "allow"],
+      "properties": {
+        "asks": { "type": "string", "minLength": 1 },
+        "doc": { "type": "string" },
+        "input": { "type": "object", "additionalProperties": { "$ref": "#/$defs/typeSpec" } },
+        "answer": { "$ref": "#/$defs/typeSpec" },
+        "effect": { "type": "string", "enum": ["read", "write"] },
+        "allow": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "plan": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "assemble": {},
+        "phrase": { "type": "string" },
+        "vessel": { "type": "string", "enum": ["list", "card", "detail", "compare", "timeline", "confirm"] },
+        "next": { "type": "array", "items": { "$ref": "#/$defs/next" } },
+        "triggers": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

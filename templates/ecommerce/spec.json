@@ -1,0 +1,141 @@
+{
+  "fishtea": "1.0",
+  "business": { "id": "ecommerce", "name": "Example Store", "doc": "An online store. Products come from a local catalog and from vendor feeds (affiliate or wholesale); visitors browse by asking, not by navigating.", "locale": "en-US", "currency": "USD", "version": "2026.09.21-1" },
+
+  "entities": {
+    "version": "2026.09.21-1",
+    "doc": "A generic commerce ground: catalog (local or pulled from vendors), cart, order, customer, reactions.",
+    "vendor": {
+      "doc": "Where products come from. `adapter` names a module in calls/adapters/; `config` is what that adapter needs (never secrets: those come from env).",
+      "fields": { "id": { "type": "id" }, "name": { "type": "string" }, "adapter": { "type": "enum", "values": ["local", "mock", "csv", "ebay", "amazon", "http"] }, "config": { "type": "json", "optional": true }, "commissionPct": { "type": "number", "optional": true }, "lastSyncAt": { "type": "timestamp", "optional": true }, "status": { "type": "enum", "values": ["active", "paused"], "default": "active" } }
+    },
+    "product": {
+      "doc": "One sellable thing. The description is the knowledge pool the classifier extracts against; tags and attributes carry whatever this business sells by (mood, material, size, colour…).",
+      "fields": {
+        "id": { "type": "id" }, "vendorId": { "type": "id", "optional": true }, "sourceId": { "type": "string", "optional": true, "doc": "the vendor's own id; upserts key on (vendorId, sourceId)" },
+        "name": { "type": "string" }, "description": { "type": "text" }, "brand": { "type": "string", "optional": true },
+        "category": { "type": "string" }, "tags": { "type": "string[]", "doc": "free vocabulary the visitor can ask by" },
+        "attributes": { "type": "json", "optional": true, "doc": "{ colour, material, size, … } — anything structured" },
+        "price": { "type": "money", "min": 0 }, "currency": { "type": "string", "default": "USD" }, "compareAtPrice": { "type": "money", "optional": true },
+        "stock": { "type": "int", "min": 0, "default": 0, "doc": "0 with an affiliateUrl means: buy at the vendor" },
+        "imageUrl": { "type": "url", "optional": true }, "affiliateUrl": { "type": "url", "optional": true },
+        "fulfilment": { "type": "enum", "values": ["local", "affiliate", "dropship"], "default": "local" },
+        "status": { "type": "enum", "values": ["active", "inactive", "featured"], "default": "active" }, "updatedAt": { "type": "timestamp" }
+      },
+      "index": ["category", "tags", "status", "vendorId"],
+      "embed": ["name", "description", "brand", "category", "tags"]
+    },
+    "cart": { "fields": { "id": { "type": "id" }, "visitorId": { "type": "id" }, "lines": { "type": "json", "doc": "[{productId, name, price, qty}]" }, "subtotal": { "type": "money" }, "updatedAt": { "type": "timestamp" } }, "unique": ["visitorId"] },
+    "order": {
+      "fields": { "id": { "type": "id" }, "visitorId": { "type": "id" }, "email": { "type": "email" }, "lines": { "type": "json" }, "subtotal": { "type": "money" }, "shipping": { "type": "money" }, "tax": { "type": "money" }, "total": { "type": "money" }, "shipTo": { "type": "json" }, "status": { "type": "enum", "values": ["placed", "paid", "packed", "shipped", "delivered", "returned", "cancelled"], "default": "placed" }, "events": { "type": "json" }, "placedAt": { "type": "timestamp" } },
+      "index": ["visitorId", "status"]
+    },
+    "customer": { "fields": { "id": { "type": "id" }, "email": { "type": "email" }, "name": { "type": "string", "optional": true }, "source": { "type": "string", "default": "conversation" }, "createdAt": { "type": "timestamp" } }, "unique": ["email"] },
+    "reaction": { "doc": "Engagement signal: what people loved, saved or passed on. Feeds `trending` and, later, the vendor channel.", "fields": { "id": { "type": "id" }, "visitorId": { "type": "id" }, "productId": { "type": "id" }, "kind": { "type": "enum", "values": ["love", "save", "meh", "click"] }, "at": { "type": "timestamp" } }, "index": ["productId", "kind"] }
+  },
+
+  "calls": {
+    "version": "2026.09.21-1",
+    "products.search":   { "kind": "query", "in": { "text": "string?", "category": "string?", "tags": "string[]?", "brand": "string?", "maxPrice": "money?", "limit": "int=12" }, "out": "product[]", "impl": { "sql": "products_search.sql" } },
+    "products.byIds":    { "kind": "query", "in": { "ids": "id[]" }, "out": "product[]", "impl": { "sql": "products_by_ids.sql" } },
+    "products.related":  { "kind": "query", "in": { "productId": "id", "limit": "int=6" }, "out": "product[]", "impl": { "sql": "products_related.sql" } },
+    "products.trending": { "kind": "query", "in": { "days": "int=7", "limit": "int=8" }, "out": "product[]", "impl": { "sql": "products_trending.sql" } },
+    "products.upsert":   { "kind": "mutation", "in": { "vendorId": "id", "items": "json" }, "out": { "count": "int" }, "impl": { "sql": "products_upsert.sql", "doc": "Upsert a batch from a vendor adapter on (vendor_id, source_id)." } },
+    "vendors.list":      { "kind": "query", "in": { "status": "string=active" }, "out": "vendor[]", "impl": { "sql": "vendors_list.sql" } },
+    "vendors.touch":     { "kind": "mutation", "in": { "vendorId": "id" }, "out": "vendor", "impl": { "sql": "vendors_touch.sql" } },
+    "inventory.pull":    { "kind": "compute", "doc": "Run each active vendor's adapter (calls/adapters/<adapter>.ts) for a query and return normalised items.", "in": { "vendors": "vendor[]", "query": "string?", "limit": "int=50" }, "out": { "items": "json", "byVendor": "json" }, "impl": { "module": "inventory_pull.ts" } },
+    "compare.facets":    { "kind": "compute", "in": { "products": "product[]" }, "out": { "left": "product", "right": "product", "facets": "json" }, "impl": { "module": "compare_facets.ts" } },
+    "cart.get":          { "kind": "query", "in": { "visitorId": "id" }, "out": "cart?", "impl": { "sql": "cart_get.sql" } },
+    "cart.add":          { "kind": "mutation", "in": { "visitorId": "id", "productId": "id", "qty": "int=1" }, "out": "cart", "impl": { "sql": "cart_add.sql" } },
+    "cart.remove":       { "kind": "mutation", "in": { "visitorId": "id", "productId": "id" }, "out": "cart", "impl": { "sql": "cart_remove.sql" } },
+    "tax.quote":         { "kind": "compute", "in": { "lines": "json", "shipTo": "json" }, "out": { "subtotal": "money", "shipping": "money", "tax": "money", "rate": "number", "jurisdiction": "string", "total": "money" }, "impl": { "module": "tax_quote.ts" } },
+    "order.place":       { "kind": "mutation", "in": { "visitorId": "id", "email": "email", "lines": "json", "shipTo": "json", "subtotal": "money", "shipping": "money", "tax": "money", "total": "money" }, "out": "order", "impl": { "sql": "order_place.sql" }, "transaction": true },
+    "order.status":      { "kind": "query", "in": { "orderId": "id", "visitorId": "id" }, "out": { "order": "order", "events": "json" }, "impl": { "sql": "order_status.sql" } },
+    "customer.upsert":   { "kind": "mutation", "in": { "email": "email", "visitorId": "id", "name": "string?", "source": "string=conversation" }, "out": "customer", "impl": { "sql": "customer_upsert.sql" } },
+    "reaction.add":      { "kind": "mutation", "in": { "visitorId": "id", "productId": "id", "kind": "string" }, "out": "reaction", "impl": { "sql": "reaction_add.sql" } }
+  },
+
+  "rules": {
+    "version": "2026.09.21-1",
+    "pricing": { "freeShippingOver": 75, "flatShipping": 6.5, "currencyRounding": "half-up" },
+    "tax": { "provider": "table", "table": "tax_rates.json", "applyOn": "subtotal", "shipToRequired": true },
+    "inventory": { "doc": "How vendor feeds are pulled. Adapters read credentials from env (EBAY_APP_ID, AMAZON_ACCESS_KEY, …), never from the spec.", "syncEveryHours": 24, "maxItemsPerVendor": 200, "affiliateBuysOffsite": true },
+    "compliance": { "orderRequires": ["email", "shipTo.country"], "ageGate": false, "returnsWindowDays": 30 },
+    "writes": { "confirmAlways": true, "minConfidence": 0.85 },
+    "classify": { "budgetMs": 1000, "floor": 0.35, "contextTurns": 6 },
+    "calls": { "timeoutMs": 250 },
+    "familiarity": { "threshold": 0.82 },
+    "trail": { "sessionGapHours": 4 }
+  },
+
+  "shapes": {
+    "version": "2026.09.21-1",
+    "findProducts": {
+      "asks": "Find products by what they are, a tag, a brand, a category or a price limit",
+      "input": { "text": { "type": "string?", "doc": "what the visitor is looking for, in their words" }, "category": { "type": "string?" }, "tag": { "type": "string?", "doc": "a tag from the catalog vocabulary" }, "brand": "string?", "maxPrice": { "type": "money?", "doc": "price ceiling" } },
+      "answer": "product[]", "effect": "read", "allow": ["stranger", "known", "customer", "mid-purchase"],
+      "plan": [ { "call": "products.search", "with": { "text": "$text", "category": "$category", "tags": "[$tag]", "brand": "$brand", "maxPrice": "$maxPrice" } } ],
+      "phrase": "Products {text? matching \"$text\"} {category? in $category} {tag? tagged $tag} {brand? by $brand} {maxPrice? under $$maxPrice}",
+      "triggers": ["looking for", "show me", "do you have", "find"],
+      "next": [ { "label": "More like {item.name}", "shape": "relatedProducts", "args": { "productId": "$item.id" }, "each": "answer" }, { "label": "What's popular", "shape": "trending" } ]
+    },
+    "relatedProducts": { "asks": "Things that go with or are similar to a product", "input": { "productId": "id" }, "answer": { "seed": "product[]", "related": "product[]" }, "effect": "read", "allow": ["stranger", "known", "customer", "mid-purchase"],
+      "plan": [ { "id": "s", "call": "products.byIds", "with": { "ids": "[$productId]" } }, { "id": "r", "call": "products.related", "with": { "productId": "$productId" } } ], "assemble": { "seed": "$s", "related": "$r" }, "vessel": "detail",
+      "triggers": ["goes with", "similar", "more like"],
+      "next": [ { "label": "Add {item.name}", "shape": "addToCart", "args": { "productId": "$item.id" }, "each": "answer.related" }, { "label": "Compare with {item.name}", "shape": "compareProducts", "args": { "leftId": "$productId", "rightId": "$item.id" }, "each": "answer.related" } ] },
+    "compareProducts": { "asks": "Compare two products side by side", "input": { "leftId": "id", "rightId": "id" }, "answer": { "left": "product", "right": "product", "facets": "json" }, "effect": "read", "allow": ["stranger", "known", "customer", "mid-purchase"],
+      "plan": [ { "id": "p", "call": "products.byIds", "with": { "ids": ["$leftId", "$rightId"] } }, { "id": "c", "call": "compare.facets", "with": { "products": "$p" } } ], "assemble": "$c", "triggers": ["compare", "versus", " vs "],
+      "next": [ { "label": "Add {left.name}", "shape": "addToCart", "args": { "productId": "$left.id" } }, { "label": "Add {right.name}", "shape": "addToCart", "args": { "productId": "$right.id" } } ] },
+    "trending": { "asks": "What's popular or trending right now", "input": { "days": "int=7" }, "answer": "product[]", "effect": "read", "allow": ["stranger", "known", "customer", "mid-purchase"], "plan": [ { "call": "products.trending", "with": { "days": "$days" } } ], "phrase": "Popular over the last $days days", "triggers": ["trending", "popular", "best sellers"],
+      "next": [ { "label": "More like {item.name}", "shape": "relatedProducts", "args": { "productId": "$item.id" }, "each": "answer" } ] },
+    "react": { "asks": "Love, save or pass on a product", "input": { "productId": "id", "kind": "enum:love|save|meh" }, "answer": "reaction", "effect": "write", "allow": ["known", "customer", "mid-purchase"], "plan": [ { "call": "reaction.add", "with": { "visitorId": "$visitor.id", "productId": "$productId", "kind": "$kind" } } ], "triggers": ["love", "save this", "pass"] },
+    "addToCart": { "asks": "Add a product to the cart", "input": { "productId": "id", "qty": "int=1" }, "answer": "cart", "effect": "write", "allow": ["known", "customer", "mid-purchase"], "plan": [ { "call": "cart.add", "with": { "visitorId": "$visitor.id", "productId": "$productId", "qty": "$qty" } } ], "phrase": "Added to your cart", "triggers": ["add to cart", "add to my cart", "put in my cart"], "next": [ { "label": "View cart", "shape": "viewCart" }, { "label": "Check out", "shape": "checkout" } ] },
+    "removeFromCart": { "asks": "Remove a product from the cart", "input": { "productId": "id" }, "answer": "cart", "effect": "write", "allow": ["known", "customer", "mid-purchase"], "plan": [ { "call": "cart.remove", "with": { "visitorId": "$visitor.id", "productId": "$productId" } } ], "triggers": ["remove from", "take out of my cart"], "next": [ { "label": "View cart", "shape": "viewCart" } ] },
+    "viewCart": { "asks": "Show my cart", "input": {}, "answer": "cart?", "effect": "read", "allow": ["known", "customer", "mid-purchase"], "plan": [ { "call": "cart.get", "with": { "visitorId": "$visitor.id" } } ], "phrase": "Your cart", "triggers": ["my cart", "view cart", "in the cart"], "next": [ { "label": "Check out", "shape": "checkout" }, { "label": "Keep looking", "shape": "findProducts" } ] },
+    "checkout": { "asks": "Place the order and pay", "input": { "shipTo": { "name": "string", "line1": "string", "city": "string", "region": "string", "postal": "string", "country": "string=US" }, "email": "email" }, "answer": { "ok": "boolean", "order": "order", "summary": "string" }, "effect": "write", "allow": ["customer", "mid-purchase"],
+      "plan": [ { "id": "c", "call": "cart.get", "with": { "visitorId": "$visitor.id" } }, { "id": "t", "call": "tax.quote", "with": { "lines": "$c.lines", "shipTo": "$shipTo" }, "after": ["c"] }, { "id": "o", "call": "order.place", "with": { "visitorId": "$visitor.id", "email": "$email", "lines": "$c.lines", "shipTo": "$shipTo", "subtotal": "$t.subtotal", "shipping": "$t.shipping", "tax": "$t.tax", "total": "$t.total" }, "after": ["c", "t"] } ],
+      "assemble": { "ok": true, "order": "$o", "summary": "Order $o.id — $$t.total incl. $$t.tax tax ($t.jurisdiction)" }, "triggers": ["check out", "checkout", "place my order", "pay"],
+      "next": [ { "label": "Track order {order.id}", "shape": "orderStatus", "args": { "orderId": "$order.id" } } ] },
+    "orderStatus": { "asks": "Track an order", "input": { "orderId": "id" }, "answer": { "order": "order", "events": "json" }, "effect": "read", "allow": ["customer", "mid-purchase"], "plan": [ { "call": "order.status", "with": { "orderId": "$orderId", "visitorId": "$visitor.id" } } ], "vessel": "timeline", "phrase": "Order $orderId", "triggers": ["track", "where is my order", "order status"] },
+    "becomeKnown": { "asks": "Save your email so we can keep this conversation", "input": { "email": "email", "name": "string?" }, "answer": { "ok": "boolean", "email": "string" }, "effect": "write", "allow": ["stranger", "known"], "plan": [ { "id": "c", "call": "customer.upsert", "with": { "email": "$email", "visitorId": "$visitor.id", "name": "$name", "source": "conversation" } } ], "assemble": { "ok": true, "email": "$c.email" }, "phrase": "We'll remember you as $email", "triggers": ["my email is", "remember me"], "next": [ { "label": "Find products", "shape": "findProducts" } ] }
+  },
+
+  "personas": {
+    "version": "2026.09.21-1",
+    "mid-purchase": { "when": "trail.has('cart.add') && !trail.has('order.place', 'last 1h')" },
+    "customer":     { "when": "identity.email != null" },
+    "known":        { "when": "identity.cookie != null || identity.issuedUrl != null" },
+    "stranger":     { "when": "true" }
+  },
+
+  "envelope": {
+    "version": "2026.09.21-1",
+    "accept": ["referrer", "utm_source", "utm_campaign", "coupon", "cookie", "issuedUrl", "userAgent", "locale"],
+    "greeting": {
+      "stranger":     { "shape": "findProducts", "hint": "Tell us what you're looking for — or what it's for.", "offer": ["trending", "becomeKnown"] },
+      "known":        { "resume": true, "offer": ["findProducts", "trending"] },
+      "customer":     { "resume": true, "offer": ["findProducts", "viewCart"] },
+      "mid-purchase": { "resume": true, "offer": ["checkout", "viewCart"] }
+    }
+  },
+
+  "notifications": {
+    "version": "2026.09.21-1",
+    "order.shipped": { "to": "visitor", "text": "Your order {order.id} shipped.", "next": [ { "shape": "orderStatus", "args": { "orderId": "$order.id" } } ] },
+    "inventory.synced": { "to": "operator", "text": "{count} products pulled from {vendor}." },
+    "unmet.daily": { "to": "operator", "text": "{count} things were asked for that we couldn't answer.", "next": [ { "shape": "op.unmetReport" } ] }
+  },
+
+  "operator": {
+    "version": "2026.09.21-1",
+    "shapes": {
+      "op.unmetReport":   { "asks": "What did people ask for that we couldn't answer?", "input": { "since": "string=7d" }, "answer": "json", "effect": "read", "allow": ["operator"], "vessel": "list" },
+      "op.syncInventory": { "asks": "Pull products from every active vendor feed into the catalog", "input": { "query": "string?", "limit": "int=50" }, "answer": { "pulled": "int", "byVendor": "json" }, "effect": "write", "allow": ["operator"],
+        "plan": [ { "id": "v", "call": "vendors.list", "with": { "status": "active" } }, { "id": "p", "call": "inventory.pull", "with": { "vendors": "$v", "query": "$query", "limit": "$limit" }, "after": ["v"] }, { "id": "u", "call": "products.upsert", "with": { "vendorId": "batch", "items": "$p.items" }, "after": ["p"] } ],
+        "assemble": { "pulled": "$u.count", "byVendor": "$p.byVendor" } },
+      "op.editSection":   { "asks": "Edit a section of the spec", "input": { "section": "enum:business|entities|calls|rules|shapes|personas|envelope|notifications|operator", "patch": "json" }, "answer": { "ok": "boolean", "version": "string" }, "effect": "write", "allow": ["operator"] },
+      "op.restart":       { "asks": "Restart the core with the current spec", "input": {}, "answer": { "ok": "boolean" }, "effect": "write", "allow": ["operator"] },
+      "op.notify":        { "asks": "Send a notification to a visitor", "input": { "visitorId": "id", "text": "string" }, "answer": { "ok": "boolean" }, "effect": "write", "allow": ["operator"] }
+    }
+  }
+}

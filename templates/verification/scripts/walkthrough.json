@@ -1,0 +1,61 @@
+[
+ {
+  "note": "a lender arrives"
+ },
+ {
+  "arrive": true
+ },
+ {
+  "text": "what do you disclose"
+ },
+ {
+  "text": "verify that jane doe worked at acme"
+ },
+ {
+  "shape": "becomeKnown",
+  "args": {
+   "email": "verifier@example.com",
+   "organization": "Bank Co",
+   "purpose": "lending"
+  },
+  "confirm": true
+ },
+ {
+  "shape": "requestVerification",
+  "args": {
+   "employeeEmail": "jane@example.com",
+   "employeeLastName": "Doe",
+   "organizationName": "Acme Corp",
+   "claimTitle": "Senior Engineer",
+   "claimStart": "2021-03-01",
+   "claimEnd": "2024-06-30"
+  },
+  "confirm": true
+ },
+ {
+  "text": "where do my requests stand"
+ },
+ {
+  "note": "the employee grants consent (from any visitor)"
+ },
+ {
+  "shape": "giveConsent",
+  "args": {
+   "employeeEmail": "jane@example.com",
+   "granted": true
+  },
+  "confirm": true
+ },
+ {
+  "note": "the same visitor happens to be a listed verifier for Acme"
+ },
+ {
+  "text": "requests waiting for me"
+ },
+ {
+  "note": "attest: the chip carries the request id; here we resolve it through a text utterance the lexical classifier can't fill, so the walkthrough looks it up"
+ },
+ {
+  "text": "status"
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "id": "eng_1",
+  "employeeId": "em_jane",
+  "organizationId": "org_acme",
+  "title": "Senior Engineer",
+  "kind": "employee",
+  "startDate": "2021-03-01",
+  "endDate": "2024-06-30",
+  "status": "ended"
+ },
+ {
+  "id": "eng_2",
+  "employeeId": "em_sam",
+  "organizationId": "org_acme",
+  "title": "Product Manager",
+  "kind": "employee",
+  "startDate": "2023-01-15",
+  "endDate": null,
+  "status": "current"
+ },
+ {
+  "id": "eng_3",
+  "employeeId": "em_jane",
+  "organizationId": "org_globex",
+  "title": "Staff Engineer",
+  "kind": "employee",
+  "startDate": "2024-08-01",
+  "endDate": null,
+  "status": "current"
+ }
+]

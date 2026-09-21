@@ -1,0 +1,44 @@
+[
+ {
+  "id": "faq_1",
+  "question": "How does verification work?",
+  "answer": "You tell us who, where and (optionally) what role and dates. We ask the employee for consent, then a named verifier at the organization confirms or denies. You get only the fields your purpose needs.",
+  "order": 0,
+  "isActive": true
+ },
+ {
+  "id": "faq_2",
+  "question": "What do you disclose?",
+  "answer": "Never salary, reason for leaving or performance. Employment purposes get title and date matches; lending gets dates and current status; tenancy gets current status only.",
+  "order": 1,
+  "isActive": true
+ },
+ {
+  "id": "faq_3",
+  "question": "Do you need the employee's consent?",
+  "answer": "Always. A request waits in consent-pending until the employee grants it, and expires unanswered after 14 days. Consent can be revoked at any time.",
+  "order": 2,
+  "isActive": true
+ },
+ {
+  "id": "faq_4",
+  "question": "How long does it take?",
+  "answer": "Consent usually arrives within a day; verifiers typically answer within two business days. You can check status here any time.",
+  "order": 3,
+  "isActive": true
+ },
+ {
+  "id": "faq_5",
+  "question": "Is this legal?",
+  "answer": "We operate on consent and minimum disclosure. You are responsible for having a permissible purpose; we log every request and attestation for audit.",
+  "order": 4,
+  "isActive": true
+ },
+ {
+  "id": "faq_6",
+  "question": "Who can attest?",
+  "answer": "Only people an organization has listed as verifiers, matched by email. Anyone else's attestation is refused by the system, not by policy.",
+  "order": 5,
+  "isActive": true
+ }
+]

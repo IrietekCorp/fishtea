@@ -1,0 +1,26 @@
+[
+ {
+  "id": "sp_1",
+  "name": "Founding Sponsor",
+  "tier": "full",
+  "amount": 450,
+  "websiteUrl": null,
+  "description": "Funds one full scholarship."
+ },
+ {
+  "id": "sp_2",
+  "name": "Community Partner",
+  "tier": "partial",
+  "amount": 100,
+  "websiteUrl": null,
+  "description": "Scholarship contributor."
+ },
+ {
+  "id": "sp_3",
+  "name": "Local Club",
+  "tier": "full",
+  "amount": 900,
+  "websiteUrl": null,
+  "description": "Funds two full scholarships."
+ }
+]

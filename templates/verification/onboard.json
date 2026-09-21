@@ -1,0 +1,86 @@
+{
+  "doc": "Onboarding interview for an engagement-verification service.",
+  "questions": [
+    {
+      "id": "name",
+      "ask": "Service name",
+      "path": "business.name",
+      "type": "string",
+      "default": "{{name}}"
+    },
+    {
+      "id": "doc",
+      "ask": "One sentence: who requests verifications, and what do they need to know?",
+      "path": "business.doc",
+      "type": "text",
+      "default": "Employee engagement verification with consent and minimum disclosure."
+    },
+    {
+      "id": "purposes",
+      "ask": "Purposes you serve",
+      "type": "multi",
+      "values": [
+        "employment",
+        "lending",
+        "tenancy",
+        "background",
+        "other"
+      ],
+      "default": [
+        "employment",
+        "lending",
+        "tenancy",
+        "background",
+        "other"
+      ],
+      "path": "entities.requester.fields.purpose",
+      "apply": "enum"
+    },
+    {
+      "id": "consentTtl",
+      "ask": "Days a request may wait for consent before it expires",
+      "path": "rules.consent.ttlDays",
+      "type": "int",
+      "default": 14
+    },
+    {
+      "id": "retention",
+      "ask": "Days to retain requests",
+      "path": "rules.retention.requestDays",
+      "type": "int",
+      "default": 365
+    },
+    {
+      "id": "kinds",
+      "ask": "Engagement kinds you verify",
+      "type": "multi",
+      "values": [
+        "employee",
+        "contractor",
+        "intern",
+        "volunteer"
+      ],
+      "default": [
+        "employee",
+        "contractor",
+        "intern"
+      ],
+      "path": "entities.engagement.fields.kind",
+      "apply": "enum"
+    },
+    {
+      "id": "seed",
+      "ask": "Keep the example organizations, employees and FAQ as placeholders?",
+      "type": "boolean",
+      "default": true,
+      "apply": "keepSeed"
+    },
+    {
+      "id": "greeting",
+      "ask": "Greeting for a first-time visitor",
+      "path": "envelope.greeting.stranger.hint",
+      "type": "string",
+      "default": "Verifying someone's employment? Or here to give consent or attest? Tell me which."
+    }
+  ]
+}

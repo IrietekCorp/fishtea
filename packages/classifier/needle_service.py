@@ -1,0 +1,372 @@
+#!/usr/bin/env python3
+"""
+Fishtea classifier service: a pool of needle3 workers behind one HTTP port (BLUEPRINT §9).
+
+  POST /classify  {text, context: [..], tools: [names]}  → {function_calls, reasoning, confidence, embedding, ms, worker}
+  POST /embed     {texts: [..]}                           → {embeddings: [[..]]}
+  POST /reload    {tools: [ToolSpec..]}                   → {ok, count}
+  GET  /healthz                                           → {ok, model, workers, tools, dim}
+
+Design notes (measured in Phase 0, see contract.md):
+  * needle keeps conversation state between complete() calls → every request resets the agent first and
+    context is folded into the request text, never carried implicitly.
+  * needle_init is global per process and switching tool subsets costs ~300 ms, so each worker keeps one
+    agent per tool subset and the dispatcher routes requests to the worker whose active subset matches.
+  * embeddings come from the same model (3072 floats).
+Stdlib only besides cactus-needle. Python ≥ 3.9.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import threading
+import time
+import uuid
+import multiprocessing as mp
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = int(os.environ.get("NEEDLE_PORT", "8081"))
+WORKERS = max(1, int(os.environ.get("NEEDLE_WORKERS", "2")))
+TIMEOUT = float(os.environ.get("NEEDLE_REQUEST_TIMEOUT", "5"))
+SYSTEM = os.environ.get("NEEDLE_SYSTEM", "You route what a visitor says to one of the store's tools. Prior turns may be listed; the last line is what the visitor said now.")
+MODEL_PATH = os.environ.get("NEEDLE_MODEL_PATH")  # offline copy of needle3.cact (optional)
+
+
+# ── worker process ──────────────────────────────────────────────────────────
+
+def _fold(text: str, context: list[str]) -> str:
+    if not context:
+        return text
+    lines = [f"- {c}" for c in context[-8:]]
+    return "Earlier:\n" + "\n".join(lines) + "\nNow: " + text
+
+
+def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str):
+    os.environ.setdefault("NEEDLE_TELEMETRY", "0")
+    import needle  # noqa: WPS433
+    tools = json.loads(tools_json)
+    by_name = {t["name"]: t for t in tools}
+    agents: dict[tuple, "needle.Needle"] = {}
+    active_key: tuple | None = None
+
+    def agent_for(names: list[str] | None):
+        nonlocal active_key
+        key = tuple(sorted(names)) if names is not None else tuple(sorted(by_name))
+        a = agents.get(key)
+        if a is None:
+            subset = [by_name[n] for n in key if n in by_name]
+            kwargs = {"weights": MODEL_PATH} if MODEL_PATH else {}
+            a = needle.Needle(tools=subset, system=SYSTEM, **kwargs)
+            agents[key] = a
+        active_key = key
+        return a
+
+    # warm up: load weights and the full toolset
+    try:
+        agent_for(None).complete("hello")
+        dim = len(agent_for(None).embed("hello"))
+    except Exception as exc:  # pragma: no cover
+        results.put((f"init-{idx}", {"error": f"worker {idx} failed to load: {exc}"}))
+        return
+    results.put((f"init-{idx}", {"ok": True, "dim": dim}))
+
+    while True:
+        item = requests.get()
+        if item is None:
+            break
+        req_id, op, payload = item
+        t0 = time.time()
+        deadline = payload.get("deadline")
+        if deadline and t0 > deadline:
+            results.put((req_id, {"error": "stale", "skipped": True}))
+            continue
+        try:
+            if op == "warm":
+                for names in payload.get("subsets") or []:
+                    agent_for(names).complete("hello")
+                out = {"ok": True, "subsets": len(payload.get("subsets") or []), "ms": round((time.time() - t0) * 1000, 1)}
+            elif op == "classify":
+                t_a = time.time()
+                a = agent_for(payload.get("tools"))
+                a.reset()
+                t_b = time.time()
+                text = _fold(payload["text"], payload.get("context") or [])
+                r = a.complete(text)
+                t_c = time.time()
+                emb = a.embed(payload["text"]) if payload.get("embed", True) else None
+                out = {
+                    "timings": {"bind": round((t_b - t_a) * 1000, 1), "complete": round((t_c - t_b) * 1000, 1), "embed": round((time.time() - t_c) * 1000, 1)},
+                    "function_calls": [{"name": c.get("name"), "arguments": c.get("arguments") or {}} for c in (r.get("function_calls") or []) if c.get("name") in by_name],
+                    "reasoning": r.get("reasoning"),
+                    "confidence": r.get("confidence"),
+                    "embedding": emb,
+                    "ms": round((time.time() - t0) * 1000, 1),
+                    "worker": idx,
+                    "active": list(active_key or ()),
+                }
+            elif op == "embed":
+                a = agent_for(None)
+                out = {"embeddings": [a.embed(t) for t in payload["texts"]], "ms": round((time.time() - t0) * 1000, 1)}
+            elif op == "reload":
+                tools = payload["tools"]
+                by_name = {t["name"]: t for t in tools}
+                agents.clear()
+                agent_for(None).complete("hello")
+                out = {"ok": True, "count": len(by_name)}
+            else:
+                out = {"error": f"unknown op {op}"}
+        except Exception as exc:
+            out = {"error": str(exc)}
+        results.put((req_id, out))
+
+
+# ── dispatcher ──────────────────────────────────────────────────────────────
+
+class Pool:
+    def __init__(self, n: int, tools: list[dict]):
+        self.n = n
+        self.tools = tools
+        self.results: mp.Queue = mp.Queue()
+        self.queues: list[mp.Queue] = []
+        self.procs: list[mp.Process] = []
+        self.active: list[tuple | None] = [None] * n
+        self.inflight: list[int] = [0] * n
+        self.last_used: list[float] = [0.0] * n
+        self.pending: dict[str, tuple[threading.Event, dict]] = {}
+        self.lock = threading.Lock()
+        self.dim = 0
+        self.ready = 0
+        self.warming = False
+        for i in range(n):
+            q: mp.Queue = mp.Queue()
+            p = mp.Process(target=worker_main, args=(i, q, self.results, json.dumps(tools)), daemon=True)
+            p.start()
+            self.queues.append(q)
+            self.procs.append(p)
+        threading.Thread(target=self._collect, daemon=True).start()
+
+    def _collect(self):
+        while True:
+            req_id, out = self.results.get()
+            if req_id.startswith("init-"):
+                if out.get("ok"):
+                    self.ready += 1
+                    self.dim = out.get("dim", self.dim)
+                else:
+                    print(out.get("error"), file=sys.stderr)
+                continue
+            with self.lock:
+                slot = self.pending.pop(req_id, None)
+            if slot:
+                slot[1].update(out)
+                slot[0].set()
+
+    def _pick(self, key: tuple | None) -> int:
+        with self.lock:
+            # affinity first: switching a worker to another tool subset costs a needle_init (~300 ms), so wait
+            # briefly for the worker that already holds this subset unless it is clearly backed up
+            # A worker holding another subset pays a needle_init (0.7–1.2 s with rich tool docs) to switch, so:
+            # idle worker already on this subset → idle worker never assigned → least-recently-used idle worker
+            # → busy worker on this subset (short wait) → least loaded. Size NEEDLE_WORKERS ≥ distinct persona subsets.
+            idle_same = [i for i in range(self.n) if self.active[i] == key and self.inflight[i] == 0]
+            idle_free = [i for i in range(self.n) if self.active[i] is None and self.inflight[i] == 0]
+            idle = [i for i in range(self.n) if self.inflight[i] == 0]
+            same = [i for i in range(self.n) if self.active[i] == key]
+            if idle_same:
+                i = idle_same[0]
+            elif idle_free:
+                i = idle_free[0]
+            elif idle:
+                i = min(idle, key=lambda j: self.last_used[j])
+            elif same:
+                i = min(same, key=lambda j: self.inflight[j])
+            else:
+                i = min(range(self.n), key=lambda j: self.inflight[j])
+            self.active[i] = key
+            self.inflight[i] += 1
+            self.last_used[i] = time.time()
+            return i
+
+    def request(self, op: str, payload: dict, timeout: float = TIMEOUT) -> dict:
+        key = tuple(sorted(payload.get("tools") or [])) if op == "classify" else None
+        if op == "classify":
+            payload = dict(payload, deadline=time.time() + timeout)
+        i = self._pick(key)
+        req_id = uuid.uuid4().hex
+        ev, out = threading.Event(), {}
+        with self.lock:
+            self.pending[req_id] = (ev, out)
+        self.queues[i].put((req_id, op, payload))
+        try:
+            if not ev.wait(timeout):
+                with self.lock:
+                    self.pending.pop(req_id, None)
+                return {"error": "timeout", "worker": i}
+            return out
+        finally:
+            with self.lock:
+                self.inflight[i] -= 1
+
+    def _send_to(self, i: int, op: str, payload: dict, timeout: float) -> dict:
+        """Send one op to one specific worker and wait (reload/warm must reach every worker, not the least loaded)."""
+        req_id = uuid.uuid4().hex
+        ev, out = threading.Event(), {}
+        with self.lock:
+            self.pending[req_id] = (ev, out)
+            self.inflight[i] += 1
+        self.queues[i].put((req_id, op, payload))
+        try:
+            if not ev.wait(timeout):
+                out["error"] = f"worker {i} {op} timeout"
+            return out
+        finally:
+            with self.lock:
+                self.inflight[i] -= 1
+
+    def _all(self, op: str, payload: dict, timeout: float) -> list[dict]:
+        # sequential on purpose: the engine uses every core for a needle_init, and three inits in parallel
+        # took 48 s where three in a row take ~12 s
+        return [self._send_to(i, op, payload, timeout) for i in range(self.n)]
+
+    def reload(self, tools: list[dict], subsets: list[list[str]] | None = None) -> dict:
+        self.tools = tools
+        outs = self._all("reload", {"tools": tools}, 300)
+        with self.lock:
+            self.active = [None] * self.n
+        if subsets:
+            threading.Thread(target=self.warm, args=(subsets,), daemon=True).start()
+        errs = [o for o in outs if o.get("error")]
+        return {"ok": not errs, "count": len(tools), "errors": errs, "warming": bool(subsets)}
+
+    def warm(self, subsets: list[list[str]]) -> dict:
+        """Pre-build an agent per tool subset (one per persona), one worker at a time so live requests keep
+        two workers free and initialisations don't contend for the CPU. Runs in the background after /reload."""
+        self.warming = True
+        outs = []
+        try:
+            for i in range(self.n):
+                outs.append(self._send_to(i, "warm", {"subsets": subsets}, 300))
+        finally:
+            self.warming = False
+        return {"workers": len(outs), "subsets": len(subsets), "errors": [o for o in outs if o.get("error")]}
+
+    def healthy(self) -> bool:
+        return self.ready >= 1 and all(p.is_alive() for p in self.procs)
+
+
+# ── tools from a spec (standalone use; core normally POSTs /reload) ─────────
+
+def _json_type(t: str) -> dict:
+    t = t.strip()
+    default = None
+    if "=" in t:
+        t, d = t.split("=", 1)
+        default = d
+    optional = t.endswith("?")
+    t = t.rstrip("?")
+    array = t.endswith("[]")
+    t = t[:-2] if array else t
+    if t.startswith("enum:"):
+        inner = {"type": "string", "enum": t[5:].split("|")}
+    else:
+        inner = {"int": {"type": "integer"}, "number": {"type": "number"}, "money": {"type": "number"}, "boolean": {"type": "boolean"}, "json": {}}.get(t, {"type": "string"})
+    if default is not None:
+        inner = dict(inner, default=default)
+    return ({"type": "array", "items": inner} if array else inner), (optional or default is not None)
+
+
+def tools_from_spec(path: str) -> list[dict]:
+    spec = json.load(open(path))
+    out = []
+    for name, shape in spec.get("shapes", {}).items():
+        if name in ("version", "doc") or not isinstance(shape, dict):
+            continue
+        props, required = {}, []
+        for k, t in (shape.get("input") or {}).items():
+            if isinstance(t, dict) and "type" not in t:
+                props[k] = {"type": "object"}
+                required.append(k)
+                continue
+            ts = t if isinstance(t, str) else t.get("type", "string")
+            schema, opt = _json_type(ts)
+            if isinstance(t, dict) and t.get("doc"):
+                schema["description"] = t["doc"]
+            props[k] = schema
+            if not opt and not (isinstance(t, dict) and t.get("optional")):
+                required.append(k)
+        tool = {"name": name, "description": shape.get("asks", name), "parameters": {"type": "object", "properties": props, **({"required": required} if required else {})}}
+        if shape.get("triggers"):
+            tool["triggers"] = shape["triggers"]
+        out.append(tool)
+    return out
+
+
+# ── HTTP ────────────────────────────────────────────────────────────────────
+
+class Handler(BaseHTTPRequestHandler):
+    pool: Pool
+
+    def log_message(self, fmt, *args):  # quiet
+        if os.environ.get("NEEDLE_LOG"):
+            super().log_message(fmt, *args)
+
+    def _json(self, code: int, body: dict):
+        data = json.dumps(body).encode()
+        self.send_response(code)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self):
+        if self.path.startswith("/healthz"):
+            p = self.pool
+            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "warming": p.warming, "active": [list(a) if a else None for a in p.active]})
+        self._json(404, {"error": "not found"})
+
+    def do_POST(self):
+        n = int(self.headers.get("content-length") or 0)
+        try:
+            body = json.loads(self.rfile.read(n) or b"{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "bad json"})
+        p = self.pool
+        if self.path == "/classify":
+            if not body.get("text"):
+                return self._json(400, {"error": "text required"})
+            if not p.tools:
+                return self._json(503, {"error": "no tools loaded; POST /reload"})
+            budget = float(body.get("budgetMs") or 0) / 1000 or TIMEOUT
+            out = p.request("classify", {"text": str(body["text"])[:1000], "context": [str(c)[:200] for c in (body.get("context") or [])][:8], "tools": body.get("tools"), "embed": body.get("embed", True)}, timeout=max(0.2, budget))
+            return self._json(503 if out.get("error") else 200, out)
+        if self.path == "/embed":
+            out = p.request("embed", {"texts": [str(t)[:1000] for t in (body.get("texts") or [])][:32]})
+            return self._json(503 if out.get("error") else 200, out)
+        if self.path == "/reload":
+            tools = body.get("tools")
+            if not isinstance(tools, list):
+                return self._json(400, {"error": "tools[] required"})
+            return self._json(200, p.reload(tools, body.get("subsets")))
+        if self.path == "/warm":
+            threading.Thread(target=p.warm, args=(body.get("subsets") or [],), daemon=True).start()
+            return self._json(202, {"ok": True, "warming": True})
+        self._json(404, {"error": "not found"})
+
+
+def main():
+    mp.set_start_method("spawn", force=True)
+    tools: list[dict] = []
+    spec = os.environ.get("FISHTEA_SPEC") or (sys.argv[1] if len(sys.argv) > 1 else None)
+    if spec and os.path.exists(spec):
+        tools = tools_from_spec(spec)
+        print(f"loaded {len(tools)} tools from {spec}", file=sys.stderr)
+    pool = Pool(WORKERS, tools)
+    Handler.pool = pool
+    srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    print(f"needle3 pool: {WORKERS} workers on :{PORT}", file=sys.stderr)
+    srv.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

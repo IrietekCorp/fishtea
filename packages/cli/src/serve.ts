@@ -1,0 +1,63 @@
+/**
+ * `fishtea serve`: the core process. Migrates if the entities section drifted (additive only), seeds when
+ * the business schema is empty, watches spec.json and hot-reloads non-entity sections, exposes /op/*.
+ */
+import { watch } from "node:fs";
+import pc from "picocolors";
+import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
+import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
+import { buildEngine } from "./index.ts";
+import { applySectionPatch } from "./edit.ts";
+
+export async function serve(app: App, flags: Record<string, string | boolean>, dir: string) {
+  const port = Number(flags.port ?? process.env.PORT ?? 3000);
+  const log = (s: string) => console.log(pc.dim(new Date().toISOString().slice(11, 19)) + " " + s);
+  const { engine, db } = await buildEngine(app, flags, { log });
+
+  const drift = await entitiesDrift(db, app);
+  if (drift.drifted) {
+    const report = await migrate(db, app, { log });
+    log(`migrated entities (${report.created.length} tables created, ${report.added.length} columns added)`);
+    if (report.refused.length) log(pc.yellow(`refused destructive changes: ${report.refused.join(", ")} — run: fishtea migrate --allow-destructive`));
+  }
+  const first = deriveTables(app.spec)[0];
+  if (first) {
+    const [{ n }] = await db.unsafe(`SELECT count(*)::int AS n FROM business."${first.name}"`);
+    if (n === 0 && flags["no-seed"] !== true) { const counts = await seed(db, app, { log }); log(`seeded: ${JSON.stringify(counts)}`); }
+  }
+
+  let current = app;
+  const reload = async (): Promise<App> => {
+    const next = loadApp(dir);
+    const entitiesChanged = next.hashes.entities !== current.hashes.entities;
+    if (entitiesChanged) {
+      const report = await migrate(db, next, { log });
+      log(`entities changed → migrated (${report.created.length} created, ${report.added.length} added${report.refused.length ? `, refused ${report.refused.join(",")}` : ""})`);
+    }
+    await engine.reload(next);
+    current = next;
+    log(pc.green(`reloaded spec v${next.spec.business.version} (${Object.entries(next.hashes).filter(([k, v]) => v !== app.hashes[k]).map(([k]) => k).join(",") || "no section changed"})`));
+    return next;
+  };
+
+  // hot reload on spec edits (the TUI writes the file; the volume mount makes it visible in Compose)
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    watch(app.specPath, () => { clearTimeout(timer); timer = setTimeout(() => reload().catch((e) => log(pc.red(e instanceof SpecError ? e.message : `reload failed: ${e.message}`))), 200); });
+  } catch (e) { log(pc.yellow(`spec watch unavailable: ${(e as Error).message}`)); }
+
+  const server = createServer({
+    engine,
+    operatorToken: process.env.FISHTEA_OPERATOR_TOKEN,
+    onReload: reload,
+    onRestart: async () => { log("restart requested by operator"); setTimeout(() => process.exit(0), 50); },
+    onEditSection: async (section, patch) => {
+      const r = applySectionPatch(current.specPath, section, patch);
+      const next = await reload();
+      return { ok: true, version: r.version, migrationNeeded: section === "entities" && next.hashes.entities !== current.hashes.entities };
+    },
+  });
+  Bun.serve({ port, fetch: server.fetch, idleTimeout: 255 });
+  log(pc.green(`${app.spec.business.name} core on http://localhost:${port}  classifier=${engine.classifier.name}${engine.strict ? " strict" : ""}  spec=${app.specPath}`));
+  await new Promise(() => {});
+}
