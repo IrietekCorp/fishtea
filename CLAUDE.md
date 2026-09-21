@@ -1,6 +1,6 @@
 # Fishtea — build brief
 
-Describe a business once in `spec.json`; derive the data layer, the classifier's tool list, the planner, the vessels and the operator console from it. `docs/BLUEPRINT.md` is the design; `docs/DESIGN.md` records where the build deviated from it and why (measured, not asserted).
+Describe a business once in `spec.json`; derive the data layer, the classifier's tool list, the planner, the vessels and the operator console from it. `docs/BLUEPRINT.md` is the design; `docs/DESIGN.md` records where the build deviated from it and why (measured, not asserted); `docs/NEXT.md` is the work list at the hand-off from the initial buildout.
 
 ## Commands
 
