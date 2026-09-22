@@ -13,3 +13,5 @@ site/dist/
 packages/ui/test-results/
 packages/ui/playwright-report/
 packages/ui/blob-report/
+firebase-debug.log
+.firebase/

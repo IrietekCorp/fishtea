@@ -28,7 +28,7 @@
     "build-release": "bun scripts/build-release.ts",
     "site": "bun site/build.ts",
     "e2e": "bun scripts/e2e.ts",
-    "deploy": "bun run site && bunx firebase-tools deploy --only hosting"
+    "deploy": "bun run site && bunx firebase-tools deploy --only hosting --project fishtea-io"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",
