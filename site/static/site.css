@@ -178,3 +178,35 @@ footer.bottom a { color: var(--dim); }
   position: absolute; left: -9999px;
 }
 .skip:focus { left: 1rem; top: 1rem; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border-radius: var(--radius); z-index: 20; }
+
+/* ---- blog ------------------------------------------------------------------------------------ */
+.post-card {
+  border-top: 1px solid var(--border);
+  padding-block: 1.5rem;
+}
+.post-card:first-of-type { border-top: 0; padding-top: 0.5rem; }
+.post-card h2 { border: 0; padding: 0; margin: 0 0 0.35rem; font-size: 1.3rem; letter-spacing: -0.015em; }
+.post-card h2 a { color: var(--fg); text-decoration: none; }
+.post-card h2 a:hover { color: var(--accent); }
+.post-card p { margin: 0.35rem 0; }
+.post-meta { color: var(--dim); font-size: 0.875rem; }
+.post-meta .pill { margin-left: 0.15rem; }
+
+/* ---- profile --------------------------------------------------------------------------------- */
+.profile {
+  display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;
+  margin: 1.5rem 0 2rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+}
+.profile img {
+  width: 160px; height: 160px; flex: none;
+  border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--border);
+}
+.profile > div { flex: 1 1 18rem; min-width: 0; }
+.profile p { margin: 0.4rem 0; }
+@media (max-width: 30rem) {
+  .profile { justify-content: center; text-align: center; }
+  .profile img { width: 120px; height: 120px; }
+}

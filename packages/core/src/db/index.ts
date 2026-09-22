@@ -117,7 +117,7 @@ export async function seed(db: Db, app: App, opts: { log?: (s: string) => void }
   return counts;
 }
 
-/** Drop everything Fishtea created. Tests only. */
+/** Drop everything FishTea created. Tests only. */
 export async function reset(db: Db) {
   await db.unsafe("DROP SCHEMA IF EXISTS business CASCADE; DROP SCHEMA IF EXISTS conversation CASCADE; DROP SCHEMA IF EXISTS fishtea CASCADE;");
 }

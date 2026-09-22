@@ -8,7 +8,7 @@
 import { describe, expect, test, beforeAll } from "bun:test";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { build } from "./build.ts";
+import { build, posts } from "./build.ts";
 
 const HOME = join(import.meta.dir, "..");
 const OUT = join(HOME, "site/dist");
@@ -74,6 +74,58 @@ describe("generated, not written", () => {
 
   test("the version in the footer is the framework's own", () => {
     const version = readFileSync(join(HOME, "packages/spec/src/release.ts"), "utf8").match(/FISHTEA_VERSION = "([^"]+)"/)![1];
-    expect(read("index.html")).toContain(`Fishtea ${version}`);
+    expect(read("index.html")).toContain(`FishTea ${version}`);
+  });
+});
+
+describe("welcome, glossary, blog and about", () => {
+  test("the welcome explains the lineage and links onward", () => {
+    const html = read("welcome.html");
+    expect(html).toContain("2006");
+    expect(html).toContain("getting-started.html");
+    expect(html).toContain("glossary.html");
+  });
+
+  test("the glossary defines the vocabulary the rest of the docs assume", () => {
+    const html = read("glossary.html");
+    for (const term of ["Shape", "Vessel", "Pour", "Trail", "Persona", "Plugin", "Manifest"]) {
+      expect({ term, defined: html.includes(`>${term}</strong>`) || html.includes(`<strong>${term}</strong>`) })
+        .toEqual({ term, defined: true });
+    }
+  });
+
+  test("every blog post is listed, newest first, and has its own page", () => {
+    const all = posts();
+    expect(all.length).toBeGreaterThan(0);
+    const index = read("blog.html");
+    for (const p of all) {
+      expect({ slug: p.slug, listed: index.includes(`blog/${p.slug}.html`) }).toEqual({ slug: p.slug, listed: true });
+      expect(existsSync(join(OUT, `blog/${p.slug}.html`))).toBe(true);
+      expect(read(`blog/${p.slug}.html`)).toContain(p.title.replace(/&/g, "&amp;").replace(/"/g, "&quot;"));
+    }
+    // Filenames start with a date, so reverse-sorted order is newest first.
+    const dates = all.map((p) => p.date);
+    expect([...dates].sort().reverse()).toEqual(dates);
+  });
+
+  test("a post's frontmatter never reaches the page", () => {
+    for (const p of posts()) expect(read(`blog/${p.slug}.html`)).not.toContain("summary:");
+  });
+
+  test("the about page profiles the creator, with the portrait shipped not hotlinked", () => {
+    const html = read("about.html");
+    expect(html).toContain("Shawn J. Stewart");
+    expect(html).toContain("piscopour.com");
+    expect(html).toContain("static/img/shawn-stewart.jpg");
+    expect(html).not.toContain("piscopour.com/assets");      // served from here, not from another host
+    expect(existsSync(join(OUT, "static/img/shawn-stewart.jpg"))).toBe(true);
+    expect(existsSync(join(OUT, "static/img/shawn-stewart@2x.jpg"))).toBe(true);
+  });
+
+  test("the brand is FishTea everywhere it is written out", () => {
+    for (const f of readdirSync(OUT).filter((f) => f.endsWith(".html"))) {
+      const text = read(f).replace(/<[^>]+>/g, " ");
+      expect({ page: f, stale: /\bFishtea\b/.test(text) }).toEqual({ page: f, stale: false });
+    }
   });
 });

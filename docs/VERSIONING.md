@@ -1,6 +1,6 @@
 # Versioning and updates
 
-An application generated from Fishtea is its own project, with its own git history, its own edits and its
+An application generated from FishTea is its own project, with its own git history, its own edits and its
 own life. The framework moves underneath it. This is how those two facts are kept from fighting.
 
 ## Three versions, kept apart

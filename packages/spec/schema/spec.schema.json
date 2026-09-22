@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fishtea.dev/spec.schema.json",
-  "title": "Fishtea business spec",
+  "title": "FishTea business spec",
   "type": "object",
   "required": [
     "fishtea",

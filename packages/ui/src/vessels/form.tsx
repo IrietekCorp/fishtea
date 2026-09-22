@@ -107,15 +107,21 @@ const ADDRESS_KEYS = ["name", "line1", "city", "region", "postal", "country"];
 /**
  * Read one field's value out of whatever react-hook-form handed back.
  *
- * A dot in a registered name is a *path* to react-hook-form, so "shipTo.line1" comes back as
- * `{ shipTo: { line1 } }` rather than under the flat key — and reading only the flat key silently dropped
- * every address line, so an order was placed with a country and nothing else. Both shapes are read here:
- * the flat key first, because defaultValues are given flat, then the path.
+ * A dot in a registered name is a *path* to react-hook-form, so `register("shipTo.line1")` writes to
+ * `{ shipTo: { line1 } }`. But `defaultValues` is stored as given, and we give it flat dotted keys — so
+ * the submitted values are a **hybrid**: a stale `"shipTo.line1": ""` from the defaults sitting next to
+ * the live `shipTo.line1` the visitor actually typed.
+ *
+ * So the path wins and the flat key is only a fallback. Reading flat-first looks harmless and is not: the
+ * empty default shadows the real value, every address line is dropped as "empty", and the order goes out
+ * with nothing but its country. Reading path-first still supports a purely flat object, because the path
+ * lookup simply misses and falls through.
  */
 function valueAt(values: Record<string, unknown>, path: string[]): unknown {
+  const nested = path.reduce<any>((o, part) => (o == null ? undefined : o[part]), values);
+  if (nested !== undefined && nested !== "") return nested;
   const flat = values[path.join(".")];
-  if (flat !== undefined) return flat;
-  return path.reduce<any>((o, part) => (o == null ? undefined : o[part]), values);
+  return flat !== undefined && flat !== "" ? flat : nested ?? flat;
 }
 
 export function unflatten(values: Record<string, unknown>, fields: Flat[]): Record<string, unknown> {

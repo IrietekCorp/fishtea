@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Fishtea installer.
+# FishTea installer.
 #
 #   curl -fsSL https://fishtea.dev/install | bash              the newest release
 #   curl -fsSL https://fishtea.dev/install | bash -s 1.1.0     a particular one

@@ -1,5 +1,5 @@
 /**
- * The Fishtea type vocabulary (BLUEPRINT §5).
+ * The FishTea type vocabulary (BLUEPRINT §5).
  *
  *   id string text int number money boolean enum email url timestamp date json
  *   T[]      list of T

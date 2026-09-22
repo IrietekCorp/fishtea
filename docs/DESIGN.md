@@ -1,4 +1,4 @@
-# Fishtea — what the build measured and changed
+# FishTea — what the build measured and changed
 
 This file records where the implementation deviates from `BLUEPRINT.md`, and why. Every deviation is backed by a measurement taken during the build on 2026-09-21 (Linux x86-64, CPU only, `cactus-needle 3.0.4`).
 

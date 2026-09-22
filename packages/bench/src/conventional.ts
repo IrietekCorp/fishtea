@@ -1,7 +1,7 @@
 /**
  * The conventional baseline (§11): a minimal multi-page Hono app that does the same task with routes and
  * full page loads — home → search → product → login → cart → checkout → confirmation. Scripted with fetch
- * (no browser); reports task-completion time, request count and bytes so Fishtea's numbers sit next to a
+ * (no browser); reports task-completion time, request count and bytes so FishTea's numbers sit next to a
  * number, not an assertion. It reads the same Postgres.
  */
 import { Hono } from "hono";

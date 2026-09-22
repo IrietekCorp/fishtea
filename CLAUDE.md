@@ -1,4 +1,4 @@
-# Fishtea — build brief
+# FishTea — build brief
 
 Describe a business once in `spec.json`; derive the data layer, the classifier's tool list, the planner, the vessels and the operator console from it. `docs/BLUEPRINT.md` is the design; `docs/DESIGN.md` records where the build deviated from it and why (measured, not asserted); `docs/NEXT.md` is the work list at the hand-off from the initial buildout.
 
@@ -9,6 +9,8 @@ bun install
 docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18
 bun test packages                 # spec + core + http + templates + tui (needs the container above on :5434)
 bun test packages/tui             # the console, driven through a pty
+bun run e2e                       # the browser walkthrough, headless (skips cleanly with no browser/db)
+bun run typecheck                 # both projects, including packages/ui
 bun run validate --app templates/ecommerce
 bun run headless --app templates/ecommerce --script templates/ecommerce/scripts/walkthrough.json   # DATABASE_URL, lexical classifier
 bun run dev --app templates/ecommerce # core on :3000 (FISHTEA_INTENT=needle + CLASSIFIER_URL for the real classifier)

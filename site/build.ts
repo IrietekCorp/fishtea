@@ -54,7 +54,7 @@ interface Page {
   landing?: boolean;
 }
 
-const NAV_GROUPS = ["Start", "Operating", "Reference", "Design"] as const;
+const NAV_GROUPS = ["Start", "Operating", "Reference", "Design", "Project"] as const;
 
 function layout(page: Page, pages: Page[]): string {
   const docPages = pages.filter((p) => p.nav);
@@ -70,19 +70,19 @@ function layout(page: Page, pages: Page[]): string {
   }).join("");
 
   const topNav = [
-    ["docs", "getting-started"],
-    ["plugins", "plugins"],
-    ["versioning", "versioning"],
+    ["docs", "welcome"],
+    ["glossary", "glossary"],
     ["spec", "spec-reference"],
-    ["cli", "cli-reference"],
-  ].map(([label, s]) => `<a href="${href(s)}"${page.slug === s ? ' aria-current="page"' : ""}>${label}</a>`).join("");
+    ["blog", "blog"],
+    ["about", "about"],
+  ].map(([label, s]) => `<a href="${href(s)}"${page.slug === s || (s === "blog" && page.slug.startsWith("blog/")) ? ' aria-current="page"' : ""}>${label}</a>`).join("");
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(page.title)}${page.landing ? "" : " — Fishtea"}</title>
+<title>${esc(page.title)}${page.landing ? "" : " — FishTea"}</title>
 <meta name="description" content="Describe a business once in JSON; derive the database, the classifier's tools, the planner, the UI and the operator console from it.">
 <link rel="stylesheet" href="${root}static/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>🍵</text></svg>">
@@ -90,15 +90,15 @@ function layout(page: Page, pages: Page[]): string {
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-  <a class="brand" href="${href("")}">fish<span>tea</span></a>
+  <a class="brand" href="${href("")}">Fish<span>Tea</span></a>
   <nav>${topNav}</nav>
 </div></header>
 ${isDoc
     ? `<main id="main" class="wrap docs"><aside class="side">${side}</aside><article class="prose">${page.body()}</article></main>`
     : `<main id="main">${page.body()}</main>`}
 <footer class="bottom"><div class="wrap">
-  <span>Fishtea ${VERSION} — solid ground, liquid UI.</span>
-  <span><a href="${href("getting-started")}">Docs</a> · <a href="${href("spec-reference")}">Spec reference</a></span>
+  <span>FishTea ${VERSION} — solid ground, liquid UI.</span>
+  <span><a href="${href("welcome")}">Docs</a> · <a href="${href("blog")}">Blog</a> · <a href="${href("about")}">About</a></span>
 </div></footer>
 </body>
 </html>
@@ -289,6 +289,110 @@ thing.</p>
 `;
 }
 
+
+// ---- the blog ---------------------------------------------------------------------------------------
+/**
+ * Posts are markdown files in site/blog with a small frontmatter block. The filename carries the date so
+ * the directory sorts itself, and the slug is whatever follows it.
+ */
+interface Post { slug: string; title: string; date: string; summary: string; tags: string[]; body: string }
+
+function frontmatter(raw: string): { meta: Record<string, string>; body: string } {
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!m) return { meta: {}, body: raw };
+  const meta: Record<string, string> = {};
+  for (const line of m[1].split(/\r?\n/)) {
+    const i = line.indexOf(":");
+    if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  }
+  return { meta, body: raw.slice(m[0].length) };
+}
+
+export function posts(): Post[] {
+  const dir = join(HOME, "site/blog");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .sort()
+    .reverse()                                            // newest first: the filenames start with a date
+    .map((f) => {
+      const { meta, body } = frontmatter(readFileSync(join(dir, f), "utf8"));
+      const named = f.replace(/\.md$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "");
+      return {
+        slug: named,
+        title: meta.title ?? named,
+        date: meta.date ?? f.slice(0, 10),
+        summary: meta.summary ?? "",
+        tags: meta.tags ? meta.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        body,
+      };
+    });
+}
+
+const readableDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+function blogIndex(): string {
+  const all = posts();
+  if (!all.length) return `<h1>Blog</h1><p>Nothing published yet.</p>`;
+  return `<h1>Blog</h1>
+<p>Notes on building FishTea: what we measured, what we got wrong, and why the design is shaped the way it
+is.</p>
+${all.map((p) => `<article class="post-card">
+  <h2 id="${p.slug}"><a href="blog/${p.slug}.html">${esc(p.title)}</a></h2>
+  <p class="post-meta"><time datetime="${p.date}">${readableDate(p.date)}</time>${p.tags.length ? ` · ${p.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}` : ""}</p>
+  <p>${esc(p.summary)}</p>
+  <p><a href="blog/${p.slug}.html">Read →</a></p>
+</article>`).join("\n")}`;
+}
+
+function blogPost(p: Post): string {
+  return `<p class="post-meta"><a href="../blog.html">← Blog</a></p>
+<h1>${esc(p.title)}</h1>
+<p class="post-meta"><time datetime="${p.date}">${readableDate(p.date)}</time>${p.tags.length ? ` · ${p.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}` : ""}</p>
+${md(p.body)}
+<hr>
+<p class="post-meta"><a href="../blog.html">← More posts</a></p>`;
+}
+
+// ---- about ------------------------------------------------------------------------------------------
+function about(): string {
+  return `<h1>About</h1>
+<p>FishTea is built by Shawn J. Stewart. It is the second life of a project he first wrote in 2006 — and
+the first version able to finish the idea, because the piece that was missing then is a small language
+model that now runs on an ordinary machine.</p>
+
+<div class="profile">
+  <img src="static/img/shawn-stewart.jpg" srcset="static/img/shawn-stewart.jpg 1x, static/img/shawn-stewart@2x.jpg 2x"
+       width="160" height="160" alt="Shawn J. Stewart" loading="lazy">
+  <div>
+    <h2 id="shawn-j-stewart" style="border:0;padding:0;margin-top:0">Shawn J. Stewart</h2>
+    <p class="post-meta">The AI-Native Architect</p>
+    <p>Technical executive and venture builder with 25+ years scaling global engineering organizations,
+    working in AI infrastructure, distributed systems and engineering leadership.</p>
+    <p><a href="https://piscopour.com" rel="me">piscopour.com</a></p>
+  </div>
+</div>
+
+<h2 id="why-this-exists">Why this exists</h2>
+<p>The first FishTea, in 2006, described a business in markup and grew its data layer, modules and
+templates from that description. It got the data half right and stopped, because the other half — working
+out what a visitor actually meant, cheaply enough to sit in front of every single request — was not
+possible at the time at any price.</p>
+<p>That constraint is gone. A small tool-calling model classifies intent on local hardware in a couple of
+hundred milliseconds and costs nothing per request, which is what makes replacing routing with
+conversation a real option rather than a demo. The rest of FishTea follows from that one change.</p>
+<p>The longer version is in <a href="welcome.html">Welcome</a>, and the full design — including the
+decisions that are settled and why — is in <a href="blueprint.html">the blueprint</a>.</p>
+
+<h2 id="contributing">Contributing</h2>
+<p>The most useful contribution is a plugin. Everything outside the conversation itself is one:
+integrations, design systems, auth, notification channels, whole archetypes. Write it locally with
+<code>fishtea plugin create</code>, and when it is good, <code>fishtea plugin promote</code> moves it into
+the framework — a move, not a rewrite, so the application you wrote it for keeps working untouched.</p>
+<p>See <a href="plugins.html">Plugins</a> for the mechanism.</p>`;
+}
+
 // ---- documentation pages from markdown ----------------------------------------------------------------
 /** Read a markdown file, drop its first H1 (the page title renders it), and render the rest. */
 function fromMarkdown(file: string, title: string): string {
@@ -299,8 +403,9 @@ function fromMarkdown(file: string, title: string): string {
 async function pages(): Promise<Page[]> {
   const cli = await cliReference();
   return [
-    { slug: "", title: "Fishtea — describe a business once, derive everything else", body: landing, landing: true },
+    { slug: "", title: "FishTea — describe a business once, derive everything else", body: landing, landing: true },
 
+    { slug: "welcome", title: "Welcome", nav: "Welcome", group: "Start", body: () => fromMarkdown("docs/WELCOME.md", "Welcome") },
     { slug: "getting-started", title: "Getting started", nav: "Getting started", group: "Start", body: () => fromMarkdown("docs/GETTING-STARTED.md", "Getting started") },
     { slug: "archetypes", title: "Archetypes", nav: "Archetypes", group: "Start", body: () => fromMarkdown("docs/ARCHETYPES.md", "Archetypes") },
 
@@ -308,11 +413,16 @@ async function pages(): Promise<Page[]> {
     { slug: "plugins", title: "Plugins", nav: "Plugins", group: "Operating", body: () => fromMarkdown("docs/PLUGINS.md", "Plugins") },
     { slug: "operating", title: "Running it", nav: "Running it", group: "Operating", body: () => fromMarkdown("docs/OPERATING.md", "Running it") },
 
+    { slug: "glossary", title: "Glossary", nav: "Glossary", group: "Reference", body: () => fromMarkdown("docs/GLOSSARY.md", "Glossary") },
     { slug: "spec-reference", title: "Spec reference", nav: "Spec reference", group: "Reference", body: specReference },
     { slug: "cli-reference", title: "CLI reference", nav: "CLI reference", group: "Reference", body: () => cli },
 
     { slug: "blueprint", title: "The blueprint", nav: "The blueprint", group: "Design", body: () => fromMarkdown("docs/BLUEPRINT.md", "The blueprint") },
     { slug: "measured", title: "What the build measured", nav: "What we measured", group: "Design", body: () => fromMarkdown("docs/DESIGN.md", "What the build measured") },
+
+    { slug: "blog", title: "Blog", nav: "Blog", group: "Project", body: blogIndex },
+    { slug: "about", title: "About", nav: "About", group: "Project", body: about },
+    ...posts().map((p): Page => ({ slug: `blog/${p.slug}`, title: p.title, body: () => blogPost(p) })),
   ];
 }
 

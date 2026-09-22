@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🍵 Fishtea
+# 🍵 FishTea
 
 **Describe a business once. Derive everything else.**
 

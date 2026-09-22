@@ -1,7 +1,7 @@
 [
  {
   "id": "pr_1",
-  "name": "Fishtea",
+  "name": "FishTea",
   "role": "Architect",
   "summary": "A spec-driven framework: describe a business in JSON, derive the data layer, classifier tools, planner and UI.",
   "outcome": "Two very different businesses derive from one engine with zero code changes; every classify call budgeted and measured.",

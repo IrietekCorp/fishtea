@@ -141,13 +141,13 @@ export function writeAppFiles(dir: string, a: { id: string; name: string; templa
   const home = a.fishteaHome;
   const files: Record<string, string> = {
     "package.json": JSON.stringify({
-      name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a Fishtea application (${a.template} archetype)`,
+      name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a FishTea application (${a.template} archetype)`,
       scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
       fishtea: { template: a.template, version: caretRange(FISHTEA_VERSION), home },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
 /**
- * Finds the Fishtea framework and hands it this application. Four places are tried, nearest first, so an
+ * Finds the FishTea framework and hands it this application. Four places are tried, nearest first, so an
  * application works whether the framework is installed, vendored, checked out beside it, or on \$PATH:
  *
  *   1. FISHTEA_HOME               an explicit checkout, which always wins
@@ -197,7 +197,7 @@ process.exit(await proc.exited);
     ".gitignore": "node_modules/\n.env\n.fishtea/*\n!.fishtea/manifest.json\n*.new\n",
     "README.md": `# ${a.name}
 
-A [Fishtea](${home}) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.
+A [FishTea](${home}) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.
 
 \`\`\`
 bun run up        # docker compose: Postgres (pgvector) + needle3 classifier pool + core + ui
@@ -224,7 +224,7 @@ Layout: \`spec.json\` (the business), \`calls/\` (SQL with $1..$n parameters, co
  */
 export function envFile(home: string, template: string): string {
   const lan = lanAddress();
-  return `# Fishtea application settings. Bun loads this file automatically.
+  return `# FishTea application settings. Bun loads this file automatically.
 # Each of these can also be passed as a flag: --db, --classifier, --host, --port.
 
 # --- where the services are -------------------------------------------------

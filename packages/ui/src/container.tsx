@@ -63,7 +63,7 @@ export function Container() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <header className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground"><span className="font-semibold text-foreground">Fishtea</span>{res && <Badge variant="outline">{res.persona}</Badge>}</div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground"><span className="font-semibold text-foreground">FishTea</span>{res && <Badge variant="outline">{res.persona}</Badge>}</div>
         <Button variant="ghost" size="sm" onClick={() => setShowTrail((s) => !s)} aria-expanded={showTrail}>trail · {turns.length}</Button>
       </header>
 

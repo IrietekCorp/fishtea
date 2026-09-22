@@ -1,4 +1,4 @@
-# Fishtea — the work list
+# FishTea — the work list
 
 Read `CLAUDE.md` first (commands, layout, rules of the house), then `docs/DESIGN.md` (measured deviations
 from `docs/BLUEPRINT.md`). This file is what is left.
@@ -52,9 +52,15 @@ its focus trap, persona transitions (stranger → customer → mid-purchase, eva
 badge moves on the *next* turn), trail rewind and branching, resume-on-reload, and operator notifications
 over SSE.
 
-**Not covered**, and still worth a pass: axe/screen-reader (steps 9–11) — a browser extension in the review
-environment blocked real keystrokes and screenshots, so keyboard and AT behaviour was not exercised. The
-Playwright spec in `packages/ui/e2e/walkthrough.playwright.ts` is still unrun.
+The walkthrough is now **headless and automated**: `bun run e2e` scaffolds a throwaway application, brings
+up a stack, and runs nine Playwright tests against a clean browser profile in about ten seconds. It skips
+with a reason (exit 0) where there is no browser or database, so it is safe in CI. It immediately earned
+its keep by catching a tenth bug the manual pass could not prove — react-hook-form submits a *hybrid* of
+flat default keys and nested live values, and reading the flat key first let a stale empty default shadow
+everything the visitor had typed.
+
+**Not covered**: accessibility. `@axe-core/playwright` is installed and unused — an axe pass per vessel,
+plus keyboard-only navigation and focus order, is the obvious next step.
 
 ### 1b. Prefill what the visitor already told us (half a day)
 The acceptance checklist says "knowns pre-filled", and they are not: a customer who has just given their

@@ -1,4 +1,4 @@
-# Fishtea — Build Blueprint
+# FishTea — Build Blueprint
 
 **Version 1.0 · 2026-09-21 · for a Claude CLI build session**
 
@@ -36,7 +36,7 @@ Words used precisely throughout:
 
 ## 1. Thesis and lineage
 
-Fishtea (2006, PHP/XML/Smarty) described a problem in markup and grew the ORM, the module, the template and the connective tissue from that description. It had four ideas under the PHP: the URL was the question; a module described the problem and its template grew from it; components were embeddable answers; `Renv` remembered where you came from. It stopped at the data half because nothing in 2006 could conduct an interview or classify intent cheaply.
+FishTea (2006, PHP/XML/Smarty) described a problem in markup and grew the ORM, the module, the template and the connective tissue from that description. It had four ideas under the PHP: the URL was the question; a module described the problem and its template grew from it; components were embeddable answers; `Renv` remembered where you came from. It stopped at the data half because nothing in 2006 could conduct an interview or classify intent cheaply.
 
 Those constraints are gone. This version delivers the original imagination:
 
@@ -48,7 +48,7 @@ Those constraints are gone. This version delivers the original imagination:
 6. **Personalization is the conversation, not the profile.** Not colors and dark mode; not a flattened attribute list; the richness of what has been said. This also reframes analytics: the session is the conversation and the conversation is the customer record.
 7. **Two-way.** The engine informs the consumer of what's available and the business of what was asked and couldn't be answered. A failed classification is demand signal, not an error.
 
-The talk that prompted the resurrection ("Quantum UI") argues the same split from the design side and ends on *what has to stay fixed: governance, permissions, who can see what.* That is the ground. Fishtea makes it a list you can read — the spec — rather than a policy you hope a model follows.
+The talk that prompted the resurrection ("Quantum UI") argues the same split from the design side and ends on *what has to stay fixed: governance, permissions, who can see what.* That is the ground. FishTea makes it a list you can read — the spec — rather than a policy you hope a model follows.
 
 ---
 
@@ -518,7 +518,7 @@ The claim is "faster than a conventional multi-page implementation of the same t
 | core cold start to first pour | ≤ 2 s |
 | pool cold start (model load) | ≤ 5 s |
 
-**Harness** (`packages/bench`): `bun bench` runs a fixed script of 40 utterances (stranger → known → bridge → cart → checkout → status) against a Compose stack, 200 iterations, reports p50/p95/p99 per metric, writes `bench/results/<date>.json`, and diffs against `bench/baseline.json`. **Baseline to beat:** `bench/conventional/` — a minimal multi-page Hono app doing the same task with routes and full page loads; the harness scripts it with Playwright and reports task-completion time and bytes transferred alongside Fishtea's numbers.
+**Harness** (`packages/bench`): `bun bench` runs a fixed script of 40 utterances (stranger → known → bridge → cart → checkout → status) against a Compose stack, 200 iterations, reports p50/p95/p99 per metric, writes `bench/results/<date>.json`, and diffs against `bench/baseline.json`. **Baseline to beat:** `bench/conventional/` — a minimal multi-page Hono app doing the same task with routes and full page loads; the harness scripts it with Playwright and reports task-completion time and bytes transferred alongside FishTea's numbers.
 
 **Design levers already in the architecture:** no navigation round-trips; needle sized for per-keystroke; planner concurrency; prepared statements; persona-filtered tool lists (fewer tools → faster classification); embeddings and recall off the hot path (recall runs concurrently with classification and is dropped if it misses budget); SSE instead of polling; the client holds no state to rehydrate.
 
@@ -605,7 +605,7 @@ Build in this order. Each phase has a test that must pass before the next begins
 
 **Phase 7 — TUI (1 day).** Onboard, edit, run. *Accept:* create a third spec from the `program` template in under five prompts; edit `rules.pricing.freeShippingOver` and see it hot-reload without restart; entity edit prompts for migration.
 
-**Phase 8 — Bench (1 day).** Harness, budgets in CI, conventional baseline. *Accept:* `bun bench` produces the table in §11 with every budget green on the reference machine, and reports Fishtea vs conventional task-completion time.
+**Phase 8 — Bench (1 day).** Harness, budgets in CI, conventional baseline. *Accept:* `bun bench` produces the table in §11 with every budget green on the reference machine, and reports FishTea vs conventional task-completion time.
 
 **Phase 9 — ChicDuJour refactor (open-ended).** Inspect the existing chicdujour repo; migrate its catalog and intent into `specs/chicdujour.spec.json`; keep what fits the mood-driven co-shopper (mood equalizer as `findAccessories.mood`, trend signals as a `products.trending` call, engagement reactions as a write shape). The AI Explorer Camp spec (sessions, enrolment, scholarships, device loans, parent notifications) must keep deriving unchanged as the check that nothing became fashion-specific.
 

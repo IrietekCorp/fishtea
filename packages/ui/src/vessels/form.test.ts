@@ -96,6 +96,27 @@ describe("unflatten", () => {
     });
   });
 
+  test("HYBRID values: the live nested value beats the stale flat default", () => {
+    // This is what react-hook-form actually submits. defaultValues is stored flat as given, while
+    // register() writes to the path — so both keys exist and only one of them is current. Reading the
+    // flat one first silently dropped everything the visitor typed.
+    const out = unflatten({
+      "shipTo.name": "", "shipTo.line1": "", "shipTo.city": "", "shipTo.region": "",
+      "shipTo.postal": "", "shipTo.country": "US",
+      shipTo: { name: "Review Person", line1: "12 Example Way", city: "Leeds", region: "West Yorkshire", postal: "LS1 1AA", country: "US" },
+      email: "review@example.com",
+    } as any, flat);
+    expect(out).toEqual({
+      shipTo: { name: "Review Person", line1: "12 Example Way", city: "Leeds", region: "West Yorkshire", postal: "LS1 1AA", country: "US" },
+      email: "review@example.com",
+    });
+  });
+
+  test("a flat default still applies when the path holds nothing", () => {
+    const out = unflatten({ "shipTo.country": "US", shipTo: { country: "" }, email: "e@x.com" } as any, flat);
+    expect(out).toEqual({ shipTo: { country: "US" }, email: "e@x.com" });
+  });
+
   test("empty values are dropped rather than sent as blanks", () => {
     const out = unflatten({ "shipTo.name": "", "shipTo.city": "Leeds", email: "" }, flat);
     expect(out).toEqual({ shipTo: { city: "Leeds" } });
