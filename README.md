@@ -25,14 +25,38 @@ bun fishtea templates        # the archetypes and their onboarding interviews
 ## Create an application
 
 ```bash
-bun fishtea new my-shop --template ecommerce --interactive     # answer the interview in the terminal
+bun fishtea new myapp --template ecommerce --interactive     # answer the interview in the terminal
 # or non-interactive:  --answers answers.json  (keys are the question ids in templates/ecommerce/onboard.json)
 # or from the console: bun run tui → Onboard
-cd my-shop
-cp .env.example .env         # vendor credentials (EBAY_APP_ID, …) go here, never in spec.json
+cd ../myapp && bun run doctor
 ```
 
-The generated directory holds `spec.json`, `calls/`, `seed/`, `rules/`, `scripts/`, its own `docker-compose.yml`, and a `fishtea.ts` shim that runs the framework CLI from this checkout. Nothing to install inside it.
+**Where it goes.** An application is its own project, so it is never created inside the framework checkout. Run `fishtea new` from wherever you keep projects and it lands in the current directory; run it from inside fishtea and it lands beside fishtea. `--dir <path>` sets the exact directory, `--workspace <path>` (or `FISHTEA_WORKSPACE`) sets the parent, and the console asks. The id defaults to `myapp`.
+
+The generated directory holds `spec.json`, `calls/`, `seed/`, `rules/`, `scripts/`, its own `docker-compose.yml`, a `.env` that already works, and a `fishtea.ts` shim that runs the framework CLI from this checkout. Nothing to install inside it.
+
+## Running on a network
+
+Nothing assumes localhost. The core binds `0.0.0.0` by default, so a fresh application answers on every address of the machine it runs on, and the start-up banner prints the addresses other machines should dial.
+
+| setting | flag | what it is |
+|---|---|---|
+| `FISHTEA_HOST` | `--host` | what the core binds. `0.0.0.0` (default) accepts any address; `127.0.0.1` keeps it local |
+| `PORT` | `--port` | the core's port |
+| `FISHTEA_PUBLIC_HOST` | `--public-host` | the address others dial. Detected from the LAN when unset; used for printed URLs and the UI's `VITE_CORE_URL` |
+| `DATABASE_URL` | `--db` | Postgres, wherever it lives |
+| `CLASSIFIER_URL` | `--classifier` | the needle pool, wherever it lives |
+
+`bun run doctor` checks all four and says what is wrong and how to fix it:
+
+```
+✓ spec        Example Store v2026.09.21-1
+✓ database    postgres://fishtea:***@db.lan:5432/fishtea
+✗ classifier  http://localhost:8081 unreachable — text utterances will pour "ask"
+✓ binding     0.0.0.0:3000 · other machines dial http://10.10.10.19:3000
+```
+
+A missing classifier is a warning: the core still runs and pours `ask` for text utterances. A missing database stops start-up, with the command to fix it.
 
 ## Build and run (Docker, the whole stack)
 
@@ -66,9 +90,8 @@ You need a PostgreSQL 18 with pgvector. The quickest is the image the stack uses
 ```bash
 docker run -d --name fishtea-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea \
   -e POSTGRES_DB=fishtea -p 5432:5432 pgvector/pgvector:pg18
-export DATABASE_URL=postgres://fishtea:fishtea@localhost:5432/fishtea
 
-# inside a generated app:
+# inside a generated app (.env already points at localhost:5432; edit it for anywhere else):
 bun run migrate && bun run seed
 bun run headless             # scripted conversation from scripts/walkthrough.json, no UI, dev lexical classifier
 bun run dev                  # core on :3000
@@ -128,13 +151,14 @@ Budgets are in `packages/bench/budgets.json`; the run fails if a budget is excee
 
 | command | what it does |
 |---|---|
+| `bun fishtea doctor` | check the spec, the database, the classifier and the binding |
 | `bun fishtea validate` | validate `spec.json`, print section hashes |
 | `bun fishtea derive --ddl` / `--tools` / `--forms` | show what the spec derives |
 | `bun fishtea migrate [--allow-destructive]` | additive migration; destructive changes are refused unless allowed |
 | `bun fishtea seed` | upsert `seed/*.json` |
 | `bun fishtea headless [--script f.json] [--json]` | run a scripted conversation, print each pour |
 | `bun fishtea notify <visitorId> "text"` | queue an operator notification (needs `FISHTEA_OPERATOR_TOKEN`) |
-| `bun fishtea new <id> --template <t>` | scaffold; `--interactive`, `--answers f.json`, `--dir`, `--name`, `--force` |
+| `bun fishtea new [id] --template <t>` | scaffold (id defaults to `myapp`); `--interactive`, `--answers f.json`, `--dir`, `--workspace`, `--name`, `--force` |
 
 Inside a generated app the same commands are `bun run <name>`; in this checkout add `--app <dir>`.
 

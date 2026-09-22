@@ -14,7 +14,8 @@ bun run headless --app templates/ecommerce --script templates/ecommerce/scripts/
 bun run dev --app templates/ecommerce # core on :3000 (FISHTEA_INTENT=needle + CLASSIFIER_URL for the real classifier)
 bun run tui --app templates/ecommerce # operator console
 bun run up                        # docker compose: db + classifier + core + ui for FISHTEA_APP_DIR (default templates/ecommerce)
-bun fishtea templates && bun fishtea new my-shop --template ecommerce --answers a.json   # scaffold (its own compose + TUI)
+bun fishtea templates && bun fishtea new myapp --template ecommerce --answers a.json   # scaffold beside fishtea, never inside it
+bun fishtea doctor --app templates/ecommerce            # spec, database, classifier, binding
 bun run bench -- --conventional   # against a running core
 bunx tsc -p tsconfig.json --noEmit
 ```
@@ -36,5 +37,7 @@ bunx tsc -p tsconfig.json --noEmit
 - SQL files use `$1..$n` in declared input order; never string-build SQL. jsonb params are passed as JS values (postgres.js encodes them).
 - Writes always pour `confirm-write` first; the model never evaluates a rule; rules live in `spec.rules` and compute modules.
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
+- Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
+- Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.
 - Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain.
 - Tests run against a real Postgres (pgvector). Keep them that way.

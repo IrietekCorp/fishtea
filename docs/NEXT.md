@@ -13,7 +13,7 @@ Written 2026-09-21 at the hand-off from the design/build session. Read `CLAUDE.m
 ## Work list, in priority order
 
 ### 1. Click through the web UI (half a day)
-`packages/ui/e2e/README.md` is the checklist; `walkthrough.spec.ts` is a Playwright spec (`bunx playwright install chromium`, needs `@playwright/test` and `@axe-core/playwright` added to `packages/ui`). Start `bun run dev --app templates/ecommerce` and `cd packages/ui && bun run dev`. Expect problems in: the form vessel's nested `shipTo` fields and enum selects (`src/vessels/form.tsx`), the timeline vessel with the verification template's mixed events, and the SSE reconnect (`src/lib/client.ts` never retries).
+`packages/ui/e2e/README.md` is the checklist; `walkthrough.playwright.ts` is a Playwright spec (`bunx playwright install chromium`, needs `@playwright/test` and `@axe-core/playwright` added to `packages/ui`). Start `bun run dev --app templates/ecommerce` and `cd packages/ui && bun run dev`. Expect problems in: the form vessel's nested `shipTo` fields and enum selects (`src/vessels/form.tsx`), the timeline vessel with the verification template's mixed events, and the SSE reconnect (`src/lib/client.ts` never retries).
 
 ### 2. Bring the Compose stack up from clean (half a day)
 `bun fishtea new t --template ecommerce --answers /dev/null || true`, then `bun run up` in it. Likely first failures: `Dockerfile.core`'s `ui` target expects `packages/ui/node_modules` (the UI has its own `bun install`; add a `RUN` for it), and the classifier image downloading weights on first start (the healthcheck allows 5 min; check `HOME=/models` is writable). Then confirm the TUI's *Restart core* works under Compose (`op.restart` exits the process; Compose restarts it because of `restart:` — which is **not set**; add `restart: unless-stopped` to `core` in both compose files).
@@ -24,6 +24,7 @@ Written 2026-09-21 at the hand-off from the design/build session. Read `CLAUDE.m
 - UI: products with `affiliateUrl` and `stock = 0` need a "buy at vendor" treatment. `packages/ui/src/fields.tsx` treats fields by name; add one for `affiliateUrl` and let the list/card vessels show it as the primary action.
 
 ### 4. Small correctness items (hours each)
+- `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4 address; a machine with several NICs or behind NAT needs it set by hand. There is no TLS story: the core speaks HTTP and expects something in front of it (blueprint §12.7).
 - The console's Spec screen can add a shape but not an entity or a call; both are the same wizard shape (`packages/tui/src/screens/spec.tsx`, the `addShape` mode).
 - `packages/tui/src/screens/run.tsx` shells out to `bun <cli> headless|bench` by path; if the CLI grows a `--json` streaming mode, show it in a pane instead of suspending.
 - `packages/cli/src/serve.ts` watches `spec.json` only; edits to `calls/*.sql|ts` need a restart. Watch the `calls/` dir too and re-run `engine.reload`.

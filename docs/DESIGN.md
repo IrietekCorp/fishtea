@@ -72,6 +72,26 @@ a stray LF from the terminal landed inside a single-line field (fixed by filteri
 typing `q4q4` into a field does not quit or switch screens; and `tab` is deliberately not a global, because the
 Conversations screen uses it for its own tabs.
 
+## Nothing assumes localhost
+
+The first build hard-coded `localhost` for Postgres and the classifier and let `Bun.serve` pick its own
+binding, so a fresh application only worked if every service happened to be on the same machine, and a missing
+database surfaced as `connect ECONNREFUSED 127.0.0.1:5432` from inside postgres.js.
+
+Now every address resolves flag → environment → default in `packages/cli/src/env.ts`, the core binds `0.0.0.0`
+so it answers on every address of its host, and start-up prints the URLs other machines should dial along with
+where the database and classifier actually are. `FISHTEA_PUBLIC_HOST` (detected from the LAN when unset) is
+what the browser UI is told to call, so Compose no longer hands the UI a `localhost` that means the container.
+A missing database now raises a `SetupError` that names the target and lists the ways to fix it; a missing
+classifier is only a warning, because the core still runs and pours `ask`. `fishtea doctor` reports all four.
+
+## An application is its own project
+
+`fishtea new` used to resolve its target against the current directory, so running it inside the framework
+checkout nested the application in fishtea's own git history. The target is now `--dir`, else
+`--workspace`/`FISHTEA_WORKSPACE`, else the current directory — and a directory inside the framework is refused
+outright with the three ways out. The default id is `myapp`. The console asks where the directory should go.
+
 ## Postgres version
 
 The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector:pg18`** (PostgreSQL 18.6 at the time of writing); the suite passes on it unchanged. PostgreSQL 19 was still in beta (`postgres:19beta3`) and pgvector had no pg19 image, so 18 is the newest GA option. An existing `pgdata` volume created by pg16 cannot be started by pg18: dump and restore, or `docker compose down -v` for a throwaway stack.

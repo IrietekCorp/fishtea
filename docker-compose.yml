@@ -22,12 +22,13 @@ services:
       FISHTEA_INTENT: needle
       FISHTEA_STRICT: "${FISHTEA_STRICT:-0}"
       FISHTEA_OPERATOR_TOKEN: "${FISHTEA_OPERATOR_TOKEN:-change-me}"
+      FISHTEA_HOST: "0.0.0.0"
     volumes: [ "./${FISHTEA_APP_DIR:-templates/ecommerce}:/app" ]   # the TUI edits spec.json here; core watches and hot-reloads non-entity sections
     ports: [ "${FISHTEA_CORE_PORT:-3000}:3000" ]
     depends_on: { db: { condition: service_healthy }, classifier: { condition: service_healthy } }
   ui:
     build: { context: ., dockerfile: Dockerfile.core, target: ui }
-    environment: { VITE_CORE_URL: "http://localhost:${FISHTEA_CORE_PORT:-3000}" }
+    environment: { VITE_CORE_URL: "http://${FISHTEA_PUBLIC_HOST:-localhost}:${FISHTEA_CORE_PORT:-3000}" }
     ports: [ "${FISHTEA_UI_PORT:-5173}:5173" ]
     depends_on: [ core ]
 volumes: { pgdata: {}, models: {} }

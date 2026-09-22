@@ -8,10 +8,13 @@ import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
 import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
+import { bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, reachableUrls, redact } from "./env.ts";
 
 export async function serve(app: App, flags: Record<string, string | boolean>, dir: string) {
-  const port = Number(flags.port ?? process.env.PORT ?? 3000);
+  const host = bindHost(flags);
+  const port = bindPort(flags);
   const log = (s: string) => console.log(pc.dim(new Date().toISOString().slice(11, 19)) + " " + s);
+  await checkDatabase(databaseUrl(flags), { appDir: dir });
   const { engine, db } = await buildEngine(app, flags, { log });
 
   const drift = await entitiesDrift(db, app);
@@ -57,7 +60,14 @@ export async function serve(app: App, flags: Record<string, string | boolean>, d
       return { ok: true, version: r.version, migrationNeeded: section === "entities" && next.hashes.entities !== current.hashes.entities };
     },
   });
-  Bun.serve({ port, fetch: server.fetch, idleTimeout: 255 });
-  log(pc.green(`${app.spec.business.name} core on http://localhost:${port}  classifier=${engine.classifier.name}${engine.strict ? " strict" : ""}  spec=${app.specPath}`));
+  Bun.serve({ hostname: host, port, fetch: server.fetch, idleTimeout: 255 });
+  const urls = reachableUrls(host, port);
+  log(pc.green(`${app.spec.business.name} core listening on ${host}:${port}`));
+  for (const u of urls) log(`  ${pc.cyan(u)}`);
+  log(pc.dim(`  classifier ${engine.classifier.name} at ${classifierUrl(flags)}${engine.strict ? " · strict" : ""}`));
+  log(pc.dim(`  database   ${redact(databaseUrl(flags))}`));
+  log(pc.dim(`  spec       ${app.specPath}`));
+  if (host === "0.0.0.0") log(pc.dim(`  reachable from other machines; set FISHTEA_HOST=127.0.0.1 to keep it local`));
+  log(pc.dim(`  the UI needs VITE_CORE_URL=http://${publicHost(flags)}:${port}`));
   await new Promise(() => {});
 }

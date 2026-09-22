@@ -6,6 +6,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { bumpVersion, validateSpec } from "@fishtea/spec";
+import { isInside, lanAddress, workspaceRoot, type Flags } from "./env.ts";
 
 export interface Template { name: string; dir: string; doc: string; onboard: Onboard }
 export interface Question { id: string; ask: string; type: "string" | "text" | "int" | "number" | "boolean" | "enum" | "multi" | "list"; path?: string; values?: string[]; default?: unknown; apply?: string; also?: { path?: string; seed?: string; field?: string }[]; seed?: string; field?: string }
@@ -21,7 +22,17 @@ export function listTemplates(fishteaHome: string): Template[] {
   });
 }
 
-export interface ScaffoldOptions { id: string; template: string; dir?: string; name?: string; doc?: string; fishteaHome: string; force?: boolean; answers?: Record<string, unknown> }
+export interface ScaffoldOptions { id: string; template: string; dir?: string; name?: string; doc?: string; fishteaHome: string; force?: boolean; answers?: Record<string, unknown>; flags?: Flags }
+
+/**
+ * Where `fishtea new <id>` puts the directory. An application is its own project, so it never lands inside
+ * the framework checkout: from inside fishtea the default is a sibling, otherwise the current directory.
+ * `--dir` overrides outright; `--workspace` (or FISHTEA_WORKSPACE) sets the parent.
+ */
+export function targetDir(id: string, o: { dir?: string; fishteaHome: string; flags?: Flags }): string {
+  if (o.dir) return resolve(o.dir);
+  return join(workspaceRoot(o.fishteaHome, o.flags ?? {}), id);
+}
 
 const setPath = (obj: any, path: string, value: unknown) => { const parts = path.split("."); let cur = obj; for (const p of parts.slice(0, -1)) cur = cur[p] ??= {}; cur[parts.at(-1)!] = value; };
 const getPath = (obj: any, path: string) => path.split(".").reduce((o, p) => o?.[p], obj);
@@ -58,7 +69,10 @@ export async function scaffold(o: ScaffoldOptions): Promise<{ dir: string; templ
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(o.id)) throw new Error("id must be lowercase letters, digits and dashes, starting with a letter");
   const tpl = listTemplates(o.fishteaHome).find((t) => t.name === o.template);
   if (!tpl) throw new Error(`unknown template "${o.template}"; use one of ${listTemplates(o.fishteaHome).map((t) => t.name).join(", ")}`);
-  const dir = resolve(o.dir ?? o.id);
+  const dir = targetDir(o.id, o);
+  if (isInside(dir, o.fishteaHome) && !o.force) {
+    throw new Error(`${dir} is inside the framework checkout (${o.fishteaHome}).\n  An application is its own project: pass --dir <path>, or set FISHTEA_WORKSPACE, or run this from outside fishtea.`);
+  }
   if (existsSync(dir) && readdirSync(dir).length && !o.force) throw new Error(`${dir} exists and is not empty (use --force)`);
   mkdirSync(dir, { recursive: true });
   for (const sub of ["calls", "seed", "rules", "scripts"]) if (existsSync(join(tpl.dir, sub))) cpSync(join(tpl.dir, sub), join(dir, sub), { recursive: true });
@@ -124,7 +138,7 @@ export function writeAppFiles(dir: string, a: { id: string; name: string; templa
   const files: Record<string, string> = {
     "package.json": JSON.stringify({
       name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a Fishtea application (${a.template} archetype)`,
-      scripts: { fishtea: "bun fishtea.ts", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
+      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
       fishtea: { template: a.template, home },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
@@ -139,7 +153,8 @@ if (!cli || !existsSync(cli)) { console.error(\`fishtea: framework not found at 
 const proc = Bun.spawn(["bun", cli, ...process.argv.slice(2)], { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_HOME: home, FISHTEA_APP: process.env.FISHTEA_APP ?? here } });
 process.exit(await proc.exited);
 `,
-    ".env.example": `DATABASE_URL=postgres://fishtea:fishtea@localhost:5432/fishtea\nCLASSIFIER_URL=http://localhost:8081\nFISHTEA_INTENT=needle          # lexical = dev/offline only, never production (D5)\nFISHTEA_STRICT=0\nFISHTEA_OPERATOR_TOKEN=change-me\nFISHTEA_HOME=${home}\nPORT=3000\n# vendor credentials (ecommerce adapters read these; never put them in spec.json)\n# EBAY_APP_ID= EBAY_CERT_ID= EBAY_CAMPAIGN_ID=\n`,
+    ".env": envFile(home, a.template),
+    ".env.example": envFile(home, a.template),
     "docker-compose.yml": composeFile(home),
     ".gitignore": "node_modules/\n.env\n.fishtea/\n",
     "README.md": `# ${a.name}
@@ -147,10 +162,12 @@ process.exit(await proc.exited);
 A [Fishtea](${home}) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.
 
 \`\`\`
-cp .env.example .env
 bun run up        # docker compose: Postgres (pgvector) + needle3 classifier pool + core + ui
 bun run tui       # the operator console: edit sections, restart, regenerate, watch the unmet channel
 \`\`\`
+
+\`.env\` is written for you and already loaded. The core binds \`0.0.0.0\` so it is reachable from other
+machines; point \`DATABASE_URL\`, \`CLASSIFIER_URL\` and \`FISHTEA_PUBLIC_HOST\` wherever those services live.
 
 Without Docker (a Postgres with pgvector on DATABASE_URL): \`bun run migrate && bun run seed && bun run dev\`, and \`bun run headless\` for the scripted conversation with no UI.
 
@@ -158,6 +175,41 @@ Layout: \`spec.json\` (the business), \`calls/\` (SQL with $1..$n parameters, co
 `,
   };
   for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
+}
+
+/**
+ * Written as both .env and .env.example, so `bun run dev` works immediately and there is still a pristine
+ * copy to diff against. Every host is a variable: nothing here assumes the services are on this machine.
+ */
+export function envFile(home: string, template: string): string {
+  const lan = lanAddress();
+  return `# Fishtea application settings. Bun loads this file automatically.
+# Each of these can also be passed as a flag: --db, --classifier, --host, --port.
+
+# --- where the services are -------------------------------------------------
+DATABASE_URL=postgres://fishtea:fishtea@localhost:5432/fishtea
+CLASSIFIER_URL=http://localhost:8081
+
+# --- how this core is reached ----------------------------------------------
+# 0.0.0.0 accepts connections from any address; 127.0.0.1 keeps it on this machine.
+FISHTEA_HOST=0.0.0.0
+PORT=3000
+# The address other machines (and the browser UI) should dial. Detected: ${lan ?? "no LAN address found"}
+FISHTEA_PUBLIC_HOST=${lan ?? "localhost"}
+
+# --- behaviour --------------------------------------------------------------
+FISHTEA_INTENT=needle          # lexical is a development harness, never production (D5)
+FISHTEA_STRICT=0
+FISHTEA_OPERATOR_TOKEN=change-me
+
+# --- the framework ----------------------------------------------------------
+FISHTEA_HOME=${home}
+${template === "ecommerce" ? `
+# --- vendor credentials (read by calls/adapters/*; never put these in spec.json)
+# EBAY_APP_ID=
+# EBAY_CERT_ID=
+# EBAY_CAMPAIGN_ID=
+` : ""}`;
 }
 
 export function composeFile(home: string): string {
@@ -190,7 +242,7 @@ services:
     depends_on: { db: { condition: service_healthy }, classifier: { condition: service_healthy } }
   ui:
     build: { context: \${FISHTEA_HOME:-${home}}, dockerfile: Dockerfile.core, target: ui }
-    environment: { VITE_CORE_URL: "http://localhost:\${FISHTEA_CORE_PORT:-3000}" }
+    environment: { VITE_CORE_URL: "http://\${FISHTEA_PUBLIC_HOST:-localhost}:\${FISHTEA_CORE_PORT:-3000}" }
     ports: [ "\${FISHTEA_UI_PORT:-5173}:5173" ]
     depends_on: [ core ]
 volumes: { pgdata: {}, models: {} }
