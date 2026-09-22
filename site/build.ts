@@ -109,8 +109,18 @@ function layout(page: Page, pages: Page[]): string {
   <nav>${topNav}</nav>
 </div></header>
 ${isDoc
-    ? `<main id="main" class="wrap docs"><aside class="side">${side}</aside><article class="prose">${page.body()}</article></main>`
+    ? `<main id="main" class="wrap docs"><details class="side" open><summary>Documentation</summary><div class="side-inner">${side}</div></details><article class="prose">${page.body()}</article></main>`
     : `<main id="main">${page.body()}</main>`}
+<script>
+/* The docs sidebar is a <details> that ships open, so with no JavaScript it behaves as it always has.
+   On a phone it is closed on load instead, so an article starts at the top of the screen rather than
+   below fifteen links. CSS alone cannot do this: a closed <details> lays its children out but does not
+   paint them, so forcing a display value on them at desktop width does nothing. */
+(function () {
+  var d = document.querySelector("details.side");
+  if (d && !window.matchMedia("(min-width: 60rem)").matches) d.removeAttribute("open");
+})();
+</script>
 <footer class="bottom"><div class="wrap">
   <span>FishTea ${VERSION} — solid ground, liquid UI.</span>
   <span><a href="${href("welcome")}">Docs</a> · <a href="${href("blog")}">Blog</a> · <a href="${href("about")}">About</a></span>

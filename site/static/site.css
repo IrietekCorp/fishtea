@@ -41,6 +41,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
+  overflow-x: hidden;              /* a stray wide child must never scroll the whole page */
   background: var(--bg);
   color: var(--fg);
   font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -51,6 +52,7 @@ a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
 .wrap { max-width: 68rem; margin: 0 auto; padding-inline: 1.5rem; }
+@media (max-width: 30rem) { .wrap { padding-inline: 1rem; } }
 
 /* ---- header ---------------------------------------------------------------------------------- */
 header.top {
@@ -59,11 +61,19 @@ header.top {
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
-header.top .wrap { display: flex; align-items: center; gap: 1.5rem; height: 3.5rem; }
+/* min-height, not height: the nav used to wrap inside a fixed 3.5rem bar and spill over the content
+   below it on narrow screens. It scrolls sideways now instead of wrapping. */
+header.top .wrap { display: flex; align-items: center; gap: 1rem; min-height: 3.5rem; }
 .brand { font-weight: 700; letter-spacing: -0.01em; color: var(--fg); text-decoration: none; font-size: 1.05rem; }
 .brand span { color: var(--accent); }
-header.top nav { margin-left: auto; display: flex; gap: 1.25rem; flex-wrap: wrap; }
-header.top nav a { color: var(--dim); text-decoration: none; font-size: 0.925rem; }
+header.top nav {
+  margin-left: auto; display: flex; gap: 1.25rem;
+  flex-wrap: nowrap;                  /* wrapping is what overlapped the page */
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+header.top nav::-webkit-scrollbar { display: none; }
+header.top nav a { color: var(--dim); text-decoration: none; font-size: 0.925rem; white-space: nowrap; }
 header.top nav a:hover, header.top nav a[aria-current] { color: var(--fg); }
 header.top nav a[aria-current] { font-weight: 600; }
 
@@ -106,7 +116,8 @@ section { padding-block: 3.5rem; border-bottom: 1px solid var(--border); }
 section > .wrap > h2 { font-size: 1.75rem; letter-spacing: -0.02em; margin: 0 0 0.5rem; }
 section > .wrap > p.sub { color: var(--dim); max-width: var(--measure); margin: 0 0 2rem; }
 
-.grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+.grid > * { min-width: 0; }
 .card {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 1.25rem;
@@ -116,6 +127,7 @@ section > .wrap > p.sub { color: var(--dim); max-width: var(--measure); margin: 
 .card code { font-size: 0.8em; }
 
 .split { display: grid; gap: 2rem; grid-template-columns: 1fr; align-items: start; }
+.split > * { min-width: 0; }
 @media (min-width: 60rem) { .split { grid-template-columns: 1fr 1.1fr; } }
 
 /* ---- tables ---------------------------------------------------------------------------------- */
@@ -126,10 +138,29 @@ th { font-weight: 600; color: var(--dim); font-size: 0.85rem; text-transform: up
 tbody tr:hover { background: var(--muted); }
 
 /* ---- docs layout ----------------------------------------------------------------------------- */
-.docs { display: grid; gap: 3rem; grid-template-columns: 1fr; padding-block: 2.5rem 5rem; }
-@media (min-width: 60rem) { .docs { grid-template-columns: 14rem 1fr; } }
+.docs { display: grid; gap: 1.5rem; grid-template-columns: 1fr; padding-block: 1.5rem 4rem; }
 .side { font-size: 0.925rem; }
-@media (min-width: 60rem) { .side { position: sticky; top: 5rem; align-self: start; max-height: calc(100vh - 7rem); overflow-y: auto; } }
+
+/* On a phone the sidebar is collapsed so an article starts at the top of the screen instead of below
+   fifteen navigation links. The element ships `open` and a small script closes it on narrow viewports —
+   CSS cannot do it, because a closed <details> lays its children out but never paints them. */
+.side > summary {
+  cursor: pointer; list-style: none;
+  padding: 0.55rem 0.8rem; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--fg); font-weight: 600; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+}
+.side > summary::-webkit-details-marker { display: none; }
+.side > summary::after { content: "▾"; color: var(--dim); transition: transform 120ms ease; }
+.side[open] > summary::after { transform: rotate(180deg); }
+.side > .side-inner { padding: 1rem 0.25rem 0; }
+
+@media (min-width: 60rem) {
+  .docs { grid-template-columns: 14rem 1fr; gap: 3rem; padding-block: 2.5rem 5rem; }
+  .side { position: sticky; top: 5rem; align-self: start; max-height: calc(100vh - 7rem); overflow-y: auto; }
+  .side > summary { display: none; }
+  .side > .side-inner { display: block; padding: 0; }   /* a closed <details> hides these otherwise */
+}
 .side h4 { margin: 1.5rem 0 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
 .side h4:first-child { margin-top: 0; }
 .side ul { list-style: none; margin: 0; padding: 0; }
@@ -139,6 +170,7 @@ tbody tr:hover { background: var(--muted); }
 .side a[aria-current] { background: var(--accent-soft); color: var(--fg); font-weight: 600; }
 
 .prose { min-width: 0; max-width: 46rem; }
+.prose pre, .prose table, .prose .scroll { max-width: 100%; }
 .prose h1 { font-size: 2.1rem; letter-spacing: -0.025em; margin: 0 0 1rem; }
 .prose h2 { font-size: 1.4rem; letter-spacing: -0.015em; margin: 2.5rem 0 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .prose h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
