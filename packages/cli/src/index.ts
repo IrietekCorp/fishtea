@@ -15,7 +15,7 @@ import pc from "picocolors";
 import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, type App } from "@fishtea/spec";
 import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
-import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, redact } from "./env.ts";
+import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact } from "./env.ts";
 
 export const FISHTEA_HOME = resolve(dirname(new URL(import.meta.url).pathname), "../../..");
 
@@ -117,7 +117,7 @@ async function main() {
         const j: any = await r.json();
         rows.push(["classifier", !!j.ok, `${cls} · ${j.model} · ${j.ready}/${j.workers} workers · ${j.tools} tools`]);
       } catch { rows.push(["classifier", false, `${cls} unreachable — text utterances will pour "ask"`]); }
-      rows.push(["binding", true, `${bindHost(flags)}:${bindPort(flags)} · other machines dial http://${publicHost(flags)}:${bindPort(flags)}`]);
+      rows.push(["binding", true, `${bindHost(flags)}:${bindPort(flags)} · other machines dial ${publicUrl(flags)}`]);
       for (const [what, ok, detail] of rows) console.log(`${ok ? pc.green("✓") : pc.red("✗")} ${what.padEnd(11)} ${ok ? detail : pc.red(detail)}`);
       if (rows.some(([, ok]) => !ok)) process.exit(1);
       return;

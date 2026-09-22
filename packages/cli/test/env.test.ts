@@ -46,6 +46,9 @@ describe("the generated docker-compose.yml", () => {
     expect(app.services.db.image).toContain("pg18");
     expect(app.services.core.build.context).toContain("FISHTEA_HOME");
     expect(app.services.core.restart).toBe("unless-stopped");
+    // without an explicit target a build gets the last stage in the Dockerfile, and core ran Vite
+    expect(app.services.core.build.target).toBe("core");
+    expect(app.services.ui.build.target).toBe("ui");
     expect(app.services.core.environment.FISHTEA_HOST).toBe("0.0.0.0");
     expect(app.services.core.env_file[0].required).toBe(false);
     expect(app.services.ui.environment.VITE_CORE_URL).toContain("FISHTEA_PUBLIC_HOST");

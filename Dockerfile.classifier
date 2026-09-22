@@ -1,12 +1,21 @@
+# The needle3 classifier pool. The weights are baked in at build time, not fetched on first start:
+# three workers racing for the same ~35 MB download left the service unhealthy past its healthcheck.
 FROM python:3.12-slim
 WORKDIR /srv
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 COPY packages/classifier/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# One warm-up downloads the engine and the weights into the image's cache (~70 MB), so a container starts
+# offline and every worker loads from local disk.
+ENV NEEDLE_TELEMETRY=0 HF_HOME=/opt/hf
+RUN python -c "import needle; a = needle.Needle(tools=[{'name':'noop','description':'warm the cache','parameters':{'type':'object','properties':{}}}]); a.complete('hi'); a.embed('hi')" \
+ && rm -rf /opt/hf
+
 COPY packages/classifier/needle_service.py .
-# weights + engine cache live on the `models` volume; HOME points there so cactus-needle finds them
-ENV HOME=/models HF_HOME=/models/hf NEEDLE_TELEMETRY=0 NEEDLE_WORKERS=3 NEEDLE_PORT=8081
+# /models is optional: mount a fine-tuned .cact there and point NEEDLE_MODEL_PATH at it.
+ENV NEEDLE_WORKERS=3 NEEDLE_PORT=8081
 VOLUME ["/models"]
 EXPOSE 8081
-HEALTHCHECK --interval=5s --retries=60 CMD curl -fs http://localhost:8081/healthz || exit 1
+HEALTHCHECK --interval=5s --timeout=3s --start-period=120s --retries=60 CMD curl -fs http://localhost:8081/healthz || exit 1
 CMD ["python", "needle_service.py"]

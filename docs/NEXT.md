@@ -15,8 +15,11 @@ Written 2026-09-21 at the hand-off from the design/build session. Read `CLAUDE.m
 ### 1. Click through the web UI (half a day)
 `packages/ui/e2e/README.md` is the checklist; `walkthrough.playwright.ts` is a Playwright spec (`bunx playwright install chromium`, needs `@playwright/test` and `@axe-core/playwright` added to `packages/ui`). Start `bun run dev --app templates/ecommerce` and `cd packages/ui && bun run dev`. Expect problems in: the form vessel's nested `shipTo` fields and enum selects (`src/vessels/form.tsx`), the timeline vessel with the verification template's mixed events, and the SSE reconnect (`src/lib/client.ts` never retries).
 
-### 2. Bring the Compose stack up from clean (half a day)
-`bun fishtea new t --template ecommerce --answers /dev/null || true`, then `bun run up` in it. Likely first failures: `Dockerfile.core`'s `ui` target expects `packages/ui/node_modules` (the UI has its own `bun install`; add a `RUN` for it), and the classifier image downloading weights on first start (the healthcheck allows 5 min; check `HOME=/models` is writable). Then confirm the TUI's *Restart core* works under Compose (`op.restart` exits the process; Compose restarts it because of `restart:` — which is **not set**; add `restart: unless-stopped` to `core` in both compose files).
+### 2. ~~Bring the Compose stack up from clean~~ — done
+`bun run up` in a freshly generated application brings up db, classifier, core and ui; all four healthy, the
+core answers over the LAN address, needle3 classifies at ~200 ms, and the UI serves. Four bugs found and fixed
+along the way (YAML flow mapping, missing build target, PG18 mount point, racing model downloads) — see
+docs/DESIGN.md. Remaining: nobody has clicked the UI in a browser (item 1).
 
 ### 3. Vendor feeds for real (one day)
 - `templates/ecommerce/calls/adapters/ebay.ts`: run with `EBAY_APP_ID`/`EBAY_CERT_ID` (sandbox first: `EBAY_SANDBOX=1`); fix field names.

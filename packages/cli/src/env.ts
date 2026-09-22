@@ -20,6 +20,12 @@ export function publicHost(flags: Flags = {}): string {
   return str(flags["public-host"]) ?? process.env.FISHTEA_PUBLIC_HOST ?? lanAddress() ?? "localhost";
 }
 
+/** The port others dial, which is not the bound port when a container publishes it on another one. */
+export const publicPort = (flags: Flags = {}): number =>
+  Number(str(flags["public-port"]) ?? process.env.FISHTEA_PUBLIC_PORT ?? bindPort(flags));
+
+export const publicUrl = (flags: Flags = {}): string => `http://${publicHost(flags)}:${publicPort(flags)}`;
+
 /** The first non-internal IPv4 address, which is what someone on the same network would dial. */
 export function lanAddress(): string | undefined {
   for (const addrs of Object.values(networkInterfaces())) {

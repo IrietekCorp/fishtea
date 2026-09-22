@@ -8,7 +8,7 @@ import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
 import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
-import { bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, reachableUrls, redact } from "./env.ts";
+import { bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicUrl, reachableUrls, redact } from "./env.ts";
 
 export async function serve(app: App, flags: Record<string, string | boolean>, dir: string) {
   const host = bindHost(flags);
@@ -68,6 +68,6 @@ export async function serve(app: App, flags: Record<string, string | boolean>, d
   log(pc.dim(`  database   ${redact(databaseUrl(flags))}`));
   log(pc.dim(`  spec       ${app.specPath}`));
   if (host === "0.0.0.0") log(pc.dim(`  reachable from other machines; set FISHTEA_HOST=127.0.0.1 to keep it local`));
-  log(pc.dim(`  the UI needs VITE_CORE_URL=http://${publicHost(flags)}:${port}`));
+  log(pc.dim(`  the UI needs VITE_CORE_URL=${publicUrl(flags)}`));
   await new Promise(() => {});
 }

@@ -227,7 +227,8 @@ services:
       POSTGRES_PASSWORD: fishtea
       POSTGRES_DB: fishtea
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18 keeps its data in a major-version subdirectory and refuses a mount at .../data
+      - pgdata:/var/lib/postgresql
     ports:
       - "\${FISHTEA_DB_PORT:-5432}:5432"
     healthcheck:
@@ -244,7 +245,7 @@ services:
       NEEDLE_WORKERS: "\${NEEDLE_WORKERS:-3}"
       FISHTEA_SPEC: /app/spec.json
     volumes:
-      - models:/models        # needle3 weights, cached across restarts
+      - models:/models        # optional: a fine-tuned .cact, via NEEDLE_MODEL_PATH
       - ./:/app:ro
     ports:
       - "\${FISHTEA_CLASSIFIER_PORT:-8081}:8081"
@@ -257,6 +258,7 @@ services:
     build:
       context: "\${FISHTEA_HOME:-${home}}"
       dockerfile: Dockerfile.core
+      target: core
     restart: unless-stopped     # so the console's "Restart the core" brings it back
     env_file:
       # vendor credentials and anything else you keep in .env; the settings below win over it
@@ -268,6 +270,9 @@ services:
       FISHTEA_APP: /app
       FISHTEA_HOST: "0.0.0.0"
       PORT: "3000"
+      # what a browser outside the container dials, so the banner and the UI agree
+      FISHTEA_PUBLIC_HOST: "\${FISHTEA_PUBLIC_HOST:-localhost}"
+      FISHTEA_PUBLIC_PORT: "\${FISHTEA_CORE_PORT:-3000}"
       FISHTEA_INTENT: needle
       FISHTEA_STRICT: "\${FISHTEA_STRICT:-0}"
       FISHTEA_OPERATOR_TOKEN: "\${FISHTEA_OPERATOR_TOKEN:-change-me}"

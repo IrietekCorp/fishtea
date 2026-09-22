@@ -1,14 +1,20 @@
-# Core (Bun). The app directory is mounted at /app at runtime (FISHTEA_APP), so one image serves any spec.
+# Core and UI share one image and one dependency install; the service picks a stage with `target:`.
+# Name the stages explicitly: a build with no target gets the *last* stage, which is how the core service
+# once ended up running Vite.
 FROM oven/bun:1 AS base
 WORKDIR /fishtea
 COPY package.json bun.lock* tsconfig.json ./
 COPY packages ./packages
 RUN bun install --frozen-lockfile || bun install
-ENV FISHTEA_APP=/app PORT=3000
+
+# The application directory is mounted at /app at runtime, so one image serves any spec.
+FROM base AS core
+# FISHTEA_HOST=0.0.0.0 so the core answers from outside the container; compose can override any of these.
+ENV FISHTEA_APP=/app FISHTEA_HOME=/fishtea FISHTEA_HOST=0.0.0.0 PORT=3000
 EXPOSE 3000
 CMD ["bun", "packages/cli/src/index.ts", "serve", "--app", "/app"]
 
-# UI: Vite dev server serving the vessels; VITE_CORE_URL points at core
+# The vessels, served by Vite. VITE_CORE_URL must be an address a browser can reach, not the container's.
 FROM base AS ui
 WORKDIR /fishtea/packages/ui
 EXPOSE 5173

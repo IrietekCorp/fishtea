@@ -92,6 +92,29 @@ checkout nested the application in fishtea's own git history. The target is now 
 `--workspace`/`FISHTEA_WORKSPACE`, else the current directory — and a directory inside the framework is refused
 outright with the three ways out. The default id is `myapp`. The console asks where the directory should go.
 
+## What a clean `docker compose up` needed
+
+Bringing a freshly generated application up from nothing found four bugs that no unit test would have caught,
+all now fixed and, where testable, covered:
+
+- **The compose file did not parse.** `${FISHTEA_HOME:-/path}` inside a YAML flow mapping closes the mapping
+  early, and `env_file: [ path: .env, required: false ]` is not valid YAML. Both compose files are block style
+  now, which is also what someone editing a generated file wants to read. A test parses both.
+- **The core container ran Vite.** `Dockerfile.core` has two stages and the `core` service set no `target:`,
+  so Docker built the *last* stage. Stages are named `base`, `core`, `ui`, and both services name their target.
+- **PostgreSQL 18 refuses a mount at `/var/lib/postgresql/data`** — it keeps data in a major-version
+  subdirectory so `pg_upgrade --link` can work, and wants the volume one level up at `/var/lib/postgresql`.
+- **Three classifier workers raced to download the same weights** and the service never became healthy. The
+  ~70 MB engine and weights are baked into the image at build time, so a container starts offline and every
+  worker loads from local disk. The `models` volume remains, for a fine-tuned `.cact` via `NEEDLE_MODEL_PATH`.
+
+Running the stack also showed the ecommerce archetype's search was too literal. needle drops a whole phrase
+into `text` and invents a `category` the catalog does not have ("linen" is a tag here, not a category), and the
+query returned nothing. It now matches text word by word, and treats `category`, `brand` and `tag` as hard
+filters **only when the catalog actually contains that value** — otherwise the guess becomes one more search
+word. Price stays a hard filter, because a budget is a promise. Against the live stack, six representative
+utterances all answer, including the two the classifier got partly wrong.
+
 ## Postgres version
 
 The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector:pg18`** (PostgreSQL 18.6 at the time of writing); the suite passes on it unchanged. PostgreSQL 19 was still in beta (`postgres:19beta3`) and pgvector had no pg19 image, so 18 is the newest GA option. An existing `pgdata` volume created by pg16 cannot be started by pg18: dump and restore, or `docker compose down -v` for a throwaway stack.
