@@ -347,10 +347,17 @@ if (import.meta.main) {
       port,
       async fetch(req) {
         const url = new URL(req.url);
-        let p = url.pathname === "/" ? "/index.html" : url.pathname;
-        if (!p.includes(".")) p += ".html";
-        const file = Bun.file(join(OUT, p));
-        if (await file.exists()) return new Response(file);
+        const p = url.pathname === "/" ? "/index.html" : url.pathname;
+        // Exact path first, then the .html a pretty URL implies. Order matters: `install` is a real
+        // extensionless file — the thing `curl fishtea.dev/install | bash` fetches — and appending .html
+        // to it unconditionally made the headline install command 404 locally.
+        for (const candidate of [p, p.includes(".") ? null : `${p}.html`]) {
+          if (!candidate) continue;
+          const file = Bun.file(join(OUT, candidate));
+          if (await file.exists()) {
+            return new Response(file, candidate === "/install" ? { headers: { "content-type": "text/plain; charset=utf-8" } } : undefined);
+          }
+        }
         return new Response("not found", { status: 404 });
       },
     });
