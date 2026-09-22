@@ -182,7 +182,7 @@ if (!resolved) {
   console.error("fishtea: no framework found. Any one of these fixes it:");
   console.error("  bun add @fishtea/cli                      install it into this application");
   console.error("  export FISHTEA_HOME=/path/to/fishtea      point at a checkout");
-  console.error("  curl -fsSL https://fishtea.dev/install | bash   install the standalone runtime");
+  console.error("  curl -fsSL https://fishtea.io/install | bash   install the standalone runtime");
   process.exit(1);
 }
 if (resolved.home) env.FISHTEA_HOME = resolved.home;

@@ -10,7 +10,7 @@ Postgres and the classifier are **services**, not files, so they are never bundl
 ## Install
 
 ```bash
-curl -fsSL https://fishtea.dev/install | bash
+curl -fsSL https://fishtea.io/install | bash
 ```
 
 That puts a standalone `fishtea` in `~/.fishtea/bin`, with every version you install kept side by side.

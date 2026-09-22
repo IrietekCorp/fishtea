@@ -15,7 +15,7 @@ composes typed **calls**, and the answer pours into one of seven **vessels**. Th
 branchable, and never dies.
 
 ```bash
-curl -fsSL https://fishtea.dev/install | bash
+curl -fsSL https://fishtea.io/install | bash
 
 fishtea new myshop --template ecommerce --interactive
 cd myshop && fishtea up
@@ -169,7 +169,7 @@ Tests run against a real Postgres. Keep them that way.
 | `packages/bench` | Harness, budgets, and a conventional multi-page baseline |
 | `plugins/` | Builtin plugins |
 | `templates/` | The five archetypes |
-| `site/` | fishtea.dev, generated from these docs and the schema |
+| `site/` | fishtea.io, generated from these docs and the schema |
 
 ## Documentation
 

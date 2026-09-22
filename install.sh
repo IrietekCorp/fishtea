@@ -2,8 +2,8 @@
 #
 # FishTea installer.
 #
-#   curl -fsSL https://fishtea.dev/install | bash              the newest release
-#   curl -fsSL https://fishtea.dev/install | bash -s 1.1.0     a particular one
+#   curl -fsSL https://fishtea.io/install | bash              the newest release
+#   curl -fsSL https://fishtea.io/install | bash -s 1.1.0     a particular one
 #   ./install.sh --from .                                      build from this checkout
 #
 # Installs into ~/.fishtea/versions/<version>/ and points ~/.fishtea/current at it, so every version you
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 FISHTEA_ROOT="${FISHTEA_ROOT:-$HOME/.fishtea}"
-FISHTEA_RELEASES="${FISHTEA_RELEASES:-https://fishtea.dev/releases}"
+FISHTEA_RELEASES="${FISHTEA_RELEASES:-https://fishtea.io/releases}"
 VERSION=""
 FROM=""
 NO_MODIFY_PATH=0

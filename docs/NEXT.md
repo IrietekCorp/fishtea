@@ -81,7 +81,7 @@ Everything up to publishing is built and verified; publishing itself was deliber
   `FISHTEA_RELEASES`. `fishtea upgrade` and `install.sh` both already speak that layout and both fail
   with a clear message and the `--from` fallback until it exists.
 - The site is `bun run site` → `site/dist`, static, and serves `install` from its root so
-  `curl fishtea.dev/install | bash` is one file to host.
+  `curl fishtea.io/install | bash` is one file to host.
 
 ### 3. Vendor feeds for real (one day)
 - `templates/ecommerce/calls/adapters/ebay.ts`: run with `EBAY_APP_ID`/`EBAY_CERT_ID` (sandbox first:

@@ -18,7 +18,7 @@ import { FISHTEA_VERSION, compareVersions } from "@fishtea/spec";
 import { RuntimeError, currentVersion, installRelease, installedVersions } from "./runtime.ts";
 
 /** Where published releases live. Overridable so a team can host its own. */
-export const releaseBase = () => process.env.FISHTEA_RELEASES ?? "https://fishtea.dev/releases";
+export const releaseBase = () => process.env.FISHTEA_RELEASES ?? "https://fishtea.io/releases";
 
 export function hostTarget(): string {
   const os = process.platform === "darwin" ? "darwin" : process.platform === "win32" ? "windows" : "linux";

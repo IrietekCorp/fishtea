@@ -27,7 +27,8 @@
     "update": "bun packages/cli/src/index.ts update",
     "build-release": "bun scripts/build-release.ts",
     "site": "bun site/build.ts",
-    "e2e": "bun scripts/e2e.ts"
+    "e2e": "bun scripts/e2e.ts",
+    "deploy": "bun run site && bunx firebase-tools deploy --only hosting"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

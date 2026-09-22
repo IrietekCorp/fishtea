@@ -131,8 +131,8 @@ edit you made before tracking began.
 ## Installing and switching framework versions
 
 ```bash
-curl -fsSL https://fishtea.dev/install | bash        # the newest release
-curl -fsSL https://fishtea.dev/install | bash -s 1.1.0
+curl -fsSL https://fishtea.io/install | bash        # the newest release
+curl -fsSL https://fishtea.io/install | bash -s 1.1.0
 ./install.sh --from /path/to/fishtea                 # build from a checkout
 ```
 

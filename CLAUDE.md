@@ -23,7 +23,7 @@ bun fishtea update [--dry-run|--adopt]                  # move an application to
 bun fishtea plugin list|info|add|remove|create|promote
 bun run release <v> [--check]                           # the only writer of every version site
 bun run build-release [--install] [--tarball]           # compile the binary + stage runtime files
-bun run site [--serve]                                  # fishtea.dev into site/dist
+bun run site [--serve]                                  # fishtea.io into site/dist
 bun run bench -- --conventional   # against a running core
 bunx tsc -p tsconfig.json --noEmit
 ```
@@ -39,7 +39,7 @@ bunx tsc -p tsconfig.json --noEmit
 - `packages/bench` — harness, `budgets.json`, conventional multi-page baseline.
 - `plugins/` — builtin plugins (`boutique` design system, `anthropic` frontier model). A plugin is a directory with `fishtea.plugin.json`; resolution is local → node_modules → builtin.
 - `scripts/` — `release.ts` (version sites) and `build-release.ts` (binary + staged runtime).
-- `site/` — fishtea.dev, generated from `docs/*.md`, the JSON Schema and the CLI's own help.
+- `site/` — fishtea.io, generated from `docs/*.md`, the JSON Schema and the CLI's own help.
 - `templates/` — the five archetypes.
 
 ## Rules of the house

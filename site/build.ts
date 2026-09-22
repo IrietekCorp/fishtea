@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * fishtea.dev — a static site, built from what the repository already knows.
+ * fishtea.io — a static site, built from what the repository already knows.
  *
  *   bun run site          build into site/dist
  *   bun run site --serve  build, then serve it on :4000 and rebuild on request
@@ -138,7 +138,7 @@ function landing(): string {
     <a class="btn ghost" href="spec-reference.html">Spec reference</a>
   </div>
   <p style="margin-top:2rem;max-width:34rem">
-    <span class="install"><span class="prompt">$</span> curl -fsSL https://fishtea.dev/install | bash</span>
+    <span class="install"><span class="prompt">$</span> curl -fsSL https://fishtea.io/install | bash</span>
   </p>
 </div></div>
 
@@ -472,7 +472,7 @@ export async function build(): Promise<{ written: string[] }> {
     writeFileSync(file, layout(page, all));
     written.push(file.slice(OUT.length + 1));
   }
-  // The installer is served from the site root, so `curl fishtea.dev/install | bash` is one file to host.
+  // The installer is served from the site root, so `curl fishtea.io/install | bash` is one file to host.
   cpSync(join(HOME, "install.sh"), join(OUT, "install"));
   written.push("install");
   return { written };
@@ -491,7 +491,7 @@ if (import.meta.main) {
         const url = new URL(req.url);
         const p = url.pathname === "/" ? "/index.html" : url.pathname;
         // Exact path first, then the .html a pretty URL implies. Order matters: `install` is a real
-        // extensionless file — the thing `curl fishtea.dev/install | bash` fetches — and appending .html
+        // extensionless file — the thing `curl fishtea.io/install | bash` fetches — and appending .html
         // to it unconditionally made the headline install command 404 locally.
         for (const candidate of [p, p.includes(".") ? null : `${p}.html`]) {
           if (!candidate) continue;
