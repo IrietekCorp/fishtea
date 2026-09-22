@@ -15,5 +15,6 @@ export const SCREENS = [
   { key: "3", id: "conversations", label: "Conversations" },
   { key: "4", id: "run", label: "Run" },
   { key: "5", id: "onboard", label: "Onboard" },
+  { key: "6", id: "versions", label: "Versions" },
 ] as const;
 export type ScreenId = (typeof SCREENS)[number]["id"];

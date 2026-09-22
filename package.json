@@ -24,7 +24,8 @@
     "test": "bun test packages",
     "typecheck": "bunx tsc -p tsconfig.json --noEmit",
     "release": "bun scripts/release.ts",
-    "update": "bun packages/cli/src/index.ts update"
+    "update": "bun packages/cli/src/index.ts update",
+    "build-release": "bun scripts/build-release.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

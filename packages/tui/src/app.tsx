@@ -10,6 +10,7 @@ import { SpecScreen } from "./screens/spec.tsx";
 import { Conversations } from "./screens/conversations.tsx";
 import { Run } from "./screens/run.tsx";
 import { Onboard } from "./screens/onboard.tsx";
+import { Versions } from "./screens/versions.tsx";
 
 const ALT_ON = "\x1b[?1049h", ALT_OFF = "\x1b[?1049l";
 
@@ -93,14 +94,14 @@ export function App({ dir, fishteaHome, core, onExit }: { dir: string; fishteaHo
           </Box>
 
           <Box borderStyle="round" borderColor={theme.dim} paddingX={1} paddingY={0} flexDirection="column" minHeight={16}>
-            {screen === "dashboard" ? <Dashboard /> : screen === "spec" ? <SpecScreen /> : screen === "conversations" ? <Conversations /> : screen === "run" ? <Run /> : <Onboard />}
+            {screen === "dashboard" ? <Dashboard /> : screen === "spec" ? <SpecScreen /> : screen === "conversations" ? <Conversations /> : screen === "run" ? <Run /> : screen === "onboard" ? <Onboard /> : <Versions />}
           </Box>
 
           <Box paddingX={1} justifyContent="space-between">
             <Box>
               {busyLabel ? <Spinner label={busyLabel} /> : toastMsg
                 ? <Text color={toastMsg.tone === "ok" ? theme.ok : toastMsg.tone === "warn" ? theme.warn : theme.bad}>{toastMsg.tone === "bad" ? "✗" : "✓"} {toastMsg.text}</Text>
-                : <Hints pairs={[["1–5", "screens"], ["r", "refresh"], ["q", "quit"], ["ctrl+c", "exit"]]} />}
+                : <Hints pairs={[["1–6", "screens"], ["r", "refresh"], ["q", "quit"], ["ctrl+c", "exit"]]} />}
             </Box>
             <Text color={theme.dim}>{snap.at ? new Date(snap.at).toISOString().slice(11, 19) : ""}</Text>
           </Box>

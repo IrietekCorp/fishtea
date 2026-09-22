@@ -148,4 +148,37 @@ describe("operator console", () => {
     expect(snaps.conv).toContain("visitors");
     expect(snaps.unmet).toContain("unmet");
   }, 60000);
+
+  test("the versions screen reports the framework and where this application stands", async () => {
+    const { snaps } = await drive([...boot, { keys: "6", after: 1200 }, { snap: "versions" }, ...quit]);
+    expect(snaps.versions).toContain("Versions");
+    expect(snaps.versions).toContain("running");
+    expect(snaps.versions).toContain("this application");
+    expect(snaps.versions).toContain("spec format");
+    // The two actions that make the screen worth having.
+    expect(snaps.versions).toContain("Update this application");
+    expect(snaps.versions).toContain("Switch framework version");
+  }, 60000);
+
+  test("the versions screen plans an update and shows it before applying anything", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "fishtea-vers-"));
+    const app = join(dir, "app");
+    await Bun.spawn(["bun", resolve(ROOT, "packages/cli/src/index.ts"), "new", "verstest", "--template", "blank", "--dir", app, "--force"], { env: { ...process.env, FISHTEA_HOME: ROOT }, stdout: "ignore", stderr: "ignore" }).exited;
+    // Put it back a spec format, so there is something real to plan.
+    const spec = await Bun.file(join(app, "spec.json")).json();
+    spec.fishtea = "1.0";
+    writeFileSync(join(app, "spec.json"), JSON.stringify(spec, null, 2));
+
+    const { snaps } = await driveCmd(
+      [...boot, { keys: "6", after: 1000 }, { snap: "before" }, { keys: "\r", after: 1500 }, { snap: "plan" }, { keys: "n", after: 400 }, ...quit],
+      ["bun", resolve(ROOT, "packages/cli/src/index.ts"), "tui", "--app", app],
+      { FISHTEA_APP: app },
+    );
+    expect(snaps.before).toContain("1.0");
+    expect(snaps.plan).toContain("format 1.0");        // the plan names both formats
+    expect(snaps.plan).toContain("Apply this?");       // and asks before writing
+    // Answering "n" must leave the spec exactly as it was.
+    expect((await Bun.file(join(app, "spec.json")).json()).fishtea).toBe("1.0");
+    rmSync(dir, { recursive: true, force: true });
+  }, 90000);
 });

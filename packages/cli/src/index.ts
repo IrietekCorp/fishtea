@@ -12,13 +12,18 @@
 import { resolve, join, dirname } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import pc from "picocolors";
-import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, type App } from "@fishtea/spec";
+import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, frameworkHome, type App } from "@fishtea/spec";
 import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
 import { readManifest } from "./manifest.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
-export const FISHTEA_HOME = resolve(dirname(new URL(import.meta.url).pathname), "../../..");
+/**
+ * The framework's own files. Resolved by @fishtea/spec so that a source checkout, a compiled binary and a
+ * Compose container all agree — the CLI used to guess from import.meta.url, which is meaningless once the
+ * whole thing is a single executable.
+ */
+export const FISHTEA_HOME = frameworkHome();
 
 /**
  * A repeated flag accumulates into an array rather than overwriting, so `--set a=1 --set b=2` keeps both.
@@ -108,6 +113,11 @@ export function warnIfIncompatible(dir: string): void {
   console.error(pc.yellow(`⚠ framework ${c.have} does not satisfy ${c.want}: ${how}`));
 }
 
+/** `fishtea use` with no argument says what is running rather than failing. */
+function renderUse(current: string | null): string {
+  return current ? `running ${current} — fishtea versions lists the others` : "no installed versions under this root (running from a checkout)";
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   // Bare `fishtea --version`. Scoped to the no-command case on purpose: `-v` already means --volumes to
@@ -138,6 +148,51 @@ async function main() {
         console.log(`${pc.dim("  spec")}       format ${spec.fishtea}${spec.fishtea === SPEC_FORMAT ? "" : pc.yellow(` → ${SPEC_FORMAT} available (fishtea update)`)} · business v${spec.business?.version}`);
         console.log(`${pc.dim("  generated")}  by ${m?.fishtea ?? "unknown"}${m ? `, updated ${m.updated.slice(0, 10)}` : " (no manifest — fishtea update --adopt)"}`);
       } catch { /* not in an application; the framework lines are the answer */ }
+      return;
+    }
+    case "versions": {
+      const { renderVersions } = await import("./upgrade.ts");
+      const { shimOnPath, installRoot } = await import("./runtime.ts");
+      console.log(renderVersions());
+      if (!shimOnPath()) console.log(pc.yellow(`\n⚠ ${join(installRoot(), "bin")} is not on PATH, so \`fishtea\` may not be the version marked above`));
+      return;
+    }
+    case "use": {
+      const { useVersion, currentVersion } = await import("./runtime.ts");
+      const want = positional[1];
+      if (!want) { console.log(renderUse(currentVersion())); return; }
+      const dir = useVersion(want);
+      console.log(pc.green(`✓ now running ${want}`));
+      console.log(pc.dim(`  ${dir}`));
+      console.log(pc.dim(`  applications are untouched; each moves when it runs: fishtea update`));
+      return;
+    }
+    case "upgrade": {
+      const U = await import("./upgrade.ts");
+      const from = typeof flags.from === "string" ? flags.from : undefined;
+      if (from) {
+        const r = await U.upgradeFromCheckout(resolve(from));
+        console.log(pc.green(`✓ running ${r.version}${r.from && r.from !== r.version ? ` (was ${r.from})` : ""}`));
+        if (r.from && r.from !== r.version) console.log(pc.dim(`  go back any time: fishtea use ${r.from}`));
+        return;
+      }
+      const check = await U.checkForUpdate();
+      if (!check.behind && flags.force !== true) {
+        console.log(pc.green(`✓ ${check.current} is the newest release`));
+        return;
+      }
+      console.log(`${check.current} → ${check.latest}, downloading for ${U.hostTarget()}…`);
+      const r = await U.upgradeFromRelease(check.latest, { force: flags.force === true });
+      console.log(pc.green(`✓ running ${r.version}${r.from ? ` (was ${r.from})` : ""}`));
+      if (r.from) console.log(pc.dim(`  go back any time: fishtea use ${r.from}`));
+      return;
+    }
+    case "uninstall": {
+      const { removeVersion } = await import("./runtime.ts");
+      const want = positional[1];
+      if (!want) throw new Error("which version? fishtea versions");
+      removeVersion(want);
+      console.log(pc.green(`✓ removed ${want}`));
       return;
     }
     case "plugin": case "plugins": {
@@ -365,6 +420,11 @@ async function main() {
   fishtea templates           list the archetypes and their onboarding interviews
   fishtea new <id> --template <archetype> [--dir path] [--name "Name"] [--answers a.json | --interactive]
   fishtea version             framework, spec format, and what this application pins
+  fishtea versions            every installed version; * is the one running
+  fishtea use <version>       switch to another installed version (and back — it is one symlink)
+  fishtea upgrade [--from <checkout>]
+                              install a newer framework beside the current one and switch to it
+  fishtea uninstall <version> remove an installed version that is not current
   fishtea update [--dry-run]  bring this application up to the framework without regenerating it
                               [--adopt] start tracking an application made before provenance existed
   fishtea plugin list|info|add|remove|create|promote

@@ -13,15 +13,40 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { homedir } from "node:os";
 import { FISHTEA_VERSION } from "./release.ts";
 import { PluginError, pluginCompatible, validateManifest, type PluginManifest, type PluginUse, type ResolvedPlugin } from "./plugin.ts";
 
 export const PLUGIN_MANIFEST = "fishtea.plugin.json";
 
-/** The framework checkout this build lives in. Overridable, because a compiled binary has no source tree. */
+/**
+ * Where the framework's own files live — `templates/`, `plugins/`, and the browser bundle. Four ways to
+ * be running, and the answer differs for each:
+ *
+ *   FISHTEA_HOME set          always wins; Compose and the generated app shim both set it
+ *   a source checkout         packages/spec/src/… → three levels up
+ *   a compiled binary         <home>/bin/fishtea → two levels up, the layout install.sh creates
+ *   a binary run from a copy  fall back to ~/.fishtea/current
+ *
+ * A directory only counts if it actually has `templates/`, because guessing wrong here surfaces much
+ * later as "unknown template" rather than as a path problem.
+ */
 export function frameworkHome(): string {
-  if (process.env.FISHTEA_HOME) return process.env.FISHTEA_HOME;
-  return resolve(dirname(new URL(import.meta.url).pathname), "../../..");
+  const looksRight = (d: string) => !!d && existsSync(join(d, "templates"));
+  if (process.env.FISHTEA_HOME) return resolve(process.env.FISHTEA_HOME);
+
+  let fromSource = "";
+  try { fromSource = resolve(dirname(new URL(import.meta.url).pathname), "../../.."); } catch { /* bunfs */ }
+  if (looksRight(fromSource)) return fromSource;
+
+  // A compiled binary is installed at <home>/bin/fishtea.
+  const fromExe = dirname(dirname(process.execPath));
+  if (looksRight(fromExe)) return fromExe;
+
+  const current = join(homedir(), ".fishtea", "current");
+  if (looksRight(current)) return current;
+
+  return fromSource || current;
 }
 
 export interface Candidate { dir: string; from: ResolvedPlugin["from"] }
