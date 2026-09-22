@@ -54,10 +54,17 @@ export async function build(target: Target, o: { outDir: string; quiet?: boolean
   for (const rel of RUNTIME_FILES) {
     const from = join(HOME, rel);
     if (!existsSync(from)) continue;
-    // node_modules is not shipped: the browser bundle is built where it is deployed.
+    // node_modules is not shipped: the browser bundle is built where it is deployed. Test files are not
+    // shipped either — they are dead weight in a release, and because `bun test` filters are substring
+    // matches on paths, a staged copy under dist/ gets picked up by `bun test packages` and fails there.
     cpSync(from, join(staged, rel), {
       recursive: true,
-      filter: (src) => !src.includes("node_modules") && !src.includes("/.venv") && !src.endsWith("/dist"),
+      filter: (src) =>
+        !src.includes("node_modules") &&
+        !src.includes("/.venv") &&
+        !src.endsWith("/dist") &&
+        !/\.(test|spec|e2e)\.[tj]sx?$/.test(src) &&
+        !/(^|\/)(test|e2e|__tests__)$/.test(src),
     });
   }
   writeFileSync(join(staged, "VERSION"), VERSION + "\n");
