@@ -86,6 +86,27 @@ describe("welcome, glossary, blog and about", () => {
     expect(html).toContain("glossary.html");
   });
 
+  test("the welcome gives the real etymology, tied to the architecture", () => {
+    const html = read("welcome.html");
+    expect(html).toContain("Jamaican broth");
+    expect(html).toContain("no tea");                 // the name is about the form, not an ingredient
+    expect(html).toContain("Scotch bonnet");          // the model: all the heat, never burst into the broth
+  });
+
+  test("the argument appears on the landing page, not only buried in the docs", () => {
+    const html = read("index.html");
+    expect(html).toContain("authority that answers questions");
+    expect(html).toContain("Browsing is not a funnel");
+    expect(html).toContain("welcome.html");
+  });
+
+  test("every post carries a byline", () => {
+    for (const p of posts()) {
+      expect({ slug: p.slug, author: p.author }).toEqual({ slug: p.slug, author: "Shawn J. Stewart" });
+      expect(read(`blog/${p.slug}.html`)).toContain("By Shawn J. Stewart");
+    }
+  });
+
   test("the glossary defines the vocabulary the rest of the docs assume", () => {
     const html = read("glossary.html");
     for (const term of ["Shape", "Vessel", "Pour", "Trail", "Persona", "Plugin", "Manifest"]) {

@@ -143,6 +143,34 @@ function landing(): string {
 </div></div>
 
 <section><div class="wrap">
+  <h2>A business is not a set of pages. It is an authority that answers questions.</h2>
+  <p class="sub">A shoe store is a place where you can ask anything about shoes. That is the whole
+  definition — and none of it requires a page.</p>
+  <div class="split">
+    <div>
+      <p>Software is assembled from modules built for everyone, so every variation — a different customer,
+      tier, market or permission — becomes conditional logic draped over something generic. That is
+      inherited, not careless: we store data in rows and columns, so we build software in the shape of
+      that storage, and anything not uniform arrives late as a layer bolted on top. It shows up most
+      painfully in the URL, a string we have spent two decades forcing to act like a memory.</p>
+      <p>FishTea starts from the other end. Describe what may be asked and by whom, and let the
+      interface be the last and thinnest thing.</p>
+    </div>
+    <div>
+      <p><strong>Browsing is not a funnel.</strong> It is how a customer works out what they implicitly
+      like. Most of it is not purchase intent, and treating it as a path to checkout measures the wrong
+      thing.</p>
+      <p><strong>Search is not a result set to filter.</strong> The search <em>is</em> the question, and
+      what comes back is an opportunity to ignore or to go deeper. "Not those, something warmer" is not a
+      refinement — it is the next turn.</p>
+      <p><strong>Personalisation stops being a layer.</strong> If the interaction <em>is</em> the
+      conversation, every surface is already personal — by what was actually said, not by a profile.</p>
+      <p><a href="welcome.html">The longer argument →</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
   <h2>A whole application in one command</h2>
   <p class="sub">Answer an interview about your business; get a running stack. The archetype is a starting
   point, not a cage — everything it wrote is yours to edit.</p>
@@ -295,7 +323,7 @@ thing.</p>
  * Posts are markdown files in site/blog with a small frontmatter block. The filename carries the date so
  * the directory sorts itself, and the slug is whatever follows it.
  */
-interface Post { slug: string; title: string; date: string; summary: string; tags: string[]; body: string }
+interface Post { slug: string; title: string; date: string; summary: string; author: string; tags: string[]; body: string }
 
 function frontmatter(raw: string): { meta: Record<string, string>; body: string } {
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
@@ -323,6 +351,7 @@ export function posts(): Post[] {
         title: meta.title ?? named,
         date: meta.date ?? f.slice(0, 10),
         summary: meta.summary ?? "",
+        author: meta.author ?? "",
         tags: meta.tags ? meta.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         body,
       };
@@ -340,7 +369,7 @@ function blogIndex(): string {
 is.</p>
 ${all.map((p) => `<article class="post-card">
   <h2 id="${p.slug}"><a href="blog/${p.slug}.html">${esc(p.title)}</a></h2>
-  <p class="post-meta"><time datetime="${p.date}">${readableDate(p.date)}</time>${p.tags.length ? ` · ${p.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}` : ""}</p>
+  <p class="post-meta"><time datetime="${p.date}">${readableDate(p.date)}</time>${p.author ? ` · ${esc(p.author)}` : ""}${p.tags.length ? ` · ${p.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}` : ""}</p>
   <p>${esc(p.summary)}</p>
   <p><a href="blog/${p.slug}.html">Read →</a></p>
 </article>`).join("\n")}`;
@@ -349,7 +378,7 @@ ${all.map((p) => `<article class="post-card">
 function blogPost(p: Post): string {
   return `<p class="post-meta"><a href="../blog.html">← Blog</a></p>
 <h1>${esc(p.title)}</h1>
-<p class="post-meta"><time datetime="${p.date}">${readableDate(p.date)}</time>${p.tags.length ? ` · ${p.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}` : ""}</p>
+<p class="post-meta">${p.author ? `By ${esc(p.author)} · ` : ""}<time datetime="${p.date}">${readableDate(p.date)}</time>${p.tags.length ? ` · ${p.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join(" ")}` : ""}</p>
 ${md(p.body)}
 <hr>
 <p class="post-meta"><a href="../blog.html">← More posts</a></p>`;
@@ -375,15 +404,17 @@ model that now runs on an ordinary machine.</p>
 </div>
 
 <h2 id="why-this-exists">Why this exists</h2>
-<p>The first FishTea, in 2006, described a business in markup and grew its data layer, modules and
-templates from that description. It got the data half right and stopped, because the other half — working
-out what a visitor actually meant, cheaply enough to sit in front of every single request — was not
-possible at the time at any price.</p>
-<p>That constraint is gone. A small tool-calling model classifies intent on local hardware in a couple of
-hundred milliseconds and costs nothing per request, which is what makes replacing routing with
-conversation a real option rather than a demo. The rest of FishTea follows from that one change.</p>
-<p>The longer version is in <a href="welcome.html">Welcome</a>, and the full design — including the
-decisions that are settled and why — is in <a href="blueprint.html">the blueprint</a>.</p>
+<p>We assemble software from modules built for everyone, and pay for every variation in conditional logic.
+That habit is inherited from storing data in rows and columns and then building software in the shape of
+the storage — which is why permissions and personalisation always arrive late, as layers on something
+that never expected them.</p>
+<p>FishTea starts from a different premise: a business is an authority that answers questions, and the
+interface is the last and thinnest layer rather than the first and thickest.</p>
+<p>The first FishTea, in 2006, had that idea and could only build half of it. Working out what a visitor
+meant, cheaply enough to sit in front of every request, was not possible then at any price. A small
+tool-calling model on ordinary hardware removed that constraint, and the rest follows from it.</p>
+<p>The full argument is in <a href="welcome.html">Welcome</a>; the design, including the decisions that
+are settled and why, is in <a href="blueprint.html">the blueprint</a>.</p>
 
 <h2 id="contributing">Contributing</h2>
 <p>The most useful contribution is a plugin. Everything outside the conversation itself is one:

@@ -2,6 +2,7 @@
 title: Seven bugs from the first time anyone opened the UI
 date: 2026-09-22
 summary: The test suite was green, the API was verified, and the interface had never been looked at in a browser. Here is what was waiting.
+author: Shawn J. Stewart
 tags: ui, testing
 ---
 

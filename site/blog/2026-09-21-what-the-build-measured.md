@@ -2,6 +2,7 @@
 title: The five measurements that changed the design
 date: 2026-09-21
 summary: A blueprint is a hypothesis. Here is what happened when we pointed a profiler at the parts of it that mattered, and what we changed as a result.
+author: Shawn J. Stewart
 tags: classifier, performance
 ---
 

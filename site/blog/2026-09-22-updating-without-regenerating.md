@@ -2,6 +2,7 @@
 title: Two hashes, and why "regenerate it" is the wrong answer
 date: 2026-09-22
 summary: Scaffolding tools give you a great first day and abandon you on the second. Fixing that turned out to need one more hash per file than we first recorded.
+author: Shawn J. Stewart
 tags: versioning, design
 ---
 
