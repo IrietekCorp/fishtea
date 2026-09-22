@@ -96,12 +96,37 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: fishtea-
 curl -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: fishtea-io" "$BASE/fishtea.io"
 ```
 
-The states to watch are `ownershipState` (→ `OWNERSHIP_ACTIVE`), `cert.state` (→ `CERT_ACTIVE`) and
-`hostState` (→ `HOST_ACTIVE`). Ownership usually flips within minutes of the TXT record resolving;
-certificate issuance normally takes under an hour but Google allows up to 24.
-
 The records the apex needs are an `A` to `199.36.158.100` and a `TXT` of `hosting-site=fishtea-io`; `www`
-needs a `CNAME` to `fishtea-io.web.app`.
+needs a `CNAME` to `fishtea-io.web.app`. Those come back under `requiredDnsUpdates`.
+
+### The certificate needs a second set of records, in a different field
+
+This is the part that will waste your afternoon. `requiredDnsUpdates` gets you as far as
+`OWNERSHIP_ACTIVE` and `HOST_ACTIVE` — and then the certificate sits at `CERT_VALIDATING` forever,
+because issuance is a **separate ACME DNS-01 challenge** whose records are not in `requiredDnsUpdates` at
+all. They are buried in `cert.verification.dns.desired`:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: fishtea-io" "$BASE/fishtea.io" |
+  python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['cert']['verification']['dns'], indent=1))"
+```
+
+They live at `_acme-challenge.<domain>` — note that for `www` this is
+`_acme-challenge.www.fishtea.io`, not a single shared record — and the value is a bare token:
+
+```bash
+gcloud dns record-sets create _acme-challenge.fishtea.io. \
+  --rrdatas='"<token>"' --type=TXT --ttl=60 --zone=fishtea-io --project=fishtea-io
+```
+
+Once they resolve publicly, the state machine moves on its own:
+`CERT_VALIDATING` → `CERT_PROPAGATING` → serving. Propagation took a few minutes here.
+
+The states to watch are `ownershipState` (→ `OWNERSHIP_ACTIVE`), `hostState` (→ `HOST_ACTIVE`) and
+`cert.state`. A `TEMPORARY` cert type is normal during setup; Google swaps it for the managed one.
+
+These challenge tokens are single-use. Once HTTPS works the `_acme-challenge` records have done their job
+and can be left in place or removed — renewal issues fresh ones.
 
 ## Credentials
 
