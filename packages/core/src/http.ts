@@ -11,6 +11,23 @@ import type { App } from "@fishtea/spec";
 
 const COOKIE = "fishtea_visitor";
 
+/**
+ * The browser refuses a wildcard `Access-Control-Allow-Origin` on a credentialed request, so the origin has
+ * to be reflected rather than starred. Reflecting *anything* would let any site make credentialed calls, so
+ * by default only origins on a hostname this core answers on are echoed back — which covers the UI on another
+ * port of the same machine. FISHTEA_CORS_ORIGINS names others explicitly.
+ */
+export function allowOrigin(policy: CorsPolicy = {}): (origin: string) => string | undefined {
+  const exact = policy.origins;
+  const hosts = new Set([...(policy.hosts ?? []), "localhost", "127.0.0.1", "::1", "[::1]"]);
+  return (origin: string) => {
+    if (!origin) return undefined;               // same-origin, or not a browser
+    if (exact === "*") return origin;
+    if (exact?.length) return exact.includes(origin) ? origin : undefined;
+    try { return hosts.has(new URL(origin).hostname) ? origin : undefined; } catch { return undefined; }
+  };
+}
+
 interface Bucket { tokens: number; at: number }
 const buckets = new Map<string, Bucket>();
 function rateLimit(key: string, perMinute = 120): boolean {
@@ -24,19 +41,33 @@ function rateLimit(key: string, perMinute = 120): boolean {
   return true;
 }
 
+export interface CorsPolicy {
+  /** Exact origins to allow. "*" reflects whatever asks. Empty or absent falls back to `hosts`. */
+  origins?: string[] | "*";
+  /** Hostnames this core answers on. Any origin on one of them is allowed, whatever its port, so the UI
+   *  served from :5173 on the same machine works without configuration. */
+  hosts?: string[];
+}
+
 export interface ServerOptions {
   engine: Engine;
   operatorToken?: string;
   onReload?: () => Promise<App>;
   onRestart?: () => Promise<void>;
   onEditSection?: (section: string, patch: unknown) => Promise<{ ok: boolean; version: string; migrationNeeded?: boolean }>;
-  corsOrigin?: string;
+  cors?: CorsPolicy;
 }
 
 export function createServer(opts: ServerOptions) {
   const { engine } = opts;
   const app = new Hono();
-  app.use("*", cors({ origin: opts.corsOrigin ?? "*", credentials: true, allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator"] }));
+  app.use("*", cors({
+    origin: allowOrigin(opts.cors),
+    credentials: true,
+    allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator"],
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    maxAge: 600,
+  }));
 
   const envelopeOf = (c: any) => {
     const q = c.req.query();

@@ -17,13 +17,49 @@ beforeAll(async () => {
   await reset(db); await migrate(db, app); await seed(db, app);
   engine = new Engine({ app, db, classifier: new LexicalClassifier() });
   await engine.primeLexical();
-  const hono = createServer({ engine, operatorToken: OP });
+  const hono = createServer({ engine, operatorToken: OP, cors: { hosts: ["10.0.0.7"] } });
   server = Bun.serve({ port: 0, fetch: hono.fetch });
   base = `http://localhost:${server.port}`;
 });
 afterAll(async () => { server.stop(true); await db.end(); });
 
 const cookieOf = (res: Response) => res.headers.get("set-cookie")?.match(/fishtea_visitor=([^;]+)/)?.[1] ?? "";
+
+describe("cors", () => {
+  // the browser rejects a wildcard Access-Control-Allow-Origin on a credentialed request, so the origin is
+  // reflected instead; reflecting anything would let any site make credentialed calls
+  const preflight = (origin: string) => fetch(`${base}/utter`, { method: "OPTIONS", headers: { origin, "access-control-request-method": "POST", "access-control-request-headers": "content-type" } });
+
+  test("a browser on a host this core answers on is allowed, on any port", async () => {
+    for (const origin of ["http://localhost:5173", "http://127.0.0.1:5173", "http://10.0.0.7:5173"]) {
+      const r = await preflight(origin);
+      expect(r.headers.get("access-control-allow-origin"), origin).toBe(origin);
+      expect(r.headers.get("access-control-allow-credentials")).toBe("true");
+    }
+  });
+  test("the wildcard is never sent, because it cannot carry credentials", async () => {
+    const r = await preflight("http://localhost:5173");
+    expect(r.headers.get("access-control-allow-origin")).not.toBe("*");
+  });
+  test("an unrelated origin is refused", async () => {
+    const r = await preflight("https://evil.example");
+    expect(r.headers.get("access-control-allow-origin")).toBeNull();
+  });
+  test("a real GET carries the reflected origin", async () => {
+    const r = await fetch(`${base}/`, { headers: { origin: "http://10.0.0.7:5173" } });
+    expect(r.headers.get("access-control-allow-origin")).toBe("http://10.0.0.7:5173");
+  });
+  test("an explicit list overrides the host rule, and \"*\" reflects anything", async () => {
+    const listed = Bun.serve({ port: 0, fetch: createServer({ engine, cors: { origins: ["https://shop.example"] } }).fetch });
+    const l = `http://localhost:${listed.port}`;
+    expect((await fetch(`${l}/`, { headers: { origin: "https://shop.example" } })).headers.get("access-control-allow-origin")).toBe("https://shop.example");
+    expect((await fetch(`${l}/`, { headers: { origin: "http://localhost:5173" } })).headers.get("access-control-allow-origin")).toBeNull();
+    listed.stop(true);
+    const any = Bun.serve({ port: 0, fetch: createServer({ engine, cors: { origins: "*" } }).fetch });
+    expect((await fetch(`http://localhost:${any.port}/`, { headers: { origin: "https://anywhere.example" } })).headers.get("access-control-allow-origin")).toBe("https://anywhere.example");
+    any.stop(true);
+  });
+});
 
 describe("http", () => {
   let visitor = "";

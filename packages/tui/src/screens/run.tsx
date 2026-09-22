@@ -24,7 +24,10 @@ export function Run() {
     { value: "reload", label: "Reload the core's spec", hint: "hot-reload without restarting (non-entity sections)" },
     { value: "restart", label: "Restart the core", hint: "op.restart; Compose brings it back" },
     { value: "up", label: "Compose up", hint: "build and start db + classifier + core + ui" },
-    { value: "down", label: "Compose down", hint: "stop the stack (data volume kept)" },
+    { value: "stop", label: "Compose stop", hint: "pause the stack; start brings it back untouched" },
+    { value: "start", label: "Compose start", hint: "resume a stopped stack" },
+    { value: "down", label: "Compose down", hint: "stop and remove the containers; the data volume is kept" },
+    { value: "down-v", label: "Compose down, deleting data", hint: "also drops the volume: every conversation and row goes", confirm: "Delete the database volume? Every conversation and every row goes.", danger: true },
     { value: "ps", label: "Compose ps", hint: "what is running" },
     { value: "logs", label: "Compose logs (core)", hint: "opens a follower; q to come back" },
     { value: "headless", label: "Headless walkthrough", hint: "run scripts/walkthrough.json and print every pour" },
@@ -57,7 +60,10 @@ export function Run() {
         case "reload": { const r = await busy("reloading", () => core.reload()); log(JSON.stringify(r)); toast(`core reloaded → v${r.version}`, "ok"); break; }
         case "restart": { await core.op("op.restart"); toast("restart requested", "ok"); setTimeout(() => void refresh(), 1500); break; }
         case "up": { const r = await compose(["up", "-d", "--build"]); log(r.out); toast(r.code === 0 ? "stack up" : "compose failed", r.code === 0 ? "ok" : "bad"); await refresh(); break; }
-        case "down": { const r = await compose(["down"]); log(r.out); toast("stack down"); await refresh(); break; }
+        case "stop": { const r = await compose(["stop"]); log(r.out); toast("stack paused"); await refresh(); break; }
+        case "start": { const r = await compose(["start"]); log(r.out); toast(r.code === 0 ? "stack resumed" : "compose failed", r.code === 0 ? "ok" : "bad"); await refresh(); break; }
+        case "down": { const r = await compose(["down"]); log(r.out); toast("stack down; data kept"); await refresh(); break; }
+        case "down-v": { const r = await compose(["down", "-v"]); log(r.out); toast("stack down; data deleted", "warn"); await refresh(); break; }
         case "ps": { const r = await compose(["ps"]); log(r.out || "nothing running"); break; }
         case "logs":
           await suspend(async () => { const p = Bun.spawn(["docker", "compose", "logs", "-f", "--tail", "80", "core"], { cwd: dir, stdio: ["inherit", "inherit", "inherit"] }); await p.exited; });
@@ -99,7 +105,7 @@ export function Run() {
 
   return (
     <Box flexDirection="column">
-      <SelectList rows={11} filterable={false} options={actions.map<Option<string>>((a) => ({ value: a.value, label: a.label, hint: a.hint, badge: a.danger ? "!" : undefined, badgeColor: theme.bad }))}
+      <SelectList rows={13} filterable={false} options={actions.map<Option<string>>((a) => ({ value: a.value, label: a.label, hint: a.hint, badge: a.danger ? "!" : undefined, badgeColor: theme.bad }))}
         onSelect={(o) => { const a = actions.find((x) => x.value === o.value)!; if (a.confirm) setPending(a); else void perform(a); }} />
       {out.length ? (
         <Box marginTop={1} flexDirection="column" borderStyle="round" borderColor={theme.dim} paddingX={1}>

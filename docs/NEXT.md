@@ -7,7 +7,7 @@ Written 2026-09-21 at the hand-off from the design/build session. Read `CLAUDE.m
 - Commits: `2ff0d03` framework, `b40d957` PostgreSQL 18, `1d66877` README, `52f72da` this file, then the Ink operator console.
 - Verified: 50 tests (`spec`, `core`, `http`, `program`, all five templates) on PostgreSQL 18.6 / pgvector 0.8.6; the needle Phase 4 test (6) against a local pool; `tsc` clean; `bun run build` for the UI; scaffolding from answer files for ecommerce (affiliate-only) and portfolio, then running them headless.
 - Bench (warm pool, 20 iterations): every budget green, 100/100 text utterances answered. `packages/bench/baseline.json`.
-- Not verified: the React UI in a browser; the eBay adapter against the live API; `bun run up` from a clean machine.
+- Not verified: the React UI clicked in a browser (its HTTP traffic is verified, including CORS from a LAN origin); the eBay adapter against the live API.
 - The operator console was rebuilt on Ink after @clack/prompts proved unusable under Bun (see docs/DESIGN.md). Eight pty-driven tests cover rendering, navigation, typing, the key lock, the interview and spec writes.
 
 ## Work list, in priority order

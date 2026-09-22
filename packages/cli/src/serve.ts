@@ -8,7 +8,7 @@ import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
 import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
-import { bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicUrl, reachableUrls, redact } from "./env.ts";
+import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, publicUrl, reachableUrls, redact, selfHosts } from "./env.ts";
 
 export async function serve(app: App, flags: Record<string, string | boolean>, dir: string) {
   const host = bindHost(flags);
@@ -49,8 +49,10 @@ export async function serve(app: App, flags: Record<string, string | boolean>, d
     watch(app.specPath, () => { clearTimeout(timer); timer = setTimeout(() => reload().catch((e) => log(pc.red(e instanceof SpecError ? e.message : `reload failed: ${e.message}`))), 200); });
   } catch (e) { log(pc.yellow(`spec watch unavailable: ${(e as Error).message}`)); }
 
+  const cors = { origins: corsOrigins(flags), hosts: selfHosts(flags) };
   const server = createServer({
     engine,
+    cors,
     operatorToken: process.env.FISHTEA_OPERATOR_TOKEN,
     onReload: reload,
     onRestart: async () => { log("restart requested by operator"); setTimeout(() => process.exit(0), 50); },
@@ -69,5 +71,6 @@ export async function serve(app: App, flags: Record<string, string | boolean>, d
   log(pc.dim(`  spec       ${app.specPath}`));
   if (host === "0.0.0.0") log(pc.dim(`  reachable from other machines; set FISHTEA_HOST=127.0.0.1 to keep it local`));
   log(pc.dim(`  the UI needs VITE_CORE_URL=${publicUrl(flags)}`));
+  log(pc.dim(`  browser origins ${cors.origins === "*" ? pc.yellow("any (FISHTEA_CORS_ORIGINS=*)") : cors.origins?.length ? cors.origins.join(", ") : `any port on ${cors.hosts.join(", ")}`}`));
   await new Promise(() => {});
 }

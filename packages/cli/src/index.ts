@@ -174,11 +174,28 @@ async function main() {
       await tui({ dir, fishteaHome: FISHTEA_HOME, flags });
       return;
     }
-    case "up": case "down": case "ps": case "logs": case "restart": {
+    case "up": case "down": case "stop": case "start": case "ps": case "logs": case "restart": {
       const dir = resolveAppDir(flags);
-      const args = ["compose", cmd === "up" ? "up" : cmd, ...(cmd === "up" ? ["--build", ...(flags.detach ? ["-d"] : [])] : []), ...(cmd === "restart" ? [String(flags.service ?? "core")] : []), ...(cmd === "logs" ? ["-f", ...positional.slice(1)] : [])];
+      const extra = positional.slice(1);                       // anything else goes straight to compose
+      // -v arrives as a positional (parseArgs only treats --flags as flags), so look in both places
+      const dropData = flags.volumes === true || flags.v === true || extra.includes("-v") || extra.includes("--volumes");
+      const detached = flags.detach === true || flags.d === true || extra.includes("-d");
+      const args: string[] = ["compose"];
+      if (cmd === "up") {
+        args.push("up", "--build", ...(detached ? ["-d"] : []));
+        if (!detached) console.log(pc.dim("ctrl-c stops the stack; from another terminal: bun run down"));
+      } else if (cmd === "down") {
+        args.push("down", ...(dropData ? ["-v"] : []));
+        if (dropData) console.log(pc.yellow("removing the data volumes as well: every conversation and every row goes"));
+      } else if (cmd === "restart") args.push("restart", ...(extra.length ? extra : [String(flags.service ?? "core")]));
+      else if (cmd === "logs") args.push("logs", "-f", "--tail", String(flags.tail ?? 80), ...extra);
+      else args.push(cmd);
+      if (cmd !== "restart" && cmd !== "logs") args.push(...extra.filter((a) => !["-v", "--volumes", "-d"].includes(a)));
       const proc = Bun.spawn(["docker", ...args], { cwd: dir, stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_HOME } });
-      process.exit(await proc.exited);
+      const code = await proc.exited;
+      if (cmd === "down" && code === 0) console.log(pc.green(`✓ stopped${dropData ? " and deleted the data" : "; data kept, bun run up brings it back"}`));
+      if (cmd === "stop" && code === 0) console.log(pc.green("✓ paused; bun run start resumes it untouched"));
+      process.exit(code);
     }
     case "bench": {
       const { bench } = await import("@fishtea/bench");
@@ -205,7 +222,11 @@ async function main() {
   fishtea serve [--host 0.0.0.0] [--port 3000] [--intent lexical|needle] [--strict]
   fishtea headless [--script scripts/walkthrough.json] [--json]
   fishtea tui                 operator console: onboard, edit, run
-  fishtea up | down | ps | logs | restart [--service core]
+  fishtea up [--detach]       build and start the stack (ctrl-c stops it)
+  fishtea down [-v]           stop and remove it; -v also deletes the data volume
+  fishtea stop | start        pause and resume without removing anything
+  fishtea ps | logs [service] what is running, and follow its output
+  fishtea restart [service]   default: core
   fishtea bench               performance harness against a running stack
   fishtea notify <visitorId> "<text>"
 

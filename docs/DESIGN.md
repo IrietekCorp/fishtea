@@ -115,6 +115,20 @@ filters **only when the catalog actually contains that value** — otherwise the
 word. Price stays a hard filter, because a budget is a promise. Against the live stack, six representative
 utterances all answer, including the two the classifier got partly wrong.
 
+## CORS, once the UI was on another address
+
+The core set `Access-Control-Allow-Origin: *` with `credentials: true`, which browsers reject outright: a
+credentialed request may not be answered with a wildcard. On one machine nothing noticed, because the UI and
+the core were same-origin enough in practice; the moment the UI was opened at `http://10.10.10.19:5173` every
+request failed the preflight.
+
+The origin is reflected now, not starred — and because reflecting *anything* would let any site make
+credentialed calls, only origins on a hostname this core answers on are echoed back. That covers the UI on
+another port of the same machine with no configuration, which is the common case. `FISHTEA_CORS_ORIGINS` names
+others explicitly, comma separated, or `*` to reflect anything. Five tests cover the allowed, refused,
+explicit-list and wildcard paths, and the full credentialed sequence (resume, utter, trail, SSE) was walked
+against a running stack from a LAN origin.
+
 ## Postgres version
 
 The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector:pg18`** (PostgreSQL 18.6 at the time of writing); the suite passes on it unchanged. PostgreSQL 19 was still in beta (`postgres:19beta3`) and pgvector had no pg19 image, so 18 is the newest GA option. An existing `pgdata` volume created by pg16 cannot be started by pg18: dump and restore, or `docker compose down -v` for a throwaway stack.

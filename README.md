@@ -44,6 +44,7 @@ Nothing assumes localhost. The core binds `0.0.0.0` by default, so a fresh appli
 | `FISHTEA_HOST` | `--host` | what the core binds. `0.0.0.0` (default) accepts any address; `127.0.0.1` keeps it local |
 | `PORT` | `--port` | the core's port |
 | `FISHTEA_PUBLIC_HOST` | `--public-host` | the address others dial. Detected from the LAN when unset; used for printed URLs and the UI's `VITE_CORE_URL` |
+| `FISHTEA_CORS_ORIGINS` | `--cors` | browser origins allowed to call the core. Unset means any port on an address the core answers on, which covers the UI. Comma separated, or `*` |
 | `DATABASE_URL` | `--db` | Postgres, wherever it lives |
 | `CLASSIFIER_URL` | `--classifier` | the needle pool, wherever it lives |
 
@@ -64,8 +65,20 @@ A missing classifier is a warning: the core still runs and pours `ask` for text 
 bun run up                   # builds the images; db (:5432) + classifier pool (:8081) + core (:3000) + ui (:5173)
 bun run tui                  # the operator console (see below)
 bun run logs core            # or: classifier, ui, db
-bun run down                 # add -v to drop the data volume
 ```
+
+Open the UI at `http://<your-address>:5173`. The core is on `:3000`; `curl .../healthz` shows database and classifier status.
+
+**Stopping it.**
+
+| | |
+|---|---|
+| `ctrl-c` | if `bun run up` is in the foreground |
+| `bun run stop` | pause everything; `bun run start` resumes it untouched |
+| `bun run down` | stop and remove the containers. The data volume is kept, so `bun run up` comes back with every conversation |
+| `bun run down -v` | the same, and delete the data volume |
+
+The console's **Run** screen has all of these, and asks before deleting data.
 
 Open http://localhost:5173. `curl http://localhost:3000/` returns the resumed conversation as JSON; `curl http://localhost:3000/healthz` shows db + classifier status. `bun run restart` restarts core; entity edits made in the TUI prompt for a migration.
 

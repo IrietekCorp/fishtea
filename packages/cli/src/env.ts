@@ -41,6 +41,25 @@ export function reachableUrls(host: string, port: number): string[] {
   return [`http://localhost:${port}`, ...(lan ? [`http://${lan}:${port}`] : [])];
 }
 
+/** Explicit CORS origins, if the browser UI is served from somewhere the core does not answer on. */
+export function corsOrigins(flags: Flags = {}): string[] | "*" | undefined {
+  const raw = str(flags.cors) ?? process.env.FISHTEA_CORS_ORIGINS;
+  if (!raw) return undefined;
+  if (raw.trim() === "*") return "*";
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/** Hostnames a browser might use to reach this core, so the UI on another port is allowed by default. */
+export function selfHosts(flags: Flags = {}): string[] {
+  const out = new Set(["localhost", "127.0.0.1", "::1"]);
+  const lan = lanAddress();
+  if (lan) out.add(lan);
+  out.add(publicHost(flags));
+  const bound = bindHost(flags);
+  if (bound !== "0.0.0.0" && bound !== "::") out.add(bound);
+  return [...out];
+}
+
 export const databaseUrl = (flags: Flags = {}): string =>
   str(flags.db) ?? process.env.DATABASE_URL ?? "postgres://fishtea:fishtea@localhost:5432/fishtea";
 export const classifierUrl = (flags: Flags = {}): string =>

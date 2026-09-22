@@ -138,7 +138,7 @@ export function writeAppFiles(dir: string, a: { id: string; name: string; templa
   const files: Record<string, string> = {
     "package.json": JSON.stringify({
       name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a Fishtea application (${a.template} archetype)`,
-      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
+      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
       fishtea: { template: a.template, home },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
@@ -165,6 +165,9 @@ A [Fishtea](${home}) application from the \`${a.template}\` archetype. Everythin
 bun run up        # docker compose: Postgres (pgvector) + needle3 classifier pool + core + ui
 bun run tui       # the operator console: edit sections, restart, regenerate, watch the unmet channel
 \`\`\`
+
+Stopping: ctrl-c if \`up\` is in the foreground, \`bun run stop\` to pause, \`bun run down\` to stop and remove
+(the data volume is kept), \`bun run down -v\` to delete the data too.
 
 \`.env\` is written for you and already loaded. The core binds \`0.0.0.0\` so it is reachable from other
 machines; point \`DATABASE_URL\`, \`CLASSIFIER_URL\` and \`FISHTEA_PUBLIC_HOST\` wherever those services live.
@@ -198,6 +201,10 @@ PORT=3000
 FISHTEA_PUBLIC_HOST=${lan ?? "localhost"}
 
 # --- behaviour --------------------------------------------------------------
+# Browser origins allowed to call this core. Unset means any port on an address this core answers on,
+# which covers the UI. Name others explicitly, comma separated, or "*" for any.
+# FISHTEA_CORS_ORIGINS=https://shop.example
+
 FISHTEA_INTENT=needle          # lexical is a development harness, never production (D5)
 FISHTEA_STRICT=0
 FISHTEA_OPERATOR_TOKEN=change-me
