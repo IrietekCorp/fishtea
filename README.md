@@ -180,6 +180,7 @@ Tests run against a real Postgres. Keep them that way.
 - [Running it](docs/OPERATING.md)
 - [The blueprint](docs/BLUEPRINT.md) — the design
 - [What the build measured](docs/DESIGN.md) — where the implementation deviated, and the measurement why
+- [Deploying](docs/DEPLOY.md) — how fishtea.io is hosted, and the nameserver trap that bit us
 - [What is next](docs/NEXT.md) — the work list
 
 ## Rules of the house

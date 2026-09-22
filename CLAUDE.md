@@ -24,6 +24,7 @@ bun fishtea plugin list|info|add|remove|create|promote
 bun run release <v> [--check]                           # the only writer of every version site
 bun run build-release [--install] [--tarball]           # compile the binary + stage runtime files
 bun run site [--serve]                                  # fishtea.io into site/dist
+bun run deploy                                          # build + push to Firebase Hosting (docs/DEPLOY.md)
 bun run bench -- --conventional   # against a running core
 bunx tsc -p tsconfig.json --noEmit
 ```

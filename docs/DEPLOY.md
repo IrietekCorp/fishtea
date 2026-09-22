@@ -1,0 +1,126 @@
+# Deploying fishtea.io
+
+The documentation site is static. It is built from this repository and served by Firebase Hosting on the
+`fishtea-io` Google Cloud project.
+
+```bash
+bun run site          # build into site/dist
+bun run deploy        # build, then push to Firebase Hosting
+```
+
+That is the whole routine. Everything below is the part you only need when something is wrong or when
+setting it up somewhere new.
+
+## What exists
+
+| thing | value |
+|---|---|
+| GCP project | `fishtea-io` (number `44038990837`) |
+| Hosting site | `fishtea-io` → `https://fishtea-io.web.app` |
+| Custom domains | `fishtea.io`, and `www.fishtea.io` redirecting to it |
+| DNS | Cloud DNS managed zone `fishtea-io`, public, **DNSSEC off** |
+| Registrar | GoDaddy |
+| APIs | `dns`, `firebase`, `firebasehosting` |
+
+Cost is roughly $0.20/month for the Cloud DNS zone. Firebase Hosting is inside its free tier at this size,
+and the alternative considered — Cloud Storage behind an HTTPS load balancer — is about $18/month for the
+forwarding rule alone.
+
+## Why Firebase Hosting, and why `firebase.json` exists
+
+It is the only free option on Google Cloud that gives a CDN, automatic certificates and atomic deploys
+with one-command rollback. The config file earns its place by doing three things:
+
+- **`public: site/dist`** — without this, a deploy has no idea what to publish. This part is not optional.
+- **`/install` as `text/plain`** — so <https://fishtea.io/install> opens *readable in a browser*. `curl`
+  ignores content types, so this does not affect `curl … | bash` working; what it affects is whether
+  somebody can read the script before piping it to their shell, which is the only honest answer to "why
+  should I run this?"
+- **`cleanUrls` and caching** — canonical URLs drop `.html` and the old paths 301 at the edge, so nothing
+  in the docs had to change. HTML revalidates every request; static assets get an hour rather than a year,
+  because their filenames are not content-hashed and a stale stylesheet would otherwise outlive a deploy.
+
+## The nameserver-set trap
+
+Cloud DNS assigns each managed zone one of several nameserver sets — `ns-cloud-a1…a4`, `b1…b4`, and so on
+— **at random, and you cannot choose**. The registrar's delegation has to match the set your zone actually
+got.
+
+This bit us on day one. The registrar was delegating to the `c` set while the zone had been given `e`, so
+every lookup returned SERVFAIL: the delegation pointed at servers that were not authoritative for the
+domain. It looks exactly like a DNSSEC failure and is not. Ten zone recreations produced a, b, d and e —
+never c — which is the clearest demonstration that guessing is not a strategy.
+
+**If resolution breaks, check this first:**
+
+```bash
+# what the zone actually has
+gcloud dns managed-zones describe fishtea-io --project=fishtea-io --format="value(nameServers)"
+
+# what the registry says the registrar delegates to
+curl -sL -H 'accept: application/rdap+json' \
+  https://rdap.identitydigital.services/rdap/domain/fishtea.io |
+  python3 -c "import json,sys; print([n['ldhName'] for n in json.load(sys.stdin)['nameservers']])"
+```
+
+They must match. If they do not, change the registrar to match the zone — never the other way round,
+because the zone's set cannot be chosen.
+
+To prove the zone itself is healthy regardless of what public resolvers say — they cache negative answers
+and will keep returning SERVFAIL for a while after a fix — query an authoritative server directly. There
+is a ready-made check in the session notes; the short version is that `ns-cloud-d1.googledomains.com`
+should answer `NOERROR` with the authoritative bit set.
+
+**DNSSEC stays off.** The registry publishes no DS records for this domain. Turning DNSSEC on in the zone
+without also publishing a DS record at the registrar breaks resolution for every validating resolver.
+
+## Setting up the custom domain again
+
+Adding a custom domain returns the DNS records it wants; they go in the zone, and Firebase then verifies
+ownership and issues a certificate on its own.
+
+```bash
+TOKEN=$(gcloud auth print-access-token)
+BASE=https://firebasehosting.googleapis.com/v1beta1/projects/fishtea-io/sites/fishtea-io/customDomains
+
+# apex
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: fishtea-io" \
+  -H "Content-Type: application/json" "$BASE?customDomainId=fishtea.io" -d '{}'
+
+# www, redirecting to the apex
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: fishtea-io" \
+  -H "Content-Type: application/json" "$BASE?customDomainId=www.fishtea.io" \
+  -d '{"redirectTarget":"fishtea.io"}'
+
+# what it wants, and how far along it is
+curl -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: fishtea-io" "$BASE/fishtea.io"
+```
+
+The states to watch are `ownershipState` (→ `OWNERSHIP_ACTIVE`), `cert.state` (→ `CERT_ACTIVE`) and
+`hostState` (→ `HOST_ACTIVE`). Ownership usually flips within minutes of the TXT record resolving;
+certificate issuance normally takes under an hour but Google allows up to 24.
+
+The records the apex needs are an `A` to `199.36.158.100` and a `TXT` of `hosting-site=fishtea-io`; `www`
+needs a `CNAME` to `fishtea-io.web.app`.
+
+## Credentials
+
+Deploys authenticate with Application Default Credentials, with a quota project set — the Firebase
+Management API rejects ADC without one, and says so clearly if you forget:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+gcloud auth application-default set-quota-project fishtea-io
+```
+
+Adding Firebase to a Google Cloud project for the first time requires accepting the Firebase Terms of
+Service once per Google account, in a browser. No amount of correct IAM substitutes for it: the API
+returns a bare `403 The caller does not have permission` even to a project Owner.
+
+## Releases
+
+`FISHTEA_RELEASES` defaults to `https://fishtea.io/releases`, which **does not exist yet**. Until binaries
+are published there, `fishtea upgrade` fails with a clear message and points at `--from <checkout>`, and
+`install.sh` does the same. Publishing means putting `fishtea-<version>-<target>.tar.gz` files and a
+`latest` file containing the version string at that path — see `docs/NEXT.md`.
