@@ -1,0 +1,72 @@
+/*
+ * boutique — a design system for shops.
+ *
+ * Every value here is one of the tokens packages/ui/src/index.css already defines, so a design system is a
+ * stylesheet and nothing more: no component is replaced, no vessel is rewritten, and the accessible
+ * contrast and focus behaviour of the base UI is inherited rather than re-earned. Loaded after the base
+ * sheet, so these win by order alone.
+ *
+ * The two values the interview asks about are substituted at build time: --boutique-accent-hue and
+ * --boutique-radius. Everything else is derived from them, which is what keeps a palette coherent when
+ * somebody picks a hue at 3am.
+ */
+:root {
+  --boutique-accent-hue: 25;
+  --boutique-radius: 0.75rem;
+
+  /* Warm paper rather than white: less glare on a long catalogue, and it makes product photography sit. */
+  --background: oklch(0.982 0.006 85);
+  --foreground: oklch(0.19 0.012 60);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --muted: oklch(0.945 0.008 85);
+  --muted-foreground: oklch(0.47 0.012 60);
+  --border: oklch(0.885 0.01 85);
+  --input: var(--border);
+
+  /* One decisive accent, used for the thing you want pressed and nothing else. */
+  --accent: oklch(0.68 0.17 var(--boutique-accent-hue));
+  --accent-foreground: oklch(0.99 0.01 var(--boutique-accent-hue));
+  --ring: oklch(0.68 0.17 var(--boutique-accent-hue));
+
+  --primary: oklch(0.26 0.02 60);
+  --primary-foreground: oklch(0.99 0 0);
+
+  /* A write is a promise: it keeps its own colour, distinct from the accent, and never shares it. */
+  --write: oklch(0.54 0.19 20);
+  --success: oklch(0.56 0.13 155);
+  --warn: oklch(0.74 0.15 85);
+
+  --radius: var(--boutique-radius);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: oklch(0.155 0.01 60);
+    --foreground: oklch(0.94 0.008 85);
+    --card: oklch(0.2 0.012 60);
+    --muted: oklch(0.24 0.012 60);
+    --muted-foreground: oklch(0.72 0.012 60);
+    --border: oklch(0.31 0.014 60);
+    --input: var(--border);
+    --accent: oklch(0.74 0.16 var(--boutique-accent-hue));
+    --accent-foreground: oklch(0.16 0.02 var(--boutique-accent-hue));
+    --primary: oklch(0.93 0.01 85);
+    --primary-foreground: oklch(0.18 0.012 60);
+    --write: oklch(0.72 0.17 20);
+  }
+}
+:root[data-theme="dark"] {
+  --background: oklch(0.155 0.01 60);
+  --foreground: oklch(0.94 0.008 85);
+  --card: oklch(0.2 0.012 60);
+  --muted: oklch(0.24 0.012 60);
+  --muted-foreground: oklch(0.72 0.012 60);
+  --border: oklch(0.31 0.014 60);
+  --input: var(--border);
+  --accent: oklch(0.74 0.16 var(--boutique-accent-hue));
+  --accent-foreground: oklch(0.16 0.02 var(--boutique-accent-hue));
+  --primary: oklch(0.93 0.01 85);
+  --primary-foreground: oklch(0.18 0.012 60);
+  --write: oklch(0.72 0.17 20);
+}

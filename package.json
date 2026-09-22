@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Describe a business once in JSON; derive the data layer, the classifier's tool list, the planner, the vessels and the operator console from it.",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "plugins/*"
   ],
   "bin": {
     "fishtea": "./packages/cli/src/index.ts"

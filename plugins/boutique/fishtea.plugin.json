@@ -1,0 +1,28 @@
+{
+  "name": "boutique",
+  "version": "1.0.0",
+  "kind": "ui",
+  "doc": "A warm, high-contrast design system for ecommerce: generous type, calm surfaces, one decisive accent",
+  "fishtea": "^1.1.0",
+  "tokens": "tokens.css",
+  "config": [
+    {
+      "id": "accentHue",
+      "ask": "Accent hue (0-360, the colour a buy button carries)",
+      "type": "int",
+      "default": 25
+    },
+    {
+      "id": "radius",
+      "ask": "Corner radius",
+      "type": "enum",
+      "values": [
+        "0rem",
+        "0.35rem",
+        "0.75rem",
+        "1.25rem"
+      ],
+      "default": "0.75rem"
+    }
+  ]
+}

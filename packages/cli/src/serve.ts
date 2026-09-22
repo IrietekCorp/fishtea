@@ -8,9 +8,9 @@ import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
 import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
-import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, publicUrl, reachableUrls, redact, selfHosts } from "./env.ts";
+import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, publicUrl, reachableUrls, redact, selfHosts, type Flags } from "./env.ts";
 
-export async function serve(app: App, flags: Record<string, string | boolean>, dir: string) {
+export async function serve(app: App, flags: Flags, dir: string) {
   const host = bindHost(flags);
   const port = bindPort(flags);
   const log = (s: string) => console.log(pc.dim(new Date().toISOString().slice(11, 19)) + " " + s);

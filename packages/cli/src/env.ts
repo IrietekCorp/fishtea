@@ -8,7 +8,7 @@ import { networkInterfaces } from "node:os";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 
-export type Flags = Record<string, string | boolean | undefined>;
+export type Flags = Record<string, string | boolean | string[] | undefined>;
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.length ? v : undefined);
 
 /** The address the core binds. 0.0.0.0 by default so the stack is reachable from other machines. */

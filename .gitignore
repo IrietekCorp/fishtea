@@ -8,3 +8,4 @@ templates/*/.fishtea/
 packages/classifier/.venv/
 __pycache__/
 models/
+packages/ui/src/plugins.generated.css

@@ -16,26 +16,43 @@ import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA
 import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
 import { readManifest } from "./manifest.ts";
-import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact } from "./env.ts";
+import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
 export const FISHTEA_HOME = resolve(dirname(new URL(import.meta.url).pathname), "../../..");
 
+/**
+ * A repeated flag accumulates into an array rather than overwriting, so `--set a=1 --set b=2` keeps both.
+ * Everything that reads a flag tests `typeof x === "string"` first, so a single occurrence is unchanged
+ * and a repeat simply fails that test rather than silently handing back only the last value.
+ */
 export function parseArgs(argv: string[]) {
-  const flags: Record<string, string | boolean> = {};
+  const flags: Record<string, string | boolean | string[]> = {};
   const positional: string[] = [];
+  const put = (k: string, v: string | boolean) => {
+    const seen = flags[k];
+    if (seen === undefined) flags[k] = v;
+    else if (Array.isArray(seen)) seen.push(String(v));
+    else flags[k] = [String(seen), String(v)];
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith("--")) {
       const [k, v] = a.slice(2).split("=", 2);
-      if (v !== undefined) flags[k] = v;
-      else if (argv[i + 1] !== undefined && !argv[i + 1].startsWith("--")) flags[k] = argv[++i];
-      else flags[k] = true;
+      if (v !== undefined) put(k, v);
+      else if (argv[i + 1] !== undefined && !argv[i + 1].startsWith("--")) put(k, argv[++i]);
+      else put(k, true);
     } else positional.push(a);
   }
   return { flags, positional };
 }
 
-export function resolveAppDir(flags: Record<string, string | boolean>): string {
+/** Every value given for a flag, whether it appeared once, many times, or not at all. */
+export function flagList(v: unknown): string[] {
+  if (v === undefined || v === true || v === false) return [];
+  return Array.isArray(v) ? v.map(String) : [String(v)];
+}
+
+export function resolveAppDir(flags: Flags): string {
   const given = typeof flags.app === "string" ? flags.app : process.env.FISHTEA_APP;
   if (given) return resolve(given);
   if (existsSync(resolve("spec.json"))) return resolve(".");
@@ -50,12 +67,12 @@ export function loadOrDie(dir: string): App {
   }
 }
 
-export function classifierFor(flags: Record<string, string | boolean>): Classifier {
+export function classifierFor(flags: Flags): Classifier {
   const intent = String(flags.intent ?? process.env.FISHTEA_INTENT ?? (process.env.CLASSIFIER_URL || flags.classifier ? "needle" : "lexical"));
   return intent === "needle" ? new NeedleClient(classifierUrl(flags)) : new LexicalClassifier();
 }
 
-export async function buildEngine(app: App, flags: Record<string, string | boolean>, opts: { log?: (s: string) => void } = {}) {
+export async function buildEngine(app: App, flags: Flags, opts: { log?: (s: string) => void } = {}) {
   const db = connect(databaseUrl(flags));
   const classifier = classifierFor(flags);
   const engine = new Engine({ app, db, classifier, strict: flags.strict === true || process.env.FISHTEA_STRICT === "1", log: opts.log });
@@ -121,6 +138,62 @@ async function main() {
         console.log(`${pc.dim("  spec")}       format ${spec.fishtea}${spec.fishtea === SPEC_FORMAT ? "" : pc.yellow(` → ${SPEC_FORMAT} available (fishtea update)`)} · business v${spec.business?.version}`);
         console.log(`${pc.dim("  generated")}  by ${m?.fishtea ?? "unknown"}${m ? `, updated ${m.updated.slice(0, 10)}` : " (no manifest — fishtea update --adopt)"}`);
       } catch { /* not in an application; the framework lines are the answer */ }
+      return;
+    }
+    case "plugin": case "plugins": {
+      const P = await import("./plugin.ts");
+      const sub = positional[1] ?? "list";
+      const dir = () => resolveAppDir(flags);
+      switch (sub) {
+        case "list": console.log(P.list(dir(), FISHTEA_HOME)); return;
+        case "info": console.log(P.info(String(positional[2] ?? ""), dir(), FISHTEA_HOME)); return;
+        case "add": {
+          const use = positional[2];
+          if (!use) throw new Error("which plugin? fishtea plugin list");
+          // --set k=v (repeatable) answers the plugin's config questions without an interview.
+          const config: Record<string, unknown> = {};
+          for (const raw of flagList(flags.set)) {
+            const [k, ...rest] = String(raw).split("=");
+            if (k && rest.length) { const v = rest.join("="); config[k] = /^-?\d+$/.test(v) ? Number(v) : v === "true" ? true : v === "false" ? false : v; }
+          }
+          const r = P.add(use, dir(), { as: typeof flags.as === "string" ? flags.as : undefined, config, home: FISHTEA_HOME });
+          console.log(pc.green(`✓ added ${r.manifest.name} ${r.manifest.version} as plugins.${r.as}`));
+          const env = r.manifest.env ?? [];
+          if (env.length) console.log(pc.yellow(`  set ${env.join(", ")} in .env before it will answer`));
+          console.log(pc.dim(`  nothing was inlined into spec.json; what it contributes appears when the spec loads`));
+          return;
+        }
+        case "remove": case "rm": {
+          const as = positional[2];
+          if (!as) throw new Error("which plugin? fishtea plugin list");
+          P.remove(as, dir());
+          console.log(pc.green(`✓ removed plugins.${as}; everything it contributed is gone with it`));
+          return;
+        }
+        case "create": {
+          const name = positional[2];
+          if (!name) throw new Error("fishtea plugin create <name> --kind <integration|ui|auth|classifier|channel|archetype>");
+          const out = P.create(name, String(flags.kind ?? "integration") as any, dir());
+          console.log(pc.green(`✓ created ${out}`));
+          console.log(pc.dim(`  use it here:     fishtea plugin add ${name}`));
+          console.log(pc.dim(`  share it later:  fishtea plugin promote ${name}`));
+          return;
+        }
+        case "promote": {
+          const name = positional[2];
+          if (!name) throw new Error("which plugin? fishtea plugin promote <name>");
+          const r = P.promote(name, dir(), FISHTEA_HOME, { copy: flags.copy === true });
+          console.log(pc.green(`✓ promoted ${name} to the framework: ${r.to}`));
+          console.log(pc.dim(`  every application resolves it by name now; this one keeps working unchanged`));
+          return;
+        }
+        default: throw new Error(`unknown: fishtea plugin ${sub} (list, info, add, remove, create, promote)`);
+      }
+    }
+    case "ui-assets": {
+      const r = (await import("./plugin.ts")).generateUiAssets(resolveAppDir(flags), FISHTEA_HOME);
+      console.log(pc.green(`✓ ${r.path}${r.plugins.length ? ` from ${r.plugins.join(", ")}` : " (no ui plugins; base tokens only)"}`));
+      for (const w of r.warnings) console.log(pc.yellow(`  ⚠ ${w}`));
       return;
     }
     case "update": {
@@ -294,6 +367,9 @@ async function main() {
   fishtea version             framework, spec format, and what this application pins
   fishtea update [--dry-run]  bring this application up to the framework without regenerating it
                               [--adopt] start tracking an application made before provenance existed
+  fishtea plugin list|info|add|remove|create|promote
+                              everything outside the conversation: integrations, design systems, auth
+  fishtea ui-assets           regenerate the browser bundle's design-system stylesheet
   fishtea validate            validate spec.json and print section hashes
   fishtea doctor              check the spec, the database, the classifier and the binding
   fishtea derive [--ddl|--tools|--forms]

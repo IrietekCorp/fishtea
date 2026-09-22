@@ -5,4 +5,6 @@ export * from "./derive.ts";
 export * from "./version.ts";
 export * from "./release.ts";
 export * from "./migrate.ts";
+export * from "./plugin.ts";
+export * from "./plugin-resolve.ts";
 export * from "./edit.ts";

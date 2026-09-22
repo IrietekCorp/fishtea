@@ -8,7 +8,9 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { runConventional } from "./conventional.ts";
 
-export interface BenchOptions { flags: Record<string, string | boolean>; positional: string[]; fishteaHome: string }
+/** Same shape as the CLI's parsed flags; a repeated flag arrives as an array. */
+export type Flags = Record<string, string | boolean | string[] | undefined>;
+export interface BenchOptions { flags: Flags; positional: string[]; fishteaHome: string }
 
 const here = new URL(".", import.meta.url).pathname;
 

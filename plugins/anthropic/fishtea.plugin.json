@@ -1,0 +1,35 @@
+{
+  "name": "anthropic",
+  "version": "1.0.0",
+  "kind": "integration",
+  "doc": "Ask a frontier Claude model when the on-device classifier is not the right tool",
+  "fishtea": "^1.1.0",
+  "env": ["ANTHROPIC_API_KEY"],
+  "config": [
+    { "id": "model", "ask": "Which Claude model should answer?", "type": "enum",
+      "values": ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"], "default": "claude-opus-5" },
+    { "id": "effort", "ask": "How hard should it think?", "type": "enum",
+      "values": ["low", "medium", "high", "xhigh", "max"], "default": "high" },
+    { "id": "maxTokens", "ask": "Token ceiling for one answer", "type": "int", "default": 4000 },
+    { "id": "system", "ask": "Standing instruction for every answer", "type": "text",
+      "default": "You answer on behalf of a business. Be accurate and brief. If you do not know, say so." }
+  ],
+  "provides": {
+    "calls": {
+      "ai.ask": {
+        "kind": "compute",
+        "doc": "Put a question to a frontier model, optionally with rows from this business as context",
+        "in": {
+          "question": "text",
+          "context": "text?",
+          "model": "string={{config.model}}",
+          "effort": "string={{config.effort}}",
+          "maxTokens": "int={{config.maxTokens}}",
+          "system": "text={{config.system}}"
+        },
+        "out": { "answer": "text", "model": "string", "inputTokens": "int", "outputTokens": "int" },
+        "impl": { "module": "ask.ts" }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type App, type CallDef, calls as specCalls, parseType, camel, snake, type TypeRef } from "@fishtea/spec";
+import { type App, type CallDef, calls as specCalls, parseType, camel, snake, callFile, type TypeRef } from "@fishtea/spec";
 import type { Db } from "../db/index.ts";
 
 export interface CallContext { visitor: { id: string; customerId?: string | null }; spec: App["spec"]; resolve: (p: string) => string; db: Db; tx?: Db }
@@ -74,7 +74,7 @@ export function bindCalls(app: App, opts: { allowHosts?: string[] } = {}): Map<s
     const inputs = Object.entries(def.in).map(([k, t]) => [k, parseType(t)] as const);
     const out = parseType(def.out);
     if (def.impl.sql) {
-      const text = readFileSync(join(app.dir, "calls", def.impl.sql), "utf8");
+      const text = readFileSync(callFile(app.dir, def.impl.sql, "sql"), "utf8");
       const { read, wrote } = tablesIn(text);
       bound.set(name, {
         name, def, read, wrote,
@@ -87,8 +87,7 @@ export function bindCalls(app: App, opts: { allowHosts?: string[] } = {}): Map<s
         },
       });
     } else if (def.impl.module) {
-      const rel = def.impl.module.startsWith("calls/") ? def.impl.module : join("calls", def.impl.module);
-      const path = join(app.dir, rel);
+      const path = callFile(app.dir, def.impl.module, "module");
       let fn: ((input: any, ctx: any) => unknown) | undefined;
       bound.set(name, {
         name, def, read: [], wrote: [],

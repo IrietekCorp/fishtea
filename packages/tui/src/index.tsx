@@ -13,7 +13,9 @@ import { Core } from "./lib/core.ts";
 import { closeDatabase } from "./lib/app-state.ts";
 import { Form, type Question } from "./components/form.tsx";
 
-export interface TuiOptions { dir: string; fishteaHome: string; flags?: Record<string, string | boolean> }
+/** A repeated CLI flag arrives as an array; readers test for a string first. */
+export type TuiFlags = Record<string, string | boolean | string[] | undefined>;
+export interface TuiOptions { dir: string; fishteaHome: string; flags?: TuiFlags }
 
 export async function tui(o: TuiOptions) {
   if (!process.stdin.isTTY) throw new Error("the console needs a terminal (stdin is not a tty)");

@@ -6,6 +6,19 @@ import schema from "../schema/spec.schema.json" with { type: "json" };
 import { type Spec, entities, calls, shapes, personas, notifications, operatorShapes, getShape, getCall, getEntity, type ShapeDef } from "./spec.ts";
 import { parseType, SCALARS, type TypeSpec, isInlineObject } from "./types.ts";
 import { sectionHashes } from "./version.ts";
+import { mergePlugins, type ResolvedPlugin } from "./plugin.ts";
+import { frameworkHome, resolvePlugins } from "./plugin-resolve.ts";
+
+/**
+ * Where a call's SQL or module actually lives. An application's own calls are relative to its `calls/`
+ * directory; a plugin's are rewritten to absolute paths when the plugin is merged, so both the validator
+ * and the executor can find them without either knowing that plugins exist.
+ */
+export function callFile(appDir: string, rel: string, kind: "sql" | "module"): string {
+  if (rel.startsWith("/")) return rel;
+  if (kind === "sql") return join(appDir, "calls", rel);
+  return join(appDir, rel.startsWith("calls/") ? rel : join("calls", rel));
+}
 
 export class SpecError extends Error {
   constructor(public problems: string[]) {
@@ -17,10 +30,17 @@ export class SpecError extends Error {
 export interface App {
   dir: string;
   specPath: string;
+  /** the spec as loaded: the application's own, with every enabled plugin's contribution merged in */
   spec: Spec;
   hashes: Record<string, string>;
   /** resolve a path declared in the spec (impl.sql, impl.module, rules.tax.table) */
   resolve(rel: string): string;
+  /** plugins this application asked for, resolved and read */
+  plugins: ResolvedPlugin[];
+  /** "calls.charge" → the plugin that contributed it; empty for anything the application declared itself */
+  provenance: Record<string, string>;
+  /** non-fatal plugin notes, e.g. a contribution the application overrode */
+  pluginWarnings: string[];
 }
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
@@ -39,17 +59,26 @@ export function resolveSpecPath(target: string): string {
   return p;
 }
 
-export function loadApp(target: string): App {
+export function loadApp(target: string, opts: { fishteaHome?: string } = {}): App {
   const specPath = resolveSpecPath(target);
   const dir = dirname(specPath);
   const raw = JSON.parse(readFileSync(specPath, "utf8"));
-  const spec = validateSpec(raw, { dir });
+
+  // Plugins are merged *before* validation, so a contributed call is checked exactly as strictly as one
+  // the application wrote itself — the same SQL parameter and file-existence rules, no exemption.
+  const plugins = resolvePlugins(raw, dir, opts.fishteaHome ?? frameworkHome());
+  const { spec: merged, provenance, warnings } = mergePlugins(raw, plugins);
+
+  const spec = validateSpec(merged, { dir });
   return {
     dir,
     specPath,
     spec,
     hashes: sectionHashes(spec as any),
     resolve: (rel) => (rel.startsWith("/") ? rel : join(dir, rel)),
+    plugins,
+    provenance,
+    pluginWarnings: warnings,
   };
 }
 
@@ -106,7 +135,7 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     if (call.kind === "compute" && !impl.module) problems.push(`calls.${name}: compute calls need impl.module`);
     if (call.kind === "external" && !impl.url) problems.push(`calls.${name}: external calls need impl.url`);
     if (impl.sql && dir) {
-      const p = join(dir, "calls", impl.sql);
+      const p = callFile(dir, impl.sql, "sql");
       if (!existsSync(p)) problems.push(`calls.${name}.impl.sql: ${p} not found`);
       else {
         const text = readFileSync(p, "utf8");
@@ -117,7 +146,7 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
       }
     }
     if (impl.module && dir) {
-      const p = join(dir, impl.module.startsWith("calls/") ? impl.module : join("calls", impl.module));
+      const p = callFile(dir, impl.module, "module");
       if (!existsSync(p)) problems.push(`calls.${name}.impl.module: ${p} not found`);
     }
     if (impl.url && !/^https?:\/\//.test(impl.url)) problems.push(`calls.${name}.impl.url must be absolute http(s)`);
