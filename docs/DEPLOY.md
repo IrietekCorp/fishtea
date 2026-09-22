@@ -32,13 +32,31 @@ It is the only free option on Google Cloud that gives a CDN, automatic certifica
 with one-command rollback. The config file earns its place by doing three things:
 
 - **`public: site/dist`** — without this, a deploy has no idea what to publish. This part is not optional.
-- **`/install` as `text/plain`** — so <https://fishtea.io/install> opens *readable in a browser*. `curl`
-  ignores content types, so this does not affect `curl … | bash` working; what it affects is whether
-  somebody can read the script before piping it to their shell, which is the only honest answer to "why
-  should I run this?"
 - **`cleanUrls` and caching** — canonical URLs drop `.html` and the old paths 301 at the edge, so nothing
-  in the docs had to change. HTML revalidates every request; static assets get an hour rather than a year,
+  in the docs had to change. Pages revalidate every request; static assets get an hour rather than a year,
   because their filenames are not content-hashed and a stale stylesheet would otherwise outlive a deploy.
+
+### Header rules match the REQUEST path, not the file
+
+This is the trap. With `cleanUrls`, a request for `/welcome` has no extension — so a rule like
+`**/*.@(html)` matches **nothing**, silently, and every page inherits Firebase's default hour of caching.
+A deploy then takes up to an hour to reach anyone. The fix is to make pages the general case (`**`) and
+let assets override it, since a later rule wins on a duplicate key.
+
+`**` also does **not** match the bare root, so `/` needs naming explicitly or it keeps the default too.
+
+Verify after any change to `headers`:
+
+```bash
+for u in / /welcome /static/site.css; do
+  printf "%-20s %s\n" "$u" "$(curl -sI https://fishtea.io$u | tr -d '\r' | grep -i '^cache-control')"
+done
+```
+
+**When you restore the installer**, add its rule back — it needs `Content-Type: text/plain; charset=utf-8`
+so <https://fishtea.io/install> opens *readable in a browser*. `curl` ignores content types, so this does
+not affect `curl … | bash` working; what it affects is whether somebody can read the script before piping
+it to their shell, which is the only honest answer to "why should I run this?"
 
 ## The nameserver-set trap
 
