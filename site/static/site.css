@@ -1,0 +1,180 @@
+/*
+ * fishtea.dev — one stylesheet, no framework, no build step of its own.
+ *
+ * The palette is the framework's own (packages/ui/src/index.css): warm paper, one accent, a distinct
+ * colour reserved for writes. Light and dark are both defined on tokens, and dark is the system default
+ * rather than an afterthought.
+ */
+:root {
+  --bg: oklch(0.985 0.004 80);
+  --fg: oklch(0.22 0.01 60);
+  --dim: oklch(0.5 0.01 60);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.955 0.006 80);
+  --border: oklch(0.9 0.008 80);
+  --accent: oklch(0.58 0.15 45);
+  --accent-soft: oklch(0.95 0.03 45);
+  --write: oklch(0.52 0.18 25);
+  --code-bg: oklch(0.22 0.012 60);
+  --code-fg: oklch(0.93 0.008 80);
+  --radius: 0.6rem;
+  --measure: 34rem;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(0.16 0.008 60);
+    --fg: oklch(0.93 0.006 80);
+    --dim: oklch(0.68 0.01 60);
+    --card: oklch(0.2 0.008 60);
+    --muted: oklch(0.235 0.008 60);
+    --border: oklch(0.3 0.01 60);
+    --accent: oklch(0.76 0.14 50);
+    --accent-soft: oklch(0.27 0.04 50);
+    --write: oklch(0.72 0.16 25);
+    --code-bg: oklch(0.13 0.008 60);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-synthesis-weight: none;
+}
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+.wrap { max-width: 68rem; margin: 0 auto; padding-inline: 1.5rem; }
+
+/* ---- header ---------------------------------------------------------------------------------- */
+header.top {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in oklab, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+header.top .wrap { display: flex; align-items: center; gap: 1.5rem; height: 3.5rem; }
+.brand { font-weight: 700; letter-spacing: -0.01em; color: var(--fg); text-decoration: none; font-size: 1.05rem; }
+.brand span { color: var(--accent); }
+header.top nav { margin-left: auto; display: flex; gap: 1.25rem; flex-wrap: wrap; }
+header.top nav a { color: var(--dim); text-decoration: none; font-size: 0.925rem; }
+header.top nav a:hover, header.top nav a[aria-current] { color: var(--fg); }
+header.top nav a[aria-current] { font-weight: 600; }
+
+/* ---- hero ------------------------------------------------------------------------------------ */
+.hero { padding-block: 5rem 3.5rem; border-bottom: 1px solid var(--border); }
+.hero h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 1rem; }
+.hero .tag { color: var(--accent); font-weight: 600; letter-spacing: 0.02em; text-transform: lowercase; margin: 0 0 0.75rem; }
+.hero p.lede { font-size: 1.2rem; color: var(--dim); max-width: var(--measure); margin: 0 0 2rem; }
+.cta { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+.btn {
+  display: inline-block; padding: 0.6rem 1.1rem; border-radius: var(--radius);
+  background: var(--accent); color: var(--bg); font-weight: 600; text-decoration: none; border: 1px solid transparent;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--fg); border-color: var(--border); }
+
+/* ---- code ------------------------------------------------------------------------------------ */
+pre {
+  background: var(--code-bg); color: var(--code-fg);
+  padding: 1rem 1.15rem; border-radius: var(--radius);
+  overflow-x: auto; font-size: 0.875rem; line-height: 1.6;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+}
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+code {
+  background: var(--muted); padding: 0.12em 0.4em; border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace; font-size: 0.875em;
+}
+.install {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--code-bg); color: var(--code-fg);
+  padding: 0.7rem 1rem; border-radius: var(--radius);
+  font-family: ui-monospace, Menlo, monospace; font-size: 0.875rem;
+  overflow-x: auto;
+}
+.install .prompt { color: var(--accent); user-select: none; }
+
+/* ---- sections -------------------------------------------------------------------------------- */
+section { padding-block: 3.5rem; border-bottom: 1px solid var(--border); }
+section > .wrap > h2 { font-size: 1.75rem; letter-spacing: -0.02em; margin: 0 0 0.5rem; }
+section > .wrap > p.sub { color: var(--dim); max-width: var(--measure); margin: 0 0 2rem; }
+
+.grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.card h3 { margin: 0 0 0.4rem; font-size: 1rem; letter-spacing: -0.01em; }
+.card p { margin: 0; color: var(--dim); font-size: 0.925rem; }
+.card code { font-size: 0.8em; }
+
+.split { display: grid; gap: 2rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 60rem) { .split { grid-template-columns: 1fr 1.1fr; } }
+
+/* ---- tables ---------------------------------------------------------------------------------- */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.925rem; }
+th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-weight: 600; color: var(--dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+tbody tr:hover { background: var(--muted); }
+
+/* ---- docs layout ----------------------------------------------------------------------------- */
+.docs { display: grid; gap: 3rem; grid-template-columns: 1fr; padding-block: 2.5rem 5rem; }
+@media (min-width: 60rem) { .docs { grid-template-columns: 14rem 1fr; } }
+.side { font-size: 0.925rem; }
+@media (min-width: 60rem) { .side { position: sticky; top: 5rem; align-self: start; max-height: calc(100vh - 7rem); overflow-y: auto; } }
+.side h4 { margin: 1.5rem 0 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
+.side h4:first-child { margin-top: 0; }
+.side ul { list-style: none; margin: 0; padding: 0; }
+.side li { margin: 0.15rem 0; }
+.side a { display: block; padding: 0.2rem 0.5rem; margin-left: -0.5rem; border-radius: 4px; color: var(--dim); text-decoration: none; }
+.side a:hover { background: var(--muted); color: var(--fg); }
+.side a[aria-current] { background: var(--accent-soft); color: var(--fg); font-weight: 600; }
+
+.prose { min-width: 0; max-width: 46rem; }
+.prose h1 { font-size: 2.1rem; letter-spacing: -0.025em; margin: 0 0 1rem; }
+.prose h2 { font-size: 1.4rem; letter-spacing: -0.015em; margin: 2.5rem 0 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.prose h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+.prose h4 { font-size: 0.95rem; margin: 1.5rem 0 0.4rem; color: var(--dim); }
+.prose p, .prose li { max-width: var(--measure); }
+.prose li { margin: 0.3rem 0; }
+.prose blockquote {
+  margin: 1.25rem 0; padding: 0.6rem 1rem; border-left: 3px solid var(--accent);
+  background: var(--muted); border-radius: 0 var(--radius) var(--radius) 0; color: var(--dim);
+}
+.prose blockquote p { margin: 0; }
+.prose table { margin: 1.25rem 0; }
+.prose img { max-width: 100%; }
+.prose hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+/* Anchor links on headings, revealed on hover — quiet until wanted. */
+.prose h2 a.anchor, .prose h3 a.anchor {
+  opacity: 0; margin-left: 0.4rem; text-decoration: none; color: var(--dim); font-weight: 400;
+}
+.prose h2:hover a.anchor, .prose h3:hover a.anchor, a.anchor:focus-visible { opacity: 1; }
+
+/* ---- spec reference -------------------------------------------------------------------------- */
+.ref-section { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin: 1rem 0; background: var(--card); }
+.ref-section > h3 { margin-top: 0; font-family: ui-monospace, Menlo, monospace; }
+.pill {
+  display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 0.12rem 0.45rem; border-radius: 99px; background: var(--muted); color: var(--dim); vertical-align: middle;
+}
+.pill.req { background: var(--accent-soft); color: var(--accent); }
+
+/* ---- footer ---------------------------------------------------------------------------------- */
+footer.bottom { padding-block: 2.5rem 4rem; color: var(--dim); font-size: 0.9rem; }
+footer.bottom .wrap { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: space-between; }
+footer.bottom a { color: var(--dim); }
+
+.skip {
+  position: absolute; left: -9999px;
+}
+.skip:focus { left: 1rem; top: 1rem; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border-radius: var(--radius); z-index: 20; }

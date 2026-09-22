@@ -1,199 +1,194 @@
-# Fishtea
+<div align="center">
 
-*Solid ground, liquid UI.* Describe a business once — entities, calls, rules, shapes, personas — and derive the Postgres schema, the classifier's tool list, the planner, the UI vessels and the operator console from that one JSON file. Conversation replaces routing: a small on-device tool-calling model (needle3) turns what a visitor says into a **shape**, the planner composes typed **calls**, and the answer pours into one of seven **vessels**. The trail is rewindable, branchable, and never dies.
+# 🍵 Fishtea
 
-Applications start from an **archetype** in `templates/` and become a specific business through an **onboarding interview** (`onboard.json` in each template): the TUI asks the questions, or `fishtea new --answers file.json` answers them non-interactively. Every archetype is itself a complete, runnable example with seed data.
+**Describe a business once. Derive everything else.**
 
-| archetype | what it is | the interview asks about |
-|---|---|---|
-| `ecommerce` | catalog (local rows or vendor feeds: mock, CSV, eBay, generic HTTP), cart, checkout, orders, reactions | categories, what people shop by, fulfilment (stock / affiliate-only / both), shipping, tax, returns, which vendor feeds |
-| `portfolio` | a person you can interview: skills, projects, experience, an interview bank with follow-ups, honest fit assessment, contact | name, headline, summary, availability, skill areas, what visitors may ask for |
-| `verification` | employee engagement verification: requester → consent → verifier attestation → minimal disclosure by purpose | purposes served, consent TTL, retention, engagement kinds |
-| `program` | sessions-based program: find a session, register (multi-child, sibling discount, capacity, age rules), scholarships, device loans, schedule, FAQ | price, discount, ages, capacity, hours, location, tracks, equipment |
-| `blank` | one entity, one read shape, one write shape | name, description, greeting |
+*Solid ground, liquid UI.*
 
-## Setup
+</div>
 
-Prerequisites: [Bun](https://bun.sh) 1.4+, Docker with Compose v2, and Python 3.9+ only if you run the classifier pool outside Docker. The first classifier start downloads ~35 MB of needle3 weights from Hugging Face; Docker keeps them in the `models` volume.
+One `spec.json` — entities, calls, rules, shapes, personas — gives you the Postgres schema, the
+classifier's tool list, the planner, the UI vessels and an operator console. Conversation replaces
+routing: a small **on-device** tool-calling model turns what a visitor says into a **shape**, the planner
+composes typed **calls**, and the answer pours into one of seven **vessels**. The trail is rewindable,
+branchable, and never dies.
 
 ```bash
-git clone <this repo> ~/development/fishtea && cd ~/development/fishtea
-bun install
-bun fishtea templates        # the archetypes and their onboarding interviews
+curl -fsSL https://fishtea.dev/install | bash
+
+fishtea new myshop --template ecommerce --interactive
+cd myshop && fishtea up
 ```
 
-## Create an application
+That is a running application: Postgres with pgvector, a needle3 classifier pool, the core, and a browser
+UI — none of it hand-written.
 
-```bash
-bun fishtea new myapp --template ecommerce --interactive     # answer the interview in the terminal
-# or non-interactive:  --answers answers.json  (keys are the question ids in templates/ecommerce/onboard.json)
-# or from the console: bun run tui → Onboard
-cd ../myapp && bun run doctor
-```
+---
 
-**Where it goes.** An application is its own project, so it is never created inside the framework checkout. Run `fishtea new` from wherever you keep projects and it lands in the current directory; run it from inside fishtea and it lands beside fishtea. `--dir <path>` sets the exact directory, `--workspace <path>` (or `FISHTEA_WORKSPACE`) sets the parent, and the console asks. The id defaults to `myapp`.
+## What it looks like
 
-The generated directory holds `spec.json`, `calls/`, `seed/`, `rules/`, `scripts/`, its own `docker-compose.yml`, a `.env` that already works, and a `fishtea.ts` shim that runs the framework CLI from this checkout. Nothing to install inside it.
-
-## Running on a network
-
-Nothing assumes localhost. The core binds `0.0.0.0` by default, so a fresh application answers on every address of the machine it runs on, and the start-up banner prints the addresses other machines should dial.
-
-| setting | flag | what it is |
-|---|---|---|
-| `FISHTEA_HOST` | `--host` | what the core binds. `0.0.0.0` (default) accepts any address; `127.0.0.1` keeps it local |
-| `PORT` | `--port` | the core's port |
-| `FISHTEA_PUBLIC_HOST` | `--public-host` | the address others dial. Detected from the LAN when unset; used for printed URLs and the UI's `VITE_CORE_URL` |
-| `FISHTEA_CORS_ORIGINS` | `--cors` | browser origins allowed to call the core. Unset means any port on an address the core answers on, which covers the UI. Comma separated, or `*` |
-| `DATABASE_URL` | `--db` | Postgres, wherever it lives |
-| `CLASSIFIER_URL` | `--classifier` | the needle pool, wherever it lives |
-
-`bun run doctor` checks all four and says what is wrong and how to fix it:
+A visitor types *"something linen for a summer wedding, under £80"*. The classifier picks the
+`findProducts` shape and fills its arguments. The planner runs the typed calls that shape names. The
+answer pours into a list vessel, with a provenance strip underneath: which shape answered, what it read,
+what it wrote, how long it took.
 
 ```
-✓ spec        Example Store v2026.09.21-1
-✓ database    postgres://fishtea:***@db.lan:5432/fishtea
-✗ classifier  http://localhost:8081 unreachable — text utterances will pour "ask"
-✓ binding     0.0.0.0:3000 · other machines dial http://10.10.10.19:3000
+POST /utter  "something linen for a summer wedding under £80"
+  → findProducts@0.94 · list · 6 records
+    calls products.search · 157ms (classify 149, plan 3)
 ```
 
-A missing classifier is a warning: the core still runs and pours `ask` for text utterances. A missing database stops start-up, with the command to fix it.
+All of it derived from the spec. If something entity-specific lives in code outside a template's or
+application's `calls/`, that is a bug.
 
-## Build and run (Docker, the whole stack)
+## Five archetypes
 
-```bash
-bun run up                   # builds the images; db (:5432) + classifier pool (:8081) + core (:3000) + ui (:5173)
-bun run tui                  # the operator console (see below)
-bun run logs core            # or: classifier, ui, db
-```
+Each is a complete, runnable application with seed data, plus an interview that turns it into *your*
+business.
 
-Open the UI at `http://<your-address>:5173`. The core is on `:3000`; `curl .../healthz` shows database and classifier status.
-
-**Stopping it.**
-
-| | |
+| archetype | what it is |
 |---|---|
-| `ctrl-c` | if `bun run up` is in the foreground |
-| `bun run stop` | pause everything; `bun run start` resumes it untouched |
-| `bun run down` | stop and remove the containers. The data volume is kept, so `bun run up` comes back with every conversation |
-| `bun run down -v` | the same, and delete the data volume |
-
-The console's **Run** screen has all of these, and asks before deleting data.
-
-Open http://localhost:5173. `curl http://localhost:3000/` returns the resumed conversation as JSON; `curl http://localhost:3000/healthz` shows db + classifier status. `bun run restart` restarts core; entity edits made in the TUI prompt for a migration.
-
-### The operator console
-
-`bun run tui` opens a persistent console for the application in the current directory. Five screens, on the number keys:
-
-| key | screen | what it is for |
-|---|---|---|
-| `1` | Dashboard | core, classifier and database status, refreshed every few seconds; what to do next |
-| `2` | Spec | browse every section, edit one value at a time, open a section in `$EDITOR`, add a shape. Edits validate, bump that section's version and hot-reload the core |
-| `3` | Conversations | visitors and their trails, and the unmet channel: what people asked that the spec could not answer. `n` sends a notification |
-| `4` | Run | migrate, seed, reload, restart, Compose up/down/logs, the headless walkthrough, the bench |
-| `5` | Onboard | create another application from an archetype, answering its interview |
-
-`r` refreshes, `q` quits, `/` filters a list, `esc` steps back. Typing in a field never triggers a shortcut.
-
-## Run without Docker (core only)
-
-You need a PostgreSQL 18 with pgvector. The quickest is the image the stack uses:
+| `ecommerce` | Catalogue, cart, checkout, orders. Stock from local rows or vendor feeds (mock, CSV, eBay, HTTP) |
+| `portfolio` | A person you can interview: skills, projects, experience, an honest assessment of fit |
+| `verification` | Employment verification: consent → attestation → disclosure limited to the purpose |
+| `program` | Sessions and registration: capacity, ages, sibling discounts, scholarships, device loans |
+| `blank` | One entity, one read shape, one write shape |
 
 ```bash
-docker run -d --name fishtea-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea \
-  -e POSTGRES_DB=fishtea -p 5432:5432 pgvector/pgvector:pg18
-
-# inside a generated app (.env already points at localhost:5432; edit it for anywhere else):
-bun run migrate && bun run seed
-bun run headless             # scripted conversation from scripts/walkthrough.json, no UI, dev lexical classifier
-bun run dev                  # core on :3000
-
-# or an archetype straight from the framework checkout:
-bun run migrate --app templates/portfolio && bun run seed --app templates/portfolio
-bun run dev --app templates/portfolio
+fishtea templates
 ```
 
-The real classifier is the needle3 pool. Start it and point the core at it:
+Answers do more than fill in blanks. Tell the ecommerce archetype you are affiliate-only and it removes
+the cart shapes, drops the mid-purchase persona, and prunes every chip that pointed at them — a coherent
+smaller application, not one with dead ends.
+
+## Plugins
+
+Everything outside the conversation is a plugin: `integration`, `ui`, `auth`, `classifier`, `channel`,
+`archetype`.
 
 ```bash
-cd packages/classifier
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-NEEDLE_WORKERS=3 .venv/bin/python needle_service.py                # :8081; pre-warms one worker per persona
-CLASSIFIER_URL=http://localhost:8081 FISHTEA_INTENT=needle bun run dev
+fishtea plugin add boutique --set accentHue=340     # a design system for shops
+fishtea plugin add anthropic --as ai                # a frontier model, for answers a 3B model can't compose
+fishtea plugin create loyalty --kind integration    # start your own, locally
+fishtea plugin promote loyalty                      # move it into the framework for every application
 ```
 
-`NEEDLE_WORKERS` must be at least the number of distinct persona tool subsets (3 for the shipped archetypes); a worker switching subsets pays a ~1 s re-initialisation. If `~/.cache/huggingface` is not writable, set `HOME` to a writable directory for the pool. Without `CLASSIFIER_URL` the core falls back to the lexical classifier, which is a development harness only (blueprint D5).
+Two rules make it safe. **The spec stays yours** — adding a plugin writes one line naming it; what it
+contributes is merged when the spec loads and never written into your `spec.json`, so removing the line
+removes everything it brought. **The application always wins** — name something a plugin also defines and
+yours stands.
 
-The UI dev server:
+Resolution is local → `node_modules` → builtin, which is also the social model: what you are working on
+beats what you installed, which beats what shipped. Promoting a plugin to core is a *move*, so the
+application that had it keeps working untouched.
+
+→ [Plugins](docs/PLUGINS.md)
+
+## Upgrading without regenerating
+
+An application pins a framework range and records where every file came from, so an upstream fix reaches
+it without touching a line you wrote.
 
 ```bash
-cd packages/ui && bun install && bun run dev      # :5173, VITE_CORE_URL defaults to http://localhost:3000
-bun run build                                     # static build in packages/ui/dist
+fishtea update --dry-run
 ```
 
-`--app <dir>` names an application directory (`spec.json` + `calls/` + `seed/`); it defaults to `FISHTEA_APP` or the current directory, so inside a generated app you never pass it.
+```
+framework  1.1.0 → 1.2.0  (pinned ^1.1.0)
+spec       format 1.1 → 1.2
+             additive: the marker moves, nothing in your spec is rewritten
+files      2 to update, 1 new, 1 conflicting, 3 yours, 21 unchanged
 
-## Test
+   ↑ calls/cart_add.sql
+   + calls/products_newest.sql
+   ! calls/products_related.sql — you changed it and so did the archetype; the new one lands as .new
+```
+
+`.fishtea/manifest.json` records **two** hashes per file — what the archetype said, and what was left in
+your directory — because the scaffolder transforms files as it copies them. With both, an update is a
+three-way merge: a file you changed is yours forever, a file you did not takes the fix, and a file you
+both changed is reported rather than resolved behind your back.
+
+Every version you install stays on disk:
 
 ```bash
-# a throwaway pgvector Postgres for the suite (port 5434, so it never collides with a running stack)
-docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea \
-  -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18
+fishtea versions          # * marks the one running
+fishtea use 1.1.0         # one symlink, instantly
+fishtea upgrade
+```
 
-bun test packages/spec packages/core/test/core.test.ts packages/core/test/http.test.ts \
-  packages/core/test/camp.test.ts packages/core/test/templates.test.ts     # 50 tests; every archetype runs its walkthrough
+Going back is as cheap as going forward, which is the only reason going forward is comfortable.
+Upgrading the framework never touches an application — an application moves when *it* runs `update`.
+
+→ [Versioning and updates](docs/VERSIONING.md)
+
+## The operator console
+
+```bash
+fishtea tui
+```
+
+Six screens on number keys: **Dashboard** (service dots, spec version), **Spec** (browse, edit in place,
+`$EDITOR` a section, add a shape), **Conversations** (visitors, trails, the unmet channel), **Run**
+(migrate, seed, reload, restart, compose, headless, bench), **Onboard** (the interview), **Versions**
+(what is running, what else is installed, update this application).
+
+Built on [Ink](https://github.com/vadimdemedes/ink), because under Bun `node:readline` echoes every
+keystroke — a prompt library rendered `hheelllloo`. That and every other measured deviation from the
+design is recorded in [docs/DESIGN.md](docs/DESIGN.md).
+
+## Setup for development
+
+```bash
+git clone <this repo> fishtea && cd fishtea && bun install
+
+docker run -d --name fishtea-test-db \
+  -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea \
+  -p 5434:5432 pgvector/pgvector:pg18
+
+bun test packages                  # needs the container above
 bunx tsc -p tsconfig.json --noEmit
-
-# against the real classifier (start the pool first; runs alone because it resets the database)
-CLASSIFIER_URL=http://localhost:8081 bun test packages/core/test/needle.test.ts
+bun run site --serve               # the documentation site on :4000
+bun run build-release --install    # compile the binary and install it
 ```
 
-Set `FISHTEA_TEST_DATABASE_URL` to use another database. The tests drop and recreate the `business`, `conversation` and `fishtea` schemas, so never point them at a stack you care about.
+Tests run against a real Postgres. Keep them that way.
 
-## Bench
+## Layout
 
-```bash
-FISHTEA_OPERATOR_TOKEN=x PORT=3010 bun run dev --app templates/ecommerce &
-bun run bench -- --core http://localhost:3010 --iterations 20 --conventional
-```
-
-Budgets are in `packages/bench/budgets.json`; the run fails if a budget is exceeded or fewer than 90 % of text utterances produce an answer. Results land in `packages/bench/results/`; `--baseline` writes `baseline.json` for later diffs.
-
-## Everyday commands
-
-| command | what it does |
+| package | what it is |
 |---|---|
-| `bun fishtea doctor` | check the spec, the database, the classifier and the binding |
-| `bun fishtea validate` | validate `spec.json`, print section hashes |
-| `bun fishtea derive --ddl` / `--tools` / `--forms` | show what the spec derives |
-| `bun fishtea migrate [--allow-destructive]` | additive migration; destructive changes are refused unless allowed |
-| `bun fishtea seed` | upsert `seed/*.json` |
-| `bun fishtea headless [--script f.json] [--json]` | run a scripted conversation, print each pour |
-| `bun fishtea notify <visitorId> "text"` | queue an operator notification (needs `FISHTEA_OPERATOR_TOKEN`) |
-| `bun fishtea new [id] --template <t>` | scaffold (id defaults to `myapp`); `--interactive`, `--answers f.json`, `--dir`, `--workspace`, `--name`, `--force` |
+| `packages/spec` | The vocabulary: types, JSON Schema, loader, derivations (DDL, tools, forms, vessels, zod), section hashes, plugins, migrations |
+| `packages/core` | The engine: utter/resume/persona/gate/confirm-write, trails, planner, call executors, classifier clients, Hono transport |
+| `packages/classifier` | The Python needle3 pool, and `contract.md` with the Phase 0 findings |
+| `packages/cli` | The `fishtea` binary: new, validate, migrate, serve, headless, tui, up, bench, plugin, update, upgrade |
+| `packages/tui` | The operator console, on Ink |
+| `packages/ui` | Vite + React + Tailwind v4; seven vessels |
+| `packages/bench` | Harness, budgets, and a conventional multi-page baseline |
+| `plugins/` | Builtin plugins |
+| `templates/` | The five archetypes |
+| `site/` | fishtea.dev, generated from these docs and the schema |
 
-Inside a generated app the same commands are `bun run <name>`; in this checkout add `--app <dir>`.
+## Documentation
 
-## How it fits together
+- [Getting started](docs/GETTING-STARTED.md)
+- [Archetypes](docs/ARCHETYPES.md)
+- [Plugins](docs/PLUGINS.md)
+- [Versioning and updates](docs/VERSIONING.md)
+- [Running it](docs/OPERATING.md)
+- [The blueprint](docs/BLUEPRINT.md) — the design
+- [What the build measured](docs/DESIGN.md) — where the implementation deviated, and the measurement why
+- [What is next](docs/NEXT.md) — the work list
 
-```
-spec.json ──derive──▶ DDL · tool list · forms · vessels · zod
-   │
-   ▼
-visitor utterance ─▶ persona (from the trail) ─▶ tool list filtered by allow[] ─▶ needle3 pool ─▶ shape + args
-                                                                                        │
-                            pour: ask | form | confirm-write | answer ◀── planner (calls in topological waves)
-                                                                                        │
-                            trail (append-only tree, JSONB) ◀── provenance, embedding ──┘
-```
+## Rules of the house
 
-- `packages/spec` — the format and every derivation.
-- `packages/core` — trail, persona, planner, pour, notifications (SSE), Hono transport, headless runner.
-- `packages/classifier` — the needle3 worker pool (Python). `contract.md` has the measured findings.
-- `packages/cli` — `fishtea` (templates · new · validate · derive · migrate · seed · serve · headless · tui · up · bench). `new.ts` applies an archetype's interview answers to its spec.
-- `packages/tui` — the operator console (Ink): live service status, spec browsing and editing, the trail and the unmet channel, migrations and Compose, and the archetype interview.
-- `packages/ui` — React + Tailwind; seven vessels; understood line; verify strip; next chips; live region.
-- `packages/bench` — budgets enforced, conventional multi-page baseline measured alongside.
-
-See `docs/BLUEPRINT.md` for the design and `docs/DESIGN.md` for what the build measured and changed.
+- The spec is the only source.
+- SQL files use `$1..$n` in declared input order. Never string-build SQL.
+- Writes always pour `confirm-write` first. The model never evaluates a rule; rules live in `spec.rules`.
+- The lexical classifier is a development harness and a benchmark baseline. Production is the needle pool.
+- Nothing assumes localhost. A missing database is a `SetupError` with fixes, not a stack trace.
+- Generated applications live outside the framework checkout.
+- Every classify call has a hard budget. Past it the pour is `ask`, never a dumber brain.
+- Tests run against a real Postgres.

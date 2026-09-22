@@ -15,7 +15,13 @@ bun run dev --app templates/ecommerce # core on :3000 (FISHTEA_INTENT=needle + C
 bun run tui --app templates/ecommerce # operator console
 bun run up                        # docker compose: db + classifier + core + ui for FISHTEA_APP_DIR (default templates/ecommerce)
 bun fishtea templates && bun fishtea new myapp --template ecommerce --answers a.json   # scaffold beside fishtea, never inside it
-bun fishtea doctor --app templates/ecommerce            # spec, database, classifier, binding
+bun fishtea doctor --app templates/ecommerce            # spec, database, classifier, binding, framework pin
+bun fishtea version | versions | use <v> | upgrade [--from <checkout>]
+bun fishtea update [--dry-run|--adopt]                  # move an application to this framework
+bun fishtea plugin list|info|add|remove|create|promote
+bun run release <v> [--check]                           # the only writer of every version site
+bun run build-release [--install] [--tarball]           # compile the binary + stage runtime files
+bun run site [--serve]                                  # fishtea.dev into site/dist
 bun run bench -- --conventional   # against a running core
 bunx tsc -p tsconfig.json --noEmit
 ```
@@ -25,11 +31,14 @@ bunx tsc -p tsconfig.json --noEmit
 - `packages/spec` — type vocabulary, JSON Schema, loader (structural checks: plan cycles, unknown calls, SQL interpolation markers), derivations (DDL, tools, forms, vessels, zod, phrases), section hashes.
 - `packages/core` — engine (`engine.ts`: utter/resume/persona/gate/write-confirm), trail service, planner, call executors, classifier clients (needle pool, lexical dev), Hono transport, headless runner.
 - `packages/classifier` — Python needle3 pool (`needle_service.py`), `contract.md` with the Phase 0 findings.
-- `packages/cli` — `fishtea` binary: new/validate/derive/migrate/seed/serve/headless/tui/up/bench/notify. `new.ts` scaffolds apps; `serve.ts` hot-reloads; `edit.ts` patches sections.
-- `packages/tui` — the operator console, built on Ink (React for terminals). Five screens on number keys: Dashboard, Spec (browse, scoped value edit, `$EDITOR`, add a shape), Conversations (visitors, trails, unmet channel, notify), Run (migrate, seed, reload, restart, compose, headless, bench), Onboard (the archetype interview). Driven in tests through a real pty: `packages/tui/test/pty-drive.py`. Never use `node:readline` here — Bun echoes it twice (docs/DESIGN.md).
-- `packages/ui` — Vite + React + Tailwind v4; seven vessels; container with understood-line, verify strip, next chips, live region.
+- `packages/cli` — `fishtea` binary: new/validate/derive/migrate/seed/serve/headless/tui/up/bench/notify, plus version/versions/use/upgrade/update/plugin/ui-assets. `new.ts` scaffolds apps (and writes `.fishtea/manifest.json`); `serve.ts` hot-reloads; `update.ts` is the three-way reconcile; `plugin.ts` is the plugin lifecycle; `runtime.ts` is the installed-version layout.
+- `packages/tui` — the operator console, built on Ink (React for terminals). Six screens on number keys: Dashboard, Spec (browse, scoped value edit, `$EDITOR`, add a shape), Conversations (visitors, trails, unmet channel, notify), Run (migrate, seed, reload, restart, compose, headless, bench), Onboard (the archetype interview), Versions (what is running, what else is installed, update this application). Driven in tests through a real pty: `packages/tui/test/pty-drive.py`. Never use `node:readline` here — Bun echoes it twice (docs/DESIGN.md).
+- `packages/ui` — Vite + React + Tailwind v4; seven vessels; container with understood-line, verify strip, next chips, live region. `plugins.generated.css` is written by `fishtea ui-assets` and git-ignored.
 - `packages/bench` — harness, `budgets.json`, conventional multi-page baseline.
-- `templates/ecommerce`, `templates/program` — the two samples; also the `commerce` and `program` templates.
+- `plugins/` — builtin plugins (`boutique` design system, `anthropic` frontier model). A plugin is a directory with `fishtea.plugin.json`; resolution is local → node_modules → builtin.
+- `scripts/` — `release.ts` (version sites) and `build-release.ts` (binary + staged runtime).
+- `site/` — fishtea.dev, generated from `docs/*.md`, the JSON Schema and the CLI's own help.
+- `templates/` — the five archetypes.
 
 ## Rules of the house
 
@@ -40,4 +49,7 @@ bunx tsc -p tsconfig.json --noEmit
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.
 - Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain.
+- A plugin is merged at *load* time and never written into `spec.json`; the application always wins a name clash, and two plugins clashing is an error.
+- Three versions, kept apart: the framework build (semver, pinned by an application), the spec *format* (`spec.fishtea`, what migrations key off), and the business revision. See `docs/VERSIONING.md`.
+- `.fishtea/manifest.json` records two hashes per archetype file — the archetype's and the application's — because the scaffolder transforms files as it copies them. That is what makes `fishtea update` a three-way merge instead of a guess.
 - Tests run against a real Postgres (pgvector). Keep them that way.
