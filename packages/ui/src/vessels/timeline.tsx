@@ -3,7 +3,13 @@ import { Separator } from "../components/ui/separator";
 import { Field, labelOf, isHidden } from "../fields";
 import { CardVessel } from "./card";
 
-/** timeline: { events[] , ...rest } → a vertical list of events with a status badge, plus a card for the rest. */
+/**
+ * timeline: { events[], ...rest } → a vertical list of events with a status badge, plus a card for the rest.
+ *
+ * Event fields are `unknown` (they come from whatever the shape assembled), so every conditional guard is
+ * coerced with `!!`. Without it the expression is `unknown` rather than ReactNode — and at runtime a field
+ * that happened to be `0` would render as a literal "0" instead of being skipped.
+ */
 export function TimelineVessel({ record }: { record: Record<string, unknown> }) {
   const events = (Array.isArray(record.events) ? record.events : []) as Record<string, unknown>[];
   const rest = Object.fromEntries(Object.entries(record).filter(([k]) => k !== "events" && !isHidden(k)));
@@ -21,12 +27,12 @@ export function TimelineVessel({ record }: { record: Record<string, unknown> }) 
                 <li key={i} className="relative text-sm">
                   <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-accent bg-card" aria-hidden />
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    {(e.startTime || e.at) && <time className="tabular-nums text-muted-foreground">{e.startTime ? `${e.startTime}–${e.endTime ?? ""}` : new Date(String(e.at)).toLocaleTimeString(undefined, { timeStyle: "short" })}</time>}
+                    {!!(e.startTime || e.at) && <time className="tabular-nums text-muted-foreground">{e.startTime ? `${e.startTime}–${e.endTime ?? ""}` : new Date(String(e.at)).toLocaleTimeString(undefined, { timeStyle: "short" })}</time>}
                     <span className="font-medium">{String(e.title ?? e.status ?? "")}</span>
-                    {e.status && e.title && <Badge variant="outline">{String(e.status)}</Badge>}
-                    {e.location && <span className="text-muted-foreground">· {String(e.location)}</span>}
+                    {!!(e.status && e.title) && <Badge variant="outline">{String(e.status)}</Badge>}
+                    {!!e.location && <span className="text-muted-foreground">· {String(e.location)}</span>}
                   </div>
-                  {(e.description || e.note) && <p className="text-muted-foreground">{String(e.description ?? e.note)}</p>}
+                  {!!(e.description || e.note) && <p className="text-muted-foreground">{String(e.description ?? e.note)}</p>}
                 </li>
               ))}
             </ul>

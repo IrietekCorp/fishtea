@@ -22,7 +22,7 @@
     "down": "docker compose down",
     "bench": "bun packages/cli/src/index.ts bench",
     "test": "bun test packages",
-    "typecheck": "bunx tsc -p tsconfig.json --noEmit",
+    "typecheck": "bunx tsc -p tsconfig.json --noEmit && bunx tsc -p packages/ui/tsconfig.json --noEmit",
     "release": "bun scripts/release.ts",
     "update": "bun packages/cli/src/index.ts update",
     "build-release": "bun scripts/build-release.ts",

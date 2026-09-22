@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
-import { Field, columnsFor, labelOf, isHidden } from "../fields";
+import { Field, columnsFor, labelOf, rankFields } from "../fields";
 
 /** list: Table (≥ 6 rows) or Card grid (< 6, or has imageUrl). Chosen from the data, never from the shape. */
 export function ListVessel({ rows }: { rows: Record<string, unknown>[] }) {
@@ -19,13 +19,19 @@ export function ListVessel({ rows }: { rows: Record<string, unknown>[] }) {
 export function RecordCard({ row }: { row: Record<string, unknown> }) {
   const title = String(row.name ?? row.title ?? row.question ?? row.id ?? "");
   const desc = row.description ?? row.answer ?? row.doc;
-  const rest = Object.entries(row).filter(([k]) => !isHidden(k) && !["name", "title", "question", "description", "answer", "imageUrl"].includes(k)).slice(0, 6);
+  // Ranked, not in key order. A card is small, so what it drops matters more than what it keeps: four
+  // fields chosen by interest beats the first six the entity happens to declare.
+  const rest = rankFields([row], 4, ["name", "title", "question", "description", "answer", "doc", "imageUrl"]);
   return (
     <Card className="flex overflow-hidden">
-      {typeof row.imageUrl === "string" && <img src={row.imageUrl} alt="" loading="lazy" className="h-auto w-28 shrink-0 object-cover" />}
+      {/* self-stretch, not h-auto: a portrait photo at its natural height makes one card tower over its row. */}
+      {typeof row.imageUrl === "string" && <img src={row.imageUrl} alt="" loading="lazy" className="w-28 shrink-0 self-stretch object-cover" />}
       <div className="min-w-0 flex-1">
-        <CardHeader className="pb-2"><CardTitle className="truncate">{title}</CardTitle>{typeof desc === "string" && <CardDescription className="line-clamp-3">{desc}</CardDescription>}</CardHeader>
-        <CardContent><dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">{rest.map(([k, v]) => <div key={k} className="contents"><dt className="text-muted-foreground">{labelOf(k)}</dt><dd><Field name={k} value={v} /></dd></div>)}</dl></CardContent>
+        <CardHeader className="pb-2"><CardTitle className="line-clamp-2">{title}</CardTitle>{typeof desc === "string" && <CardDescription className="line-clamp-3">{desc}</CardDescription>}</CardHeader>
+        {/* A row per field rather than a two-column grid: a card is ~230px wide, and a long label like
+            "Compare At Price" in a max-content column leaves the value almost no room — enough that
+            "$42.00" wrapped one character per line. Here the label gives way and the value never breaks. */}
+        <CardContent><dl className="space-y-1 text-sm">{rest.map((k) => <div key={k} className="flex items-baseline gap-2"><dt className="min-w-0 truncate text-muted-foreground">{labelOf(k)}</dt><dd className="ml-auto max-w-[62%] text-right"><Field name={k} value={row[k]} /></dd></div>)}</dl></CardContent>
       </div>
     </Card>
   );

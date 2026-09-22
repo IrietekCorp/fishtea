@@ -39,10 +39,35 @@ export async function resume(): Promise<Response> {
 export async function trail() { const res = await fetch(`${CORE}/trail`, { headers: headers(), credentials: "include" }); return res.json() as Promise<{ trail: any; turns: any[] }>; }
 export async function rewind(turnId: string) { const res = await fetch(`${CORE}/trail/rewind`, { method: "POST", headers: headers(), credentials: "include", body: JSON.stringify({ turnId }) }); return res.json(); }
 
+const EVENTS = ["notification", "turn", "reload", "ping"] as const;
+
+/**
+ * Listen for operator notifications and turns pushed from elsewhere.
+ *
+ * EventSource retries a *dropped* connection on its own, but gives up for good once the stream reaches
+ * CLOSED — which is what happens when the core is down at page load, or restarts under the page (exactly
+ * what the console's Run → Restart does). Before this that left the tab permanently deaf: no error, no
+ * notifications, nothing to see. Reconnect with capped backoff, and stop only when the caller says so.
+ */
 export function subscribe(onEvent: (type: string, data: any) => void): () => void {
   const v = visitorId();
   if (!v) return () => {};
-  const es = new EventSource(`${CORE}/events?visitor=${v}`, { withCredentials: true });
-  for (const t of ["notification", "turn", "reload", "ping"]) es.addEventListener(t, (e) => { try { onEvent(t, JSON.parse((e as MessageEvent).data)); } catch {} });
-  return () => es.close();
+  let es: EventSource | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let attempt = 0;
+  let cancelled = false;
+
+  const open = () => {
+    if (cancelled) return;
+    es = new EventSource(`${CORE}/events?visitor=${v}`, { withCredentials: true });
+    es.onopen = () => { attempt = 0; };
+    for (const t of EVENTS) es!.addEventListener(t, (e) => { try { onEvent(t, JSON.parse((e as MessageEvent).data)); } catch {} });
+    es.onerror = () => {
+      if (cancelled || es?.readyState !== EventSource.CLOSED) return;   // still retrying by itself
+      es.close();
+      timer = setTimeout(open, Math.min(30_000, 1_000 * 2 ** attempt++));
+    };
+  };
+  open();
+  return () => { cancelled = true; clearTimeout(timer); es?.close(); };
 }

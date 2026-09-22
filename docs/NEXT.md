@@ -7,7 +7,7 @@ Updated 2026-09-22, after the platform work (versioning, plugins, the binary, th
 
 ## State
 
-- **1.1.0.** 156 tests, 0 failing, on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean; the UI builds; the
+- **1.1.0.** 178 tests, 0 failing, on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean; the UI builds; the
   site builds; the compiled binary runs standalone.
 - **Verified end to end during the platform work:** scaffolding, plugins and `validate` all work from the
   compiled binary with no checkout on disk; 1.1.0 and 1.2.0 install side by side and switch both
@@ -15,22 +15,53 @@ Updated 2026-09-22, after the platform work (versioning, plugins, the binary, th
   three-way file reconcile handles all six cases (update, yours, conflict, new, deleted, resolved).
 - **Bench** (warm pool, 20 iterations): every budget green, 100/100 text utterances answered.
   `packages/bench/baseline.json`.
-- **Still not verified:** the React UI clicked in a browser; the eBay adapter against the live API; the
+- **Still not verified:** the eBay adapter against the live API; accessibility (axe, screen reader); the
   `anthropic` plugin against the live API (it is unit-tested for resolution, merge and a clear error
   without credentials, not for a real completion).
 
 ## Work list, in priority order
 
-### 1. Click through the web UI (half a day)
-Still the oldest open item, and the only part of the stack nobody has looked at in a browser.
-`packages/ui/e2e/README.md` is the checklist; `walkthrough.playwright.ts` is a spec (`bunx playwright
-install chromium`, needs `@playwright/test` and `@axe-core/playwright` in `packages/ui`). Start
-`fishtea dev` and `cd packages/ui && bun run dev`. Expect problems in: the form vessel's nested `shipTo`
-fields and enum selects (`src/vessels/form.tsx`), the timeline vessel with the verification template's
-mixed events, and the SSE reconnect (`src/lib/client.ts` never retries).
+### 1. ~~Click through the web UI~~ — done
+Walked steps 1–8 of `packages/ui/e2e/README.md` against a live stack. Seven real defects found and fixed,
+three of them proven by new unit tests rather than by eye:
 
-While you are there: the `boutique` design system has only been verified as generated CSS and a clean
-Vite build. Nobody has seen it rendered.
+- **A product card never showed its price.** `RecordCard` took the first six fields in *object key order*,
+  so a shopper saw `vendorId`, `sourceId` and a raw jsonb blob, and `price` — the tenth key — never made
+  the cut. Fields are ranked now (`fieldScore`/`rankFields` in `fields.tsx`), by name and value shape, so
+  the framework's own bookkeeping sorts to the bottom for any entity without anyone enumerating columns.
+- **`unflatten()` dropped every nested value.** react-hook-form treats a dot in a field name as a *path*,
+  so `register("shipTo.line1")` yields `{shipTo:{line1}}`; `unflatten` read `values["shipTo.line1"]`, got
+  undefined, and skipped it. Checkout submitted an address containing only its country default. Pinned by
+  a test that asserts both the flat and nested shapes.
+- **The checkout form ate its own fields.** Sub-fields were rendered from whatever keys the server echoed
+  back, and the server drops empty values — so submitting without a city returned a form with no city
+  input, and it could never be supplied. An address now always offers its full set of lines.
+- **A required field said so only in decoration.** `register(..., {required})` is RHF validation and sets
+  no DOM attribute, so there was no `aria-required`; and RHF's own errors were never rendered, so
+  submitting an incomplete form did nothing at all and never said why. Both fixed.
+- **Nested labels were raw keys** ("Ship To · line1" → "Ship To · Line 1").
+- **SSE never came back.** EventSource retries a dropped connection itself but gives up once the stream is
+  CLOSED — which is what a core restart causes — leaving the tab permanently deaf. Now reconnects with
+  capped backoff; verified by killing the core under a live page and notifying after it returned.
+- **Four pre-existing type errors in `timeline.tsx`**, invisible because `packages/ui` was excluded from
+  typechecking. `unknown && <JSX>` is also a render footgun: a field that happened to be `0` would render
+  a literal "0". `bun run typecheck` now covers both projects.
+
+Verified working, unchanged: the list/card/detail/confirm/timeline vessels, the confirm-write dialog and
+its focus trap, persona transitions (stranger → customer → mid-purchase, evaluated at request start so the
+badge moves on the *next* turn), trail rewind and branching, resume-on-reload, and operator notifications
+over SSE.
+
+**Not covered**, and still worth a pass: axe/screen-reader (steps 9–11) — a browser extension in the review
+environment blocked real keystrokes and screenshots, so keyboard and AT behaviour was not exercised. The
+Playwright spec in `packages/ui/e2e/walkthrough.playwright.ts` is still unrun.
+
+### 1b. Prefill what the visitor already told us (half a day)
+The acceptance checklist says "knowns pre-filled", and they are not: a customer who has just given their
+email still types it again at checkout. `known` on a form pour is the *classified args* (`formPour` in
+`packages/core/src/pour.ts`), not anything the identity knows. Making identity facts flow into a form's
+`known` is an engine decision about which facts are safe to surface and when — left alone deliberately
+rather than guessed at.
 
 ### 2. Publish (half a day, whenever you want it public)
 Everything up to publishing is built and verified; publishing itself was deliberately left to you.
