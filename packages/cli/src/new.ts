@@ -213,39 +213,90 @@ ${template === "ecommerce" ? `
 }
 
 export function composeFile(home: string): string {
-  return `# One Compose stack = one business (D15). The framework image is built from FISHTEA_HOME; this directory is mounted at /app.
+  // Block style on purpose: a generated file is read and edited by hand, and "${VAR:-default}" inside a
+  // YAML flow mapping ({ context: ${X:-/p} }) is a parse error — the braces close the mapping early.
+  return `# One Compose stack = one business (D15).
+# The framework image is built from FISHTEA_HOME; this directory is mounted at /app.
+# Ports bind 0.0.0.0, so the stack is reachable from other machines.
+
 services:
   db:
     image: pgvector/pgvector:pg18
-    environment: { POSTGRES_USER: fishtea, POSTGRES_PASSWORD: fishtea, POSTGRES_DB: fishtea }
-    volumes: [ "pgdata:/var/lib/postgresql/data" ]
-    ports: [ "\${FISHTEA_DB_PORT:-5432}:5432" ]
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U fishtea"], interval: 3s, retries: 20 }
+    environment:
+      POSTGRES_USER: fishtea
+      POSTGRES_PASSWORD: fishtea
+      POSTGRES_DB: fishtea
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "\${FISHTEA_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fishtea"]
+      interval: 3s
+      retries: 20
+
   classifier:
-    build: { context: \${FISHTEA_HOME:-${home}}, dockerfile: Dockerfile.classifier }
-    environment: { NEEDLE_WORKERS: "\${NEEDLE_WORKERS:-3}", FISHTEA_SPEC: /app/spec.json }
-    volumes: [ "models:/models", "./:/app:ro" ]
-    ports: [ "\${FISHTEA_CLASSIFIER_PORT:-8081}:8081" ]
-    healthcheck: { test: ["CMD", "curl", "-fs", "http://localhost:8081/healthz"], interval: 5s, retries: 60 }
+    build:
+      context: "\${FISHTEA_HOME:-${home}}"
+      dockerfile: Dockerfile.classifier
+    environment:
+      # at least as many workers as there are personas, or a worker pays a reload to switch tool subsets
+      NEEDLE_WORKERS: "\${NEEDLE_WORKERS:-3}"
+      FISHTEA_SPEC: /app/spec.json
+    volumes:
+      - models:/models        # needle3 weights, cached across restarts
+      - ./:/app:ro
+    ports:
+      - "\${FISHTEA_CLASSIFIER_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/healthz"]
+      interval: 5s
+      retries: 60
+
   core:
-    build: { context: \${FISHTEA_HOME:-${home}}, dockerfile: Dockerfile.core }
-    env_file: [ path: .env, required: false ]
+    build:
+      context: "\${FISHTEA_HOME:-${home}}"
+      dockerfile: Dockerfile.core
+    restart: unless-stopped     # so the console's "Restart the core" brings it back
+    env_file:
+      # vendor credentials and anything else you keep in .env; the settings below win over it
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgres://fishtea:fishtea@db:5432/fishtea
       CLASSIFIER_URL: http://classifier:8081
       FISHTEA_APP: /app
+      FISHTEA_HOST: "0.0.0.0"
+      PORT: "3000"
       FISHTEA_INTENT: needle
       FISHTEA_STRICT: "\${FISHTEA_STRICT:-0}"
       FISHTEA_OPERATOR_TOKEN: "\${FISHTEA_OPERATOR_TOKEN:-change-me}"
-    volumes: [ "./:/app" ]            # the TUI edits spec.json here; core watches and hot-reloads
-    ports: [ "\${FISHTEA_CORE_PORT:-3000}:3000" ]
-    depends_on: { db: { condition: service_healthy }, classifier: { condition: service_healthy } }
+    volumes:
+      - ./:/app               # the console edits spec.json here; core watches and hot-reloads
+    ports:
+      - "\${FISHTEA_CORE_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      classifier:
+        condition: service_healthy
+
   ui:
-    build: { context: \${FISHTEA_HOME:-${home}}, dockerfile: Dockerfile.core, target: ui }
-    environment: { VITE_CORE_URL: "http://\${FISHTEA_PUBLIC_HOST:-localhost}:\${FISHTEA_CORE_PORT:-3000}" }
-    ports: [ "\${FISHTEA_UI_PORT:-5173}:5173" ]
-    depends_on: [ core ]
-volumes: { pgdata: {}, models: {} }
+    build:
+      context: "\${FISHTEA_HOME:-${home}}"
+      dockerfile: Dockerfile.core
+      target: ui
+    environment:
+      # the address a browser dials, which is not "localhost" when you are on another machine
+      VITE_CORE_URL: "http://\${FISHTEA_PUBLIC_HOST:-localhost}:\${FISHTEA_CORE_PORT:-3000}"
+    ports:
+      - "\${FISHTEA_UI_PORT:-5173}:5173"
+    depends_on:
+      - core
+
+volumes:
+  pgdata:
+  models:
 `;
 }
 

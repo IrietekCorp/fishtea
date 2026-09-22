@@ -33,6 +33,26 @@ describe("network settings", () => {
   });
 });
 
+describe("the generated docker-compose.yml", () => {
+  // it was once written in flow style, where "${FISHTEA_HOME:-/path}" closes the mapping early and the file
+  // will not parse: `bun run up` failed with "did not find expected ',' or '}'"
+  const parse = (text: string) => (Bun as unknown as { YAML: { parse: (s: string) => any } }).YAML.parse(text);
+
+  test("parses, and so does the framework's own", async () => {
+    const dir = join(temp(), "composecheck");
+    await scaffold({ id: "composecheck", template: "ecommerce", dir, fishteaHome: HOME });
+    const app = parse(readFileSync(join(dir, "docker-compose.yml"), "utf8"));
+    expect(Object.keys(app.services).sort()).toEqual(["classifier", "core", "db", "ui"]);
+    expect(app.services.db.image).toContain("pg18");
+    expect(app.services.core.build.context).toContain("FISHTEA_HOME");
+    expect(app.services.core.restart).toBe("unless-stopped");
+    expect(app.services.core.environment.FISHTEA_HOST).toBe("0.0.0.0");
+    expect(app.services.core.env_file[0].required).toBe(false);
+    expect(app.services.ui.environment.VITE_CORE_URL).toContain("FISHTEA_PUBLIC_HOST");
+    expect(parse(readFileSync(join(HOME, "docker-compose.yml"), "utf8")).services.core.environment.FISHTEA_HOST).toBe("0.0.0.0");
+  });
+});
+
 describe("where a new application goes", () => {
   test("never inside the framework checkout", () => {
     expect(isInside(join(HOME, "anything"), HOME)).toBe(true);
