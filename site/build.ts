@@ -2,6 +2,8 @@
 /**
  * fishtea.io — a static site, built from what the repository already knows.
  *
+ * The installer is not published while the beta is private; see the note in build() before restoring it.
+ *
  *   bun run site          build into site/dist
  *   bun run site --serve  build, then serve it on :4000 and rebuild on request
  *
@@ -75,6 +77,7 @@ function layout(page: Page, pages: Page[]): string {
     ["spec", "spec-reference"],
     ["blog", "blog"],
     ["about", "about"],
+    ["beta", "beta"],
   ].map(([label, s]) => `<a href="${href(s)}"${page.slug === s || (s === "blog" && page.slug.startsWith("blog/")) ? ' aria-current="page"' : ""}>${label}</a>`).join("");
 
   return `<!doctype html>
@@ -85,12 +88,24 @@ function layout(page: Page, pages: Page[]): string {
 <title>${esc(page.title)}${page.landing ? "" : " — FishTea"}</title>
 <meta name="description" content="Describe a business once in JSON; derive the database, the classifier's tools, the planner, the UI and the operator console from it.">
 <link rel="stylesheet" href="${root}static/site.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>🍵</text></svg>">
+<link rel="icon" href="${root}static/img/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="${root}static/img/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="${root}static/img/favicon-16.png">
+<link rel="apple-touch-icon" href="${root}static/img/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FishTea">
+<meta property="og:title" content="${esc(page.title)}">
+<meta property="og:description" content="Describe a business once in JSON; derive the database, the classifier's tools, the planner, the UI and the operator console from it.">
+<meta property="og:image" content="https://fishtea.io/static/img/og-image.png">
+<meta property="og:url" content="https://fishtea.io/${page.slug}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(page.title)}">
+<meta name="twitter:image" content="https://fishtea.io/static/img/og-image.png">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-  <a class="brand" href="${href("")}">Fish<span>Tea</span></a>
+  <a class="brand" href="${href("")}"><img src="${root}static/img/logo-mark.png" srcset="${root}static/img/logo-mark.png 1x, ${root}static/img/logo-mark@2x.png 2x" alt="" width="30" height="28"><span class="wordmark">Fish<span>Tea</span></span></a>
   <nav>${topNav}</nav>
 </div></header>
 ${isDoc
@@ -125,6 +140,7 @@ function landing(): string {
 
   return `
 <div class="hero"><div class="wrap">
+  <img class="hero-mark" src="static/img/logo-mark@2x.png" alt="" width="128" height="121">
   <p class="tag">solid ground, liquid UI</p>
   <h1>Describe a business once.<br>Derive everything else.</h1>
   <p class="lede">
@@ -134,11 +150,12 @@ function landing(): string {
     answer pours into one of seven <strong>vessels</strong>.
   </p>
   <div class="cta">
-    <a class="btn" href="getting-started.html">Get started</a>
-    <a class="btn ghost" href="spec-reference.html">Spec reference</a>
+    <a class="btn" href="beta.html">Join the beta</a>
+    <a class="btn ghost" href="welcome.html">Read the argument</a>
   </div>
-  <p style="margin-top:2rem;max-width:34rem">
-    <span class="install"><span class="prompt">$</span> curl -fsSL https://fishtea.io/install | bash</span>
+  <p class="post-meta" style="margin-top:1.5rem;max-width:34rem">
+    Private beta — the framework runs, but there are no published binaries yet.
+    <a href="getting-started.html">See what it does</a>.
   </p>
 </div></div>
 
@@ -385,6 +402,79 @@ ${md(p.body)}
 <p class="post-meta"><a href="../blog.html">← More posts</a></p>`;
 }
 
+
+// ---- beta ------------------------------------------------------------------------------------------
+/**
+ * FishTea is not publicly installable yet — there are no published release binaries — so the landing
+ * page asks to be let in rather than handing out a `curl | bash` that would fail at the download.
+ *
+ * The form composes a mailto: in the browser and opens the visitor's mail client. Nothing is posted
+ * anywhere, there is no backend and no third party sees an address, which is the right trade for a
+ * static site collecting a handful of names. The plain address is on the page too, so anyone without a
+ * configured mail client is not stuck.
+ */
+const BETA_EMAIL = "shawn@irietek.com";
+
+function beta(): string {
+  return `<h1>Join the beta</h1>
+<p>FishTea is in private beta. The framework runs — five archetypes, a headless walkthrough, an operator
+console — but there are no published binaries yet, so getting it means being invited rather than running
+an install script.</p>
+<p>Tell me what you would build with it and I will send you access.</p>
+
+<form class="beta-form" id="beta-form" novalidate>
+  <div class="field">
+    <label for="beta-name">Your name</label>
+    <input id="beta-name" name="name" type="text" autocomplete="name" required>
+  </div>
+  <div class="field">
+    <label for="beta-email">Your email</label>
+    <input id="beta-email" name="email" type="email" autocomplete="email" required>
+  </div>
+  <div class="field">
+    <label for="beta-what">What would you build?</label>
+    <textarea id="beta-what" name="what" rows="5"
+      placeholder="A shop, a booking system, something stranger — and roughly what you would want to ask it."></textarea>
+  </div>
+  <div class="field">
+    <button type="submit" class="btn">Compose the email</button>
+    <p class="post-meta" id="beta-note">This opens your mail client with the message ready to send. Nothing
+    is submitted to a server.</p>
+  </div>
+</form>
+
+<p>Or write to <a href="mailto:${BETA_EMAIL}?subject=FishTea%20beta">${BETA_EMAIL}</a> directly.</p>
+
+<h2 id="already-have-a-checkout">Already have a checkout?</h2>
+<p>If you have the source, you do not need the beta at all — build and install it yourself:</p>
+<pre><code>git clone &lt;the repo&gt; fishtea
+./fishtea/install.sh --from ./fishtea</code></pre>
+<p>That compiles the binary and installs it under <code>~/.fishtea</code>, exactly as a published release
+would. See <a href="getting-started.html">Getting started</a>.</p>
+
+<script>
+(function () {
+  var form = document.getElementById("beta-form");
+  if (!form) return;
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = (form.name.value || "").trim();
+    var email = (form.email.value || "").trim();
+    var what = (form.what.value || "").trim();
+    if (!name || !email) {
+      document.getElementById("beta-note").textContent = "A name and an email, please — the rest is optional.";
+      (!name ? form.name : form.email).focus();
+      return;
+    }
+    var body = "Name: " + name + "\\nEmail: " + email + "\\n\\nWhat I would build:\\n" + (what || "(not said)") + "\\n";
+    window.location.href = "mailto:${BETA_EMAIL}"
+      + "?subject=" + encodeURIComponent("FishTea beta — " + name)
+      + "&body=" + encodeURIComponent(body);
+  });
+})();
+</script>`;
+}
+
 // ---- about ------------------------------------------------------------------------------------------
 function about(): string {
   return `<h1>About</h1>
@@ -452,6 +542,7 @@ async function pages(): Promise<Page[]> {
     { slug: "blueprint", title: "The blueprint", nav: "The blueprint", group: "Design", body: () => fromMarkdown("docs/BLUEPRINT.md", "The blueprint") },
     { slug: "measured", title: "What the build measured", nav: "What we measured", group: "Design", body: () => fromMarkdown("docs/DESIGN.md", "What the build measured") },
 
+    { slug: "beta", title: "Join the beta", nav: "Join the beta", group: "Project", body: beta },
     { slug: "blog", title: "Blog", nav: "Blog", group: "Project", body: blogIndex },
     { slug: "about", title: "About", nav: "About", group: "Project", body: about },
     ...posts().map((p): Page => ({ slug: `blog/${p.slug}`, title: p.title, body: () => blogPost(p) })),
@@ -472,9 +563,12 @@ export async function build(): Promise<{ written: string[] }> {
     writeFileSync(file, layout(page, all));
     written.push(file.slice(OUT.length + 1));
   }
-  // The installer is served from the site root, so `curl fishtea.io/install | bash` is one file to host.
-  cpSync(join(HOME, "install.sh"), join(OUT, "install"));
-  written.push("install");
+  // The installer is deliberately NOT published while the beta is private. `install.sh` with no arguments
+  // downloads a release from FISHTEA_RELEASES, and nothing is published there yet — so `curl … | bash`
+  // would fetch a script that fails at the download. Better no URL than a URL that half works. To restore:
+  // put this back, and return the curl line to the landing page's hero.
+  //   cpSync(join(HOME, "install.sh"), join(OUT, "install"));
+  //   written.push("install");
   return { written };
 }
 

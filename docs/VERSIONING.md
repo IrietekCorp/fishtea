@@ -131,9 +131,14 @@ edit you made before tracking began.
 ## Installing and switching framework versions
 
 ```bash
-curl -fsSL https://fishtea.io/install | bash        # the newest release
+./install.sh --from /path/to/fishtea                 # build from a checkout — the only route today
+```
+
+Once releases are published, the installer also serves from the site and takes a version:
+
+```bash
+curl -fsSL https://fishtea.io/install | bash         # the newest release
 curl -fsSL https://fishtea.io/install | bash -s 1.1.0
-./install.sh --from /path/to/fishtea                 # build from a checkout
 ```
 
 The layout is deliberate:

@@ -210,3 +210,27 @@ footer.bottom a { color: var(--dim); }
   .profile { justify-content: center; text-align: center; }
   .profile img { width: 120px; height: 120px; }
 }
+
+/* ---- brand mark ------------------------------------------------------------------------------ */
+/* gap would fall *between* "Fish" and "Tea" too — they are separate flex items — so the wordmark is
+   wrapped and the spacing lives on the image instead. */
+.brand { display: inline-flex; align-items: center; }
+.brand img { display: block; height: 28px; width: auto; margin-right: 0.5rem; }
+.brand .wordmark { white-space: nowrap; }
+.hero-mark { display: block; height: 104px; width: auto; margin: 0 0 1.25rem -0.35rem; }
+@media (max-width: 40rem) { .hero-mark { height: 76px; } }
+
+/* ---- beta form ------------------------------------------------------------------------------- */
+.beta-form { max-width: var(--measure); margin: 1.5rem 0 2rem; }
+.beta-form .field { margin-bottom: 1rem; }
+.beta-form label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.3rem; }
+.beta-form input, .beta-form textarea {
+  width: 100%; padding: 0.55rem 0.7rem;
+  background: var(--card); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font: inherit; font-size: 0.95rem;
+}
+.beta-form textarea { resize: vertical; min-height: 6rem; }
+.beta-form input:focus-visible, .beta-form textarea:focus-visible { border-color: var(--accent); }
+.beta-form button { cursor: pointer; font: inherit; font-weight: 600; }
+.beta-form .post-meta { margin: 0.5rem 0 0; }

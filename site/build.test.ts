@@ -29,9 +29,17 @@ describe("the site builds", () => {
     }
   });
 
-  test("the installer is served from the site root", () => {
-    expect(existsSync(join(OUT, "install"))).toBe(true);
-    expect(read("install")).toContain("FISHTEA_ROOT");
+  test("the installer is NOT published while the beta is private", () => {
+    // install.sh with no arguments downloads from FISHTEA_RELEASES, and nothing is published there —
+    // so a curl|bash would fetch a script that fails at the download. No URL beats a half-working one.
+    expect(existsSync(join(OUT, "install"))).toBe(false);
+    expect(read("index.html")).not.toContain("curl -fsSL https://fishtea.io/install");
+  });
+
+  test("the landing page asks for the beta instead", () => {
+    const html = read("index.html");
+    expect(html).toContain("beta.html");
+    expect(html).toContain("Join the beta");
   });
 
   test("the stylesheet ships and defines both themes", () => {
@@ -177,5 +185,30 @@ describe("links", () => {
       }
     }
     expect(broken).toEqual([]);
+  });
+
+  test("the beta page can actually be replied to", () => {
+    const html = read("beta.html");
+    expect(html).toContain("shawn@irietek.com");
+    expect(html).toContain('id="beta-form"');
+    // A visible plain address as well, so someone without a mail client is not stuck.
+    expect(html).toContain("mailto:shawn@irietek.com");
+    // And no personal Gmail anywhere on the site.
+    for (const f of readdirSync(OUT, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".html"))) {
+      expect({ page: f, leaks: read(f).includes("shawn.jr.stewart@gmail.com") }).toEqual({ page: f, leaks: false });
+    }
+  });
+
+  test("the brand assets ship and are wired into every page", () => {
+    for (const f of ["favicon.ico", "favicon-32.png", "favicon-16.png", "apple-touch-icon.png",
+                     "logo-mark.png", "logo-mark@2x.png", "og-image.png"]) {
+      expect({ asset: f, present: existsSync(join(OUT, "static/img", f)) }).toEqual({ asset: f, present: true });
+    }
+    for (const f of readdirSync(OUT, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".html"))) {
+      const html = read(f);
+      expect({ page: f, favicon: html.includes("favicon.ico") }).toEqual({ page: f, favicon: true });
+      expect({ page: f, card: html.includes("og:image") }).toEqual({ page: f, card: true });
+      expect({ page: f, emoji: html.includes("text y='13'") }).toEqual({ page: f, emoji: false });
+    }
   });
 });
