@@ -7,7 +7,7 @@
  */
 import { describe, expect, test, beforeAll } from "bun:test";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { build, posts } from "./build.ts";
 
 const HOME = join(import.meta.dir, "..");
@@ -148,5 +148,34 @@ describe("welcome, glossary, blog and about", () => {
       const text = read(f).replace(/<[^>]+>/g, " ");
       expect({ page: f, stale: /\bFishtea\b/.test(text) }).toEqual({ page: f, stale: false });
     }
+  });
+
+  test("the essay leads the blog and is reachable from both entry points", () => {
+    const all = posts();
+    expect(all[0].slug).toBe("why-a-business-is-not-a-set-of-pages");
+    expect(read("welcome.html")).toContain("blog/why-a-business-is-not-a-set-of-pages.html");
+    expect(read("index.html")).toContain("blog/why-a-business-is-not-a-set-of-pages.html");
+  });
+});
+
+describe("links", () => {
+  /**
+   * Every internal href must resolve to something that was actually written. The site cross-links
+   * heavily between docs, blog posts and generated reference pages, and a page one directory deep has to
+   * reach back up with `../` — which is exactly the sort of thing that is wrong silently.
+   */
+  test("no internal link is broken", () => {
+    const broken: string[] = [];
+    const pages = readdirSync(OUT, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".html"));
+    for (const page of pages) {
+      const dir = dirname(join(OUT, page));
+      for (const m of read(page).matchAll(/(?:href|src)="([^"]+)"/g)) {
+        const href = m[1];
+        if (/^(https?:|data:|mailto:|#)/.test(href)) continue;
+        const target = join(dir, href.split("#")[0]);
+        if (!existsSync(target)) broken.push(`${page} → ${href}`);
+      }
+    }
+    expect(broken).toEqual([]);
   });
 });

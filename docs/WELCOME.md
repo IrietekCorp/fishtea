@@ -45,59 +45,31 @@ described businesses beautifully and then handed you a page anyway.
 
 That constraint is gone. The name waited.
 
-## What is actually wrong with how we build software
+## What problem it solves
 
-Software is assembled from modules, and **the modules are built for everyone**. That is what makes them
-reusable, and it is also what makes them wrong for you. Every variation — a different customer, a
-different tier, a different market, a different permission — is expressed as *conditional logic* draped
-over something generic. The component grows flags. The API grows branches. The module grows options. None
-of that complexity is about your business; it is the cost of bending a general thing into a specific one,
-paid again on every surface.
+Software is assembled from modules built for everyone, so every variation — a different customer, tier,
+market or permission — is paid for in conditional logic draped over something generic. That is inherited
+rather than careless: we store data in rows and columns, then build software in the shape of the storage,
+so anything not uniform (permissions, personalisation, pricing that depends on who is asking) arrives
+late as a layer bolted on. It shows up most sharply in the URL, a string we have spent two decades
+forcing to behave like a memory.
 
-This is not a failure of discipline. It is inherited. We organise data in rows and columns because that
-is what spreadsheets and databases gave us, and then we build software in the shape of that storage. A
-row is uniform. Every row has the same columns. So the software that reads it is uniform too, and
-anything that is *not* uniform — permissions, personalisation, pricing that depends on who is asking —
-arrives late, as a layer bolted onto a structure that never expected it.
+FishTea starts from a different premise: **a business is not a set of pages, it is an authority that
+answers questions.** A shoe store is a place where you can ask anything about shoes — that is the whole
+definition, and none of it requires a page.
 
-The rigidity shows up most painfully in the URL. A URL is a string that has to carry state — where you
-are, what you filtered, who you are, what you were doing. It is a terrible container for any of that, and
-we have spent two decades building increasingly elaborate machinery to make a location pretend to be a
-memory.
+Four things follow, and they are the reason the rest of this is shaped the way it is:
 
-## The reframe
+- **Browsing is not a funnel.** It is how someone works out what they implicitly like. Most of it carries
+  no purchase intent, and treating it as a path to checkout measures the wrong thing.
+- **Search is not a result set to filter.** The search *is* the question, and what comes back is a set of
+  opportunities to ignore or to go deeper. "Not those, something warmer" is the next turn, not a filter.
+- **The domain is the constraint, and that is the feature.** A shoe store answers shoe questions. That
+  boundary is what makes the expertise possible; a spec is that boundary written down.
+- **Personalisation stops being a layer.** If the interaction *is* the conversation, every surface is
+  already personal — by what was actually said, not by a profile.
 
-**A business is not a set of pages. It is an authority that answers questions.**
-
-A shoe store is a place where you can ask anything about shoes. That is the whole definition. A customer
-walks in with a question — sometimes sharp ("do you have these in a 9?"), usually vague ("something for a
-wedding, not black") — and the store's job is to be *expert enough about its own inventory* to answer it.
-
-Nothing about that requires a page.
-
-**Browsing is not a funnel.** We model browsing as a path toward a purchase, and it usually is not.
-Browsing is how a customer works out what they implicitly like and dislike, and most of it is not
-purchase intent at all. Treating it as a funnel means measuring the wrong thing and interrupting a
-process that was doing something useful.
-
-**Search is not a query that returns a result set to filter.** That model puts the work on the customer:
-here are 400 things, narrow them yourself. In a conversation, the search *is* the question, and the
-results are not a set to be filtered — they are **opportunities to ignore or to go deeper**. "Not those,
-something warmer" is not a refinement of a filter. It is the next turn.
-
-**The domain is the constraint.** A shoe store answers shoe questions. Anything outside that subject is
-redirected or handled differently, and that boundary is not a limitation to be apologised for — it is
-what makes the expertise possible. A spec is exactly that boundary, written down.
-
-**The interface is last and thinnest.** If the business is genuinely a thing that answers questions, the
-conversation can happen over an API, in a voice assistant, in a terminal or on a website, and none of
-those is the *real* one. FishTea's web UI is a projection of the conversation, not the product.
-
-**Personalisation stops being a layer.** This is the part that falls out for free. If the interaction
-between a customer and a business *is* the conversation, then every surface is already personalised —
-not by a profile, not by a flattened list of attributes and preferences, but by the actual richness of
-what has been said. There is no personalisation feature to build, because there was never a generic
-surface to personalise.
+→ The full argument is an essay: [Why a business is not a set of pages](blog/why-a-business-is-not-a-set-of-pages.html).
 
 ## How that becomes software
 

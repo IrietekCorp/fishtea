@@ -165,7 +165,7 @@ function landing(): string {
       refinement — it is the next turn.</p>
       <p><strong>Personalisation stops being a layer.</strong> If the interaction <em>is</em> the
       conversation, every surface is already personal — by what was actually said, not by a profile.</p>
-      <p><a href="welcome.html">The longer argument →</a></p>
+      <p><a href="blog/why-a-business-is-not-a-set-of-pages.html">The longer argument →</a></p>
     </div>
   </div>
 </div></section>
@@ -342,7 +342,8 @@ export function posts(): Post[] {
   return readdirSync(dir)
     .filter((f) => f.endsWith(".md"))
     .sort()
-    .reverse()                                            // newest first: the filenames start with a date
+    .reverse()   // newest first. Filenames start with the date, so this is date-descending; posts sharing
+                 // a date fall back to reverse-alphabetical, which is stable and good enough.
     .map((f) => {
       const { meta, body } = frontmatter(readFileSync(join(dir, f), "utf8"));
       const named = f.replace(/\.md$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "");
