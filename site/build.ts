@@ -2,7 +2,7 @@
 /**
  * fishtea.io — a static site, built from what the repository already knows.
  *
- * The installer is not published while the beta is private; see the note in build() before restoring it.
+ * Release binaries are published too, when `bun run build-release --tarball` has left any in dist/.
  *
  *   bun run site          build into site/dist
  *   bun run site --serve  build, then serve it on :4000 and rebuild on request
@@ -18,8 +18,10 @@
  *   plain HTML and one stylesheet. Nothing ships to the browser but content.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, cpSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { marked } from "marked";
+import { compareVersions } from "../packages/spec/src/release.ts";
 
 const HOME = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const OUT = join(HOME, "site/dist");
@@ -160,12 +162,15 @@ function landing(): string {
     answer pours into one of seven <strong>vessels</strong>.
   </p>
   <div class="cta">
-    <a class="btn" href="beta.html">Join the beta</a>
+    <a class="btn" href="getting-started.html">Get started</a>
     <a class="btn ghost" href="welcome.html">Read the argument</a>
   </div>
-  <p class="post-meta" style="margin-top:1.5rem;max-width:34rem">
-    Private beta — the framework runs, but there are no published binaries yet.
-    <a href="getting-started.html">See what it does</a>.
+  <p style="margin-top:2rem;max-width:34rem">
+    <span class="install"><span class="prompt">$</span> curl -fsSL https://fishtea.io/install | bash</span>
+  </p>
+  <p class="post-meta" style="margin-top:0.75rem;max-width:34rem">
+    Beta. The source is private for now — <a href="beta.html">ask for access</a> if you want to read it or
+    have a hand getting started.
   </p>
 </div></div>
 
@@ -427,10 +432,10 @@ const BETA_EMAIL = "shawn@irietek.com";
 
 function beta(): string {
   return `<h1>Join the beta</h1>
-<p>FishTea is in private beta. The framework runs — five archetypes, a headless walkthrough, an operator
-console — but there are no published binaries yet, so getting it means being invited rather than running
-an install script.</p>
-<p>Tell me what you would build with it and I will send you access.</p>
+<p>FishTea installs today — <a href="getting-started.html">four commands</a> and you have a running
+application. What is still private is the <strong>source</strong>, and the help that goes with it.</p>
+<p>Ask for access if you want to read the code, file issues, or have a hand getting something real
+built. Tell me what you would make with it.</p>
 
 <form class="beta-form" id="beta-form" novalidate>
   <div class="field">
@@ -455,12 +460,12 @@ an install script.</p>
 
 <p>Or write to <a href="mailto:${BETA_EMAIL}?subject=FishTea%20beta">${BETA_EMAIL}</a> directly.</p>
 
-<h2 id="already-have-a-checkout">Already have a checkout?</h2>
-<p>If you have the source, you do not need the beta at all — build and install it yourself:</p>
-<pre><code>git clone &lt;the repo&gt; fishtea
-./fishtea/install.sh --from ./fishtea</code></pre>
-<p>That compiles the binary and installs it under <code>~/.fishtea</code>, exactly as a published release
-would. See <a href="getting-started.html">Getting started</a>.</p>
+<h2 id="you-do-not-need-us-to-install-it">You do not need us to install it</h2>
+<pre><code>curl -fsSL https://fishtea.io/install | bash</code></pre>
+<p>That is a real install: it fetches a signed-for-size binary for your platform, verifies it against the
+published checksums, and puts <code>fishtea</code> under <code>~/.fishtea</code>. Read the script first if
+you like — <a href="https://fishtea.io/install">it opens in a browser</a>.</p>
+<p>With a checkout you can build the same thing yourself: <code>./install.sh --from ./fishtea</code>.</p>
 
 <script>
 (function () {
@@ -559,6 +564,44 @@ async function pages(): Promise<Page[]> {
   ];
 }
 
+
+/**
+ * Publish whatever `bun run build-release --tarball` has left in dist/.
+ *
+ * Release binaries are not in the repository — they are build output, 26-39 MB each — so this copies
+ * whatever is on disk at deploy time. No tarballs simply means no releases directory, and the installer
+ * and `fishtea upgrade` both already fail politely with a pointer at `--from <checkout>`.
+ *
+ * `latest` is the newest version by semver, not by filename or mtime, and is what install.sh reads when
+ * no version is named. SHA256SUMS is written here rather than by the build so it always describes exactly
+ * what is being published together.
+ */
+export function stageReleases(): string[] {
+  const from = join(HOME, "dist");
+  if (!existsSync(from)) return [];
+  const tarballs = readdirSync(from).filter((f) => f.endsWith(".tar.gz")).sort();
+  if (!tarballs.length) return [];
+
+  const out = join(OUT, "releases");
+  mkdirSync(out, { recursive: true });
+  const written: string[] = [];
+  const sums: string[] = [];
+
+  for (const f of tarballs) {
+    cpSync(join(from, f), join(out, f));
+    sums.push(`${createHash("sha256").update(readFileSync(join(from, f))).digest("hex")}  ${f}`);
+    written.push(`releases/${f}`);
+  }
+
+  const versions = [...new Set(tarballs.map((f) => f.match(/^fishtea-(\d+\.\d+\.\d+[^-]*)-/)?.[1]).filter(Boolean) as string[])];
+  const latest = versions.sort(compareVersions).at(-1) ?? VERSION;
+
+  writeFileSync(join(out, "SHA256SUMS"), sums.join("\n") + "\n");
+  writeFileSync(join(out, "latest"), latest + "\n");
+  written.push("releases/SHA256SUMS", "releases/latest");
+  return written;
+}
+
 // ---- build -------------------------------------------------------------------------------------------
 export async function build(): Promise<{ written: string[] }> {
   rmSync(OUT, { recursive: true, force: true });
@@ -573,12 +616,10 @@ export async function build(): Promise<{ written: string[] }> {
     writeFileSync(file, layout(page, all));
     written.push(file.slice(OUT.length + 1));
   }
-  // The installer is deliberately NOT published while the beta is private. `install.sh` with no arguments
-  // downloads a release from FISHTEA_RELEASES, and nothing is published there yet — so `curl … | bash`
-  // would fetch a script that fails at the download. Better no URL than a URL that half works. To restore:
-  // put this back, and return the curl line to the landing page's hero.
-  //   cpSync(join(HOME, "install.sh"), join(OUT, "install"));
-  //   written.push("install");
+  // The installer is served from the site root, so `curl fishtea.io/install | bash` is one file to host.
+  cpSync(join(HOME, "install.sh"), join(OUT, "install"));
+  written.push("install");
+  written.push(...stageReleases());
   return { written };
 }
 

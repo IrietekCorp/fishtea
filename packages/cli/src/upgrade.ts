@@ -11,7 +11,8 @@
  * is always the way back. Upgrading never touches an application: an application moves when *it* runs
  * `fishtea update`, which is a separate, reviewable step.
  */
-import { existsSync, mkdtempSync, rmSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FISHTEA_VERSION, compareVersions } from "@fishtea/spec";
@@ -58,12 +59,33 @@ export async function upgradeFromCheckout(checkout: string, o: { activate?: bool
   return { version: currentVersion() ?? FISHTEA_VERSION, from: was };
 }
 
+/**
+ * The published checksums, as a map of filename → sha256.
+ *
+ * A missing SHA256SUMS is a warning rather than a failure: someone self-hosting FISHTEA_RELEASES may not
+ * publish one, and refusing to upgrade over it would be worse than saying so. A *mismatch* is fatal.
+ */
+async function publishedSums(base: string): Promise<Record<string, string>> {
+  try {
+    const res = await fetch(`${base}/SHA256SUMS`, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) return {};
+    const out: Record<string, string> = {};
+    for (const line of (await res.text()).split("\n")) {
+      const [hash, name] = line.trim().split(/\s+/);
+      if (hash && name) out[name.replace(/^\*/, "")] = hash;
+    }
+    return out;
+  } catch { return {}; }
+}
+
 /** Download, unpack and install a published release. */
 export async function upgradeFromRelease(version: string, o: { base?: string; force?: boolean } = {}): Promise<{ version: string; from: string | null }> {
   const base = o.base ?? releaseBase();
   const target = hostTarget();
   const name = `fishtea-${version}-${target}`;
   const url = `${base}/${name}.tar.gz`;
+
+  const sums = await publishedSums(base);
 
   const res = await fetch(url, { signal: AbortSignal.timeout(300_000) });
   if (!res.ok) throw new RuntimeError(`${url} answered ${res.status} — is there a ${target} build of ${version}?`);
@@ -72,6 +94,17 @@ export async function upgradeFromRelease(version: string, o: { base?: string; fo
   try {
     const tgz = join(work, "release.tar.gz");
     await Bun.write(tgz, res);
+
+    // Same contract as install.sh: verify when the host publishes checksums, refuse on a mismatch.
+    const want = sums[`${name}.tar.gz`];
+    if (want) {
+      const got = createHash("sha256").update(readFileSync(tgz)).digest("hex");
+      if (got !== want) {
+        throw new RuntimeError(`checksum mismatch for ${name}.tar.gz\n  expected ${want}\n  got      ${got}\n  Refusing to install.`);
+      }
+    } else {
+      console.error(`⚠ no checksum published for ${name}.tar.gz — cannot verify the download`);
+    }
     const tar = Bun.spawn(["tar", "-xzf", tgz, "-C", work], { stdio: ["inherit", "inherit", "inherit"] });
     if (await tar.exited !== 0) throw new RuntimeError("unpacking the release failed");
 

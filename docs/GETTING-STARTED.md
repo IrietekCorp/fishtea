@@ -9,17 +9,22 @@ Postgres and the classifier are **services**, not files, so they are never bundl
 
 ## Install
 
-FishTea is in **private beta**: the framework runs, but there are no published release binaries yet, so
-there is no `curl … | bash` to hand you. [Ask for access](beta.html), or build it from a checkout — which
-produces exactly what a published release would:
+```bash
+curl -fsSL https://fishtea.io/install | bash
+```
+
+That fetches a binary for your platform, checks it against the published `SHA256SUMS`, and puts a
+standalone `fishtea` in `~/.fishtea/bin` — with every version you install kept side by side, so
+`fishtea use <version>` can put any of them back. The script is plain text in a browser if you would
+rather read it before running it.
+
+Builds are published for linux-x64, linux-arm64, darwin-x64, darwin-arm64 and windows-x64. From a
+checkout instead, which produces exactly the same thing:
 
 ```bash
 git clone <the repo> fishtea
 ./fishtea/install.sh --from ./fishtea
 ```
-
-That compiles the binary and puts a standalone `fishtea` in `~/.fishtea/bin`, with every version you
-install kept side by side.
 
 Or work from the checkout directly, with no install at all:
 

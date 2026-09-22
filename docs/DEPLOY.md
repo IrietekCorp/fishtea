@@ -163,7 +163,30 @@ returns a bare `403 The caller does not have permission` even to a project Owner
 
 ## Releases
 
-`FISHTEA_RELEASES` defaults to `https://fishtea.io/releases`, which **does not exist yet**. Until binaries
-are published there, `fishtea upgrade` fails with a clear message and points at `--from <checkout>`, and
-`install.sh` does the same. Publishing means putting `fishtea-<version>-<target>.tar.gz` files and a
-`latest` file containing the version string at that path — see `docs/NEXT.md`.
+Binaries are published at `https://fishtea.io/releases`, which is what `FISHTEA_RELEASES` defaults to.
+
+```bash
+bun run release <version>                    # move every version site, if this is a new version
+bun test packages site && bun run typecheck
+bun run build-release --target linux-x64 --target linux-arm64 \
+                      --target darwin-x64 --target darwin-arm64 --target windows-x64 --tarball
+bun run deploy
+```
+
+`build-release` leaves tarballs in `dist/`; the site build copies whatever is there into
+`site/dist/releases/`, computes `SHA256SUMS`, and writes `latest` as the highest version **by semver** —
+not by filename or mtime. Release artefacts are not in git: they are 26–39 MB of build output, and
+`dist/` is ignored.
+
+**Both download paths verify.** `install.sh` and `fishtea upgrade` each fetch `SHA256SUMS` and refuse on a
+mismatch. A missing SHA256SUMS is only a warning, so a self-hosted `FISHTEA_RELEASES` without one still
+works — but a wrong hash stops the install.
+
+Sanity-check a release the way a new user meets it, into a throwaway root:
+
+```bash
+FISHTEA_ROOT=/tmp/probe bash -c 'curl -fsSL https://fishtea.io/install | bash -s -- --no-modify-path'
+/tmp/probe/bin/fishtea --version
+```
+
+Bun cross-compiles all five targets from one machine, including the Mach-O ones — no macOS host needed.

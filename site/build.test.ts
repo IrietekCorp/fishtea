@@ -7,6 +7,7 @@
  */
 import { describe, expect, test, beforeAll } from "bun:test";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { build, posts } from "./build.ts";
 
@@ -29,17 +30,37 @@ describe("the site builds", () => {
     }
   });
 
-  test("the installer is NOT published while the beta is private", () => {
-    // install.sh with no arguments downloads from FISHTEA_RELEASES, and nothing is published there —
-    // so a curl|bash would fetch a script that fails at the download. No URL beats a half-working one.
-    expect(existsSync(join(OUT, "install"))).toBe(false);
-    expect(read("index.html")).not.toContain("curl -fsSL https://fishtea.io/install");
+  test("the installer is served, and the landing page offers it", () => {
+    expect(existsSync(join(OUT, "install"))).toBe(true);
+    expect(read("install")).toContain("FISHTEA_ROOT");
+    expect(read("index.html")).toContain("curl -fsSL https://fishtea.io/install");
   });
 
-  test("the landing page asks for the beta instead", () => {
-    const html = read("index.html");
-    expect(html).toContain("beta.html");
-    expect(html).toContain("Join the beta");
+  test("releases are published with a latest marker and checksums that match", () => {
+    const dir = join(OUT, "releases");
+    if (!existsSync(dir)) return;                    // no build artefacts on disk: nothing to assert
+    const tarballs = readdirSync(dir).filter((f) => f.endsWith(".tar.gz"));
+    expect(tarballs.length).toBeGreaterThan(0);
+
+    const latest = read("releases/latest").trim();
+    expect(latest).toMatch(/^\d+\.\d+\.\d+/);
+    // Whatever `latest` claims must actually be downloadable, or the installer 404s on a fresh machine.
+    expect(tarballs.some((f) => f.includes(`-${latest}-`) || f.startsWith(`fishtea-${latest}-`))).toBe(true);
+
+    // Every checksum must describe a file that is here, and be correct.
+    const sums = read("releases/SHA256SUMS").trim().split("\n").map((l) => l.split(/\s+/));
+    expect(sums.length).toBe(tarballs.length);
+    for (const [hash, name] of sums) {
+      expect({ name, listed: tarballs.includes(name) }).toEqual({ name, listed: true });
+      const actual = createHash("sha256").update(readFileSync(join(dir, name))).digest("hex");
+      expect({ name, ok: actual === hash }).toEqual({ name, ok: true });
+    }
+  });
+
+  test("the installer verifies what it downloads", () => {
+    const sh = read("install");
+    expect(sh).toContain("SHA256SUMS");
+    expect(sh).toContain("checksum mismatch");
   });
 
   test("the stylesheet ships and defines both themes", () => {

@@ -28,6 +28,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# The scratch directory is script-scoped, not function-local: the EXIT trap runs after the function that
+# creates it has returned, and a `local` would be out of scope by then — which under `set -u` made the
+# cleanup itself fail and leak the directory.
+WORK=""
+cleanup() { [ -n "${WORK:-}" ] && rm -rf "$WORK"; }
+trap cleanup EXIT
+
 say()  { printf '%s\n' "$*"; }
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*" >&2; }
@@ -77,14 +84,38 @@ install_from_release() {
 
   local name="fishtea-$VERSION-$target"
   local url="$FISHTEA_RELEASES/$name.tar.gz"
-  local work; work="$(mktemp -d)"
-  trap 'rm -rf "$work"' EXIT
+  WORK="$(mktemp -d)"
 
   bold "Downloading fishtea $VERSION ($target)"
-  curl -fsSL "$url" -o "$work/release.tar.gz" || die "no release at $url"
-  tar -xzf "$work/release.tar.gz" -C "$work"
+  curl -fsSL "$url" -o "$WORK/release.tar.gz" || die "no release at $url"
 
-  local staged; staged="$(find "$work" -maxdepth 1 -type d -name 'fishtea-*' | head -1)"
+  # Verify against the published checksums. This is a curl|bash installer downloading a 30 MB binary;
+  # checking what arrived is the least it can do. A missing SHA256SUMS is a warning rather than a failure,
+  # so a self-hosted FISHTEA_RELEASES without one still works.
+  if curl -fsSL "$FISHTEA_RELEASES/SHA256SUMS" -o "$WORK/SHA256SUMS" 2>/dev/null; then
+    local want got=""
+    want="$(awk -v n="$name.tar.gz" '$2 == n || $2 == "*"n {print $1}' "$WORK/SHA256SUMS" | head -1)"
+    if [ -n "$want" ]; then
+      if command -v sha256sum >/dev/null 2>&1; then got="$(sha256sum "$WORK/release.tar.gz" | cut -d" " -f1)"
+      elif command -v shasum   >/dev/null 2>&1; then got="$(shasum -a 256 "$WORK/release.tar.gz" | cut -d" " -f1)"
+      fi
+      if [ -n "$got" ] && [ "$got" != "$want" ]; then
+        die "checksum mismatch for $name.tar.gz
+  expected $want
+  got      $got
+  Refusing to install. Try again; if it persists, something is wrong at $FISHTEA_RELEASES."
+      fi
+      [ -n "$got" ] && say "  checksum ok"
+    else
+      warn "no checksum listed for $name.tar.gz"
+    fi
+  else
+    warn "no SHA256SUMS at $FISHTEA_RELEASES — cannot verify the download"
+  fi
+
+  tar -xzf "$WORK/release.tar.gz" -C "$WORK"
+
+  local staged; staged="$(find "$WORK" -maxdepth 1 -type d -name 'fishtea-*' | head -1)"
   [ -n "$staged" ] || die "the archive did not contain a fishtea release"
 
   mkdir -p "$FISHTEA_ROOT/versions"

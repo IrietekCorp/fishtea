@@ -52,6 +52,48 @@
             "value": "public, max-age=0, must-revalidate"
           }
         ]
+      },
+      {
+        "//": "Readable in a browser, so people can inspect the script before piping it to a shell.",
+        "source": "/install",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      },
+      {
+        "//": "Release artefacts are immutable once published \u2014 a given version's tarball never changes.",
+        "source": "/releases/*.tar.gz",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/gzip"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "//": "`latest` and the checksums move with every release, so they must never be cached.",
+        "source": "/releases/@(latest|SHA256SUMS)",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
       }
     ]
   }

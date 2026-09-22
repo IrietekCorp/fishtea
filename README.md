@@ -15,15 +15,14 @@ composes typed **calls**, and the answer pours into one of seven **vessels**. Th
 branchable, and never dies.
 
 ```bash
-git clone <this repo> fishtea && ./fishtea/install.sh --from ./fishtea
+curl -fsSL https://fishtea.io/install | bash
 
 fishtea new myshop --template ecommerce --interactive
 cd myshop && fishtea up
 ```
 
-> **Private beta.** The framework runs, but no release binaries are published yet, so there is no
-> `curl … | bash` install. Building from a checkout produces exactly what a release would.
-> [Ask for access](https://fishtea.io/beta).
+> **Beta.** It installs and runs; the source is private for now.
+> [Ask for access](https://fishtea.io/beta) to read it or get a hand.
 
 That is a running application: Postgres with pgvector, a needle3 classifier pool, the core, and a browser
 UI — none of it hand-written.
