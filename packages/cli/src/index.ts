@@ -12,9 +12,10 @@
 import { resolve, join, dirname } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import pc from "picocolors";
-import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, type App } from "@fishtea/spec";
+import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, type App } from "@fishtea/spec";
 import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
+import { readManifest } from "./manifest.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact } from "./env.ts";
 
 export const FISHTEA_HOME = resolve(dirname(new URL(import.meta.url).pathname), "../../..");
@@ -72,10 +73,81 @@ export async function buildEngine(app: App, flags: Record<string, string | boole
   return { engine, db };
 }
 
+/**
+ * An application says which framework versions it accepts (package.json → fishtea.version). We know which
+ * one we are. Say so when they disagree, on every command, because the symptom otherwise is a confusing
+ * failure somewhere much deeper.
+ */
+export function warnIfIncompatible(dir: string): void {
+  const pkgPath = join(dir, "package.json");
+  if (!existsSync(pkgPath)) return;
+  let pin: string | undefined;
+  try { pin = JSON.parse(readFileSync(pkgPath, "utf8")).fishtea?.version; } catch { return; }
+  const c = checkCompatibility(pin);
+  if (c.ok) return;
+  const how = c.reason === "framework-behind"
+    ? `this framework is older than the application expects — upgrade it (fishtea upgrade)`
+    : `the application has not been updated for this framework — run: fishtea update --app ${dir}`;
+  console.error(pc.yellow(`⚠ framework ${c.have} does not satisfy ${c.want}: ${how}`));
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
+  // Bare `fishtea --version`. Scoped to the no-command case on purpose: `-v` already means --volumes to
+  // `down`, and a version flag must never shadow a command's own.
+  if ((flags.version === true || flags.v === true) && positional.length === 0) { console.log(FISHTEA_VERSION); return; }
   const cmd = positional[0] ?? "help";
+  // Say it once, up front, for anything that actually runs the application. `version`, `doctor` and
+  // `update` report compatibility themselves — in more detail — so they are left out.
+  if (!["version", "doctor", "update", "new", "templates", "help"].includes(cmd)) {
+    try { warnIfIncompatible(resolveAppDir(flags)); } catch { /* no application here; other errors follow */ }
+  }
   switch (cmd) {
+    case "version": {
+      const bunVersion = (globalThis as any).Bun?.version ?? "not bun";
+      console.log(`${pc.bold("fishtea")}      ${FISHTEA_VERSION}`);
+      console.log(`${pc.dim("spec format")} ${SPEC_FORMAT}`);
+      console.log(`${pc.dim("bun")}         ${bunVersion}`);
+      console.log(`${pc.dim("home")}        ${FISHTEA_HOME}`);
+      try {
+        const dir = resolveAppDir(flags);
+        const pkg = existsSync(join(dir, "package.json")) ? JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) : {};
+        const spec = JSON.parse(readFileSync(join(dir, "spec.json"), "utf8"));
+        const m = readManifest(dir);
+        const c = checkCompatibility(pkg.fishtea?.version);
+        console.log(`\n${pc.bold("application")} ${dir}`);
+        console.log(`${pc.dim("  archetype")}  ${m?.template ?? pkg.fishtea?.template ?? "unknown"}`);
+        console.log(`${pc.dim("  pins")}       ${pkg.fishtea?.version ?? "nothing"} ${c.ok ? pc.green("✓ satisfied") : pc.red("✗ not satisfied")}`);
+        console.log(`${pc.dim("  spec")}       format ${spec.fishtea}${spec.fishtea === SPEC_FORMAT ? "" : pc.yellow(` → ${SPEC_FORMAT} available (fishtea update)`)} · business v${spec.business?.version}`);
+        console.log(`${pc.dim("  generated")}  by ${m?.fishtea ?? "unknown"}${m ? `, updated ${m.updated.slice(0, 10)}` : " (no manifest — fishtea update --adopt)"}`);
+      } catch { /* not in an application; the framework lines are the answer */ }
+      return;
+    }
+    case "update": {
+      const dir = resolveAppDir(flags);
+      const { planUpdate, renderPlan, applyUpdate, adopt } = await import("./update.ts");
+      if (flags.adopt === true) {
+        const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+        const template = String(flags.template ?? pkg.fishtea?.template ?? "");
+        if (!template) throw new Error("which archetype did this come from? pass --template <name>");
+        const m = adopt(dir, join(FISHTEA_HOME, "templates", template), template);
+        console.log(pc.green(`✓ adopted ${dir}: ${Object.keys(m.files).length} files still match the ${template} archetype and will track it`));
+        console.log(pc.dim("  every other file is treated as yours and will never be overwritten"));
+        return;
+      }
+      const plan = planUpdate(dir, FISHTEA_HOME);
+      console.log(renderPlan(plan));
+      if (plan.clean) { console.log(pc.green("\n✓ up to date")); return; }
+      if (flags["dry-run"] === true) { console.log(pc.dim("\n--dry-run: nothing written")); return; }
+      const res = applyUpdate(plan, { specOnly: flags["spec-only"] === true, filesOnly: flags["files-only"] === true });
+      console.log(pc.green(`\n✓ updated: ${res.wrote.length} files written${res.specMigrated ? ", spec migrated" : ""}`));
+      if (res.conflicts.length) {
+        console.log(pc.yellow(`  ${res.conflicts.length} conflicting, each left beside yours as <file>.new:`));
+        for (const c of res.conflicts) console.log(pc.dim(`    ${c}.new`));
+        console.log(pc.dim("  diff them, keep what you want, delete the .new — then: fishtea validate"));
+      }
+      return;
+    }
     case "templates": {
       for (const t of listTemplates(FISHTEA_HOME)) console.log(`${pc.bold(t.name.padEnd(14))} ${t.doc}\n${" ".repeat(15)}${pc.dim(`${t.onboard.questions.length} onboarding questions`)}`);
       return;
@@ -106,6 +178,11 @@ async function main() {
     case "doctor": {
       const dir = resolveAppDir(flags);
       const rows: [string, boolean, string][] = [];
+      const pkg = existsSync(join(dir, "package.json")) ? JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) : {};
+      const compat = checkCompatibility(pkg.fishtea?.version);
+      rows.push(["framework", compat.ok,
+        compat.ok ? `${FISHTEA_VERSION}${pkg.fishtea?.version ? ` satisfies ${pkg.fishtea.version}` : " (application pins nothing)"}`
+                  : `${compat.have} does not satisfy ${compat.want} — ${compat.reason === "framework-behind" ? "upgrade the framework" : "run: fishtea update"}`]);
       let app: App | null = null;
       try { app = loadApp(dir); rows.push(["spec", true, `${app.spec.business.name} v${app.spec.business.version}`]); }
       catch (e) { rows.push(["spec", false, e instanceof SpecError ? e.problems[0] : (e as Error).message]); }
@@ -214,6 +291,9 @@ async function main() {
 
   fishtea templates           list the archetypes and their onboarding interviews
   fishtea new <id> --template <archetype> [--dir path] [--name "Name"] [--answers a.json | --interactive]
+  fishtea version             framework, spec format, and what this application pins
+  fishtea update [--dry-run]  bring this application up to the framework without regenerating it
+                              [--adopt] start tracking an application made before provenance existed
   fishtea validate            validate spec.json and print section hashes
   fishtea doctor              check the spec, the database, the classifier and the binding
   fishtea derive [--ddl|--tools|--forms]

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const SECTIONS = ["business", "entities", "calls", "rules", "shapes", "personas", "envelope", "notifications", "operator"] as const;
+export const SECTIONS = ["business", "entities", "calls", "rules", "shapes", "personas", "envelope", "notifications", "operator", "plugins"] as const;
 export type Section = (typeof SECTIONS)[number];
 
 /** Canonical JSON: sorted keys, no whitespace. Stable across editors. */

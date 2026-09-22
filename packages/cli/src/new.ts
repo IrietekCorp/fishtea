@@ -5,8 +5,9 @@
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { bumpVersion, validateSpec } from "@fishtea/spec";
+import { bumpVersion, validateSpec, FISHTEA_VERSION, SPEC_FORMAT, caretRange } from "@fishtea/spec";
 import { isInside, lanAddress, workspaceRoot, type Flags } from "./env.ts";
+import { captureManifest, writeManifest } from "./manifest.ts";
 
 export interface Template { name: string; dir: string; doc: string; onboard: Onboard }
 export interface Question { id: string; ask: string; type: "string" | "text" | "int" | "number" | "boolean" | "enum" | "multi" | "list"; path?: string; values?: string[]; default?: unknown; apply?: string; also?: { path?: string; seed?: string; field?: string }[]; seed?: string; field?: string }
@@ -97,9 +98,12 @@ export async function scaffold(o: ScaffoldOptions): Promise<{ dir: string; templ
     writeFileSync(file, JSON.stringify(rows, null, 1) + "\n");
   }
   for (const s of ["entities", "calls", "rules", "shapes", "personas", "envelope", "notifications", "operator"]) if (spec[s]) spec[s].version = bumpVersion(undefined);
+  spec.fishtea = SPEC_FORMAT;                                  // scaffold at the format this build writes
   validateSpec(spec, { dir });
   writeFileSync(join(dir, "spec.json"), JSON.stringify(spec, null, 2) + "\n");
   writeAppFiles(dir, { id: o.id, name, template: o.template, fishteaHome: o.fishteaHome });
+  // Provenance, so `fishtea update` can tell a file we wrote from one this application now owns.
+  writeManifest(dir, captureManifest(dir, tpl.dir, { fishtea: FISHTEA_VERSION, specFormat: SPEC_FORMAT, template: o.template }));
   return { dir, template: o.template, answered };
 }
 
@@ -139,24 +143,58 @@ export function writeAppFiles(dir: string, a: { id: string; name: string; templa
     "package.json": JSON.stringify({
       name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a Fishtea application (${a.template} archetype)`,
       scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
-      fishtea: { template: a.template, home },
+      fishtea: { template: a.template, version: caretRange(FISHTEA_VERSION), home },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
-// Runs the Fishtea CLI from the framework checkout named in package.json ("fishtea.home") or FISHTEA_HOME.
+/**
+ * Finds the Fishtea framework and hands it this application. Four places are tried, nearest first, so an
+ * application works whether the framework is installed, vendored, checked out beside it, or on \$PATH:
+ *
+ *   1. FISHTEA_HOME               an explicit checkout, which always wins
+ *   2. node_modules/@fishtea/cli  installed with \`bun add @fishtea/cli\` — the version is then yours to pin
+ *   3. package.json fishtea.home  the checkout this application was generated from
+ *   4. a \`fishtea\` binary on PATH the standalone runtime from install.sh
+ *
+ * Whichever answers, the CLI checks its own version against \`fishtea.version\` here and says so if they
+ * have drifted. Update with \`bun run fishtea update\`.
+ */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+
 const here = dirname(new URL(import.meta.url).pathname);
 const pkg = JSON.parse(readFileSync(join(here, "package.json"), "utf8"));
-const home = process.env.FISHTEA_HOME ?? pkg.fishtea?.home;
-const cli = home && join(home, "packages/cli/src/index.ts");
-if (!cli || !existsSync(cli)) { console.error(\`fishtea: framework not found at \${home ?? "(unset)"} — set FISHTEA_HOME or package.json fishtea.home\`); process.exit(1); }
-const proc = Bun.spawn(["bun", cli, ...process.argv.slice(2)], { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_HOME: home, FISHTEA_APP: process.env.FISHTEA_APP ?? here } });
+const env = { ...process.env, FISHTEA_APP: process.env.FISHTEA_APP ?? here };
+const args = process.argv.slice(2);
+const fromCheckout = (home: string) => {
+  const cli = join(home, "packages/cli/src/index.ts");
+  return existsSync(cli) ? { cmd: ["bun", cli], home } : null;
+};
+
+const resolved =
+  (process.env.FISHTEA_HOME ? fromCheckout(process.env.FISHTEA_HOME) : null) ??
+  (existsSync(join(here, "node_modules/@fishtea/cli/src/index.ts"))
+    ? { cmd: ["bun", join(here, "node_modules/@fishtea/cli/src/index.ts")], home: undefined }
+    : null) ??
+  (pkg.fishtea?.home ? fromCheckout(pkg.fishtea.home) : null) ??
+  (Bun.which("fishtea") ? { cmd: [Bun.which("fishtea")!], home: undefined } : null);
+
+if (!resolved) {
+  console.error("fishtea: no framework found. Any one of these fixes it:");
+  console.error("  bun add @fishtea/cli                      install it into this application");
+  console.error("  export FISHTEA_HOME=/path/to/fishtea      point at a checkout");
+  console.error("  curl -fsSL https://fishtea.dev/install | bash   install the standalone runtime");
+  process.exit(1);
+}
+if (resolved.home) env.FISHTEA_HOME = resolved.home;
+const proc = Bun.spawn([...resolved.cmd, ...args], { stdio: ["inherit", "inherit", "inherit"], env });
 process.exit(await proc.exited);
 `,
     ".env": envFile(home, a.template),
     ".env.example": envFile(home, a.template),
     "docker-compose.yml": composeFile(home),
-    ".gitignore": "node_modules/\n.env\n.fishtea/\n",
+    // .fishtea/ holds caches, but manifest.json is provenance: commit it, or `fishtea update` on another
+    // machine cannot tell which files are still the archetype's and which are now yours.
+    ".gitignore": "node_modules/\n.env\n.fishtea/*\n!.fishtea/manifest.json\n*.new\n",
     "README.md": `# ${a.name}
 
 A [Fishtea](${home}) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.
