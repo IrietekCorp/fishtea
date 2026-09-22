@@ -2,7 +2,7 @@
 
 **Version 1.0 · 2026-09-21 · for a Claude CLI build session**
 
-> **The organizing sentence.** The conversation is the unit of navigation. Routes, pages and funnels are replaced by a living, rewindable trail; a small on-device classifier (needle3) shapes the question instead of a menu; the UI, notifications and "homepage" are projections of the conversation's current node; and the memory of past conversations gives continuous familiarity. Everything else in this document exists to serve that sentence. If any component grows beyond what that sentence needs, cut it.
+> **The organising sentence.** The conversation is the unit of navigation. Routes, pages and funnels are replaced by a living, rewindable trail; a small on-device classifier (needle3) shapes the question instead of a menu; the UI, notifications and "homepage" are projections of the conversation's current node; and the memory of past conversations gives continuous familiarity. Everything else in this document exists to serve that sentence. If any component grows beyond what that sentence needs, cut it.
 
 *Solid ground, liquid UI.* The ground is what stays fixed: the business spec, the data, the rules, who may do what. The water is everything the human sees, and it takes its shape from the ground.
 
@@ -45,7 +45,7 @@ Those constraints are gone. This version delivers the original imagination:
 3. **The application works with no UI.** Consumer payloads in, business payloads out. The interface is a function callback into a design system, provably the last and thinnest layer.
 4. **State is a point in a conversation.** Not a bookmarkable object. The trail is rewindable and branchable, and it never dies.
 5. **The homepage is a summary of where the conversation is.** First visit: a greeting shaped by arrival metadata. Return visit: the resumed conversation — the cart, the three outfits you were comparing, the payment offer relevant *because of where you are*. Same code path.
-6. **Personalization is the conversation, not the profile.** Not colors and dark mode; not a flattened attribute list; the richness of what has been said. This also reframes analytics: the session is the conversation and the conversation is the customer record.
+6. **Personalisation is the conversation, not the profile.** Not colours and dark mode; not a flattened attribute list; the richness of what has been said. This also reframes analytics: the session is the conversation and the conversation is the customer record.
 7. **Two-way.** The engine informs the consumer of what's available and the business of what was asked and couldn't be answered. A failed classification is demand signal, not an error.
 
 The talk that prompted the resurrection ("Quantum UI") argues the same split from the design side and ends on *what has to stay fixed: governance, permissions, who can see what.* That is the ground. FishTea makes it a list you can read — the spec — rather than a policy you hope a model follows.
@@ -69,7 +69,7 @@ The talk that prompted the resurrection ("Quantum UI") argues the same split fro
 | D11 | **Notifications are turns.** Authored by the system or the operator, visible to both parties, delivered over SSE. | "A way to get someone's attention that something needs doing" — part of the conversation, not a side channel. |
 | D12 | **TUI is an editor and control surface over the spec**: onboarding, live edit, restart, regenerate a *section*. Operator actions are themselves shapes with an operator-scoped registry. | Same engine pointed at itself; no second system. |
 | D13 | **Two sample specs: ChicDuJour (fashion co-shopper) and AI Explorer Camp (kids' AI program).** | Far apart on purpose. If both derive from the same spec format and engine, the framework is real. |
-| D14 | **Edge/core split at the payload boundary**: edge renders and captures; core classifies and composes. | needle needs the trail and the catalog, which live next to Postgres. |
+| D14 | **Edge/core split at the payload boundary**: edge renders and captures; core classifies and composes. | needle needs the trail and the catalogue, which live next to Postgres. |
 | D15 | **Tenancy: one Compose stack = one business.** | No control plane, no multi-tenant. |
 | D16 | **Performance is a first-class deliverable**: budgets enforced in CI, a harness that measures, and a conventional baseline to beat. | "Faster than existing implementations" must be measured, not asserted. |
 
@@ -607,7 +607,7 @@ Build in this order. Each phase has a test that must pass before the next begins
 
 **Phase 8 — Bench (1 day).** Harness, budgets in CI, conventional baseline. *Accept:* `bun bench` produces the table in §11 with every budget green on the reference machine, and reports FishTea vs conventional task-completion time.
 
-**Phase 9 — ChicDuJour refactor (open-ended).** Inspect the existing chicdujour repo; migrate its catalog and intent into `specs/chicdujour.spec.json`; keep what fits the mood-driven co-shopper (mood equalizer as `findAccessories.mood`, trend signals as a `products.trending` call, engagement reactions as a write shape). The AI Explorer Camp spec (sessions, enrolment, scholarships, device loans, parent notifications) must keep deriving unchanged as the check that nothing became fashion-specific.
+**Phase 9 — ChicDuJour refactor (open-ended).** Inspect the existing chicdujour repo; migrate its catalogue and intent into `specs/chicdujour.spec.json`; keep what fits the mood-driven co-shopper (mood equaliser as `findAccessories.mood`, trend signals as a `products.trending` call, engagement reactions as a write shape). The AI Explorer Camp spec (sessions, enrolment, scholarships, device loans, parent notifications) must keep deriving unchanged as the check that nothing became fashion-specific.
 
 ---
 

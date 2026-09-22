@@ -56,3 +56,7 @@ bunx tsc -p tsconfig.json --noEmit
 - Three versions, kept apart: the framework build (semver, pinned by an application), the spec *format* (`spec.fishtea`, what migrations key off), and the business revision. See `docs/VERSIONING.md`.
 - `.fishtea/manifest.json` records two hashes per archetype file — the archetype's and the application's — because the scaffolder transforms files as it copies them. That is what makes `fishtea update` a three-way merge instead of a guess.
 - Tests run against a real Postgres (pgvector). Keep them that way.
+- **Prose is British English** — colour, behaviour, personalisation, catalogue, summarised. It suits a
+  project named after a Jamaican broth, Jamaica being Commonwealth. This applies to prose only: code
+  identifiers, CLI flags and component names keep whatever spelling they already have (`-colors` is an
+  ImageMagick flag, `AlertDialog` is a component, `{"colors": […]}` is seed data). Do not "correct" those.

@@ -109,9 +109,9 @@ all now fixed and, where testable, covered:
   worker loads from local disk. The `models` volume remains, for a fine-tuned `.cact` via `NEEDLE_MODEL_PATH`.
 
 Running the stack also showed the ecommerce archetype's search was too literal. needle drops a whole phrase
-into `text` and invents a `category` the catalog does not have ("linen" is a tag here, not a category), and the
+into `text` and invents a `category` the catalogue does not have ("linen" is a tag here, not a category), and the
 query returned nothing. It now matches text word by word, and treats `category`, `brand` and `tag` as hard
-filters **only when the catalog actually contains that value** — otherwise the guess becomes one more search
+filters **only when the catalogue actually contains that value** — otherwise the guess becomes one more search
 word. Price stays a hard filter, because a budget is a promise. Against the live stack, six representative
 utterances all answer, including the two the classifier got partly wrong.
 
