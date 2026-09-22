@@ -3,12 +3,39 @@
 Read `CLAUDE.md` first (commands, layout, rules of the house), then `docs/DESIGN.md` (measured deviations
 from `docs/BLUEPRINT.md`). This file is what is left.
 
-Updated 2026-09-22, after the platform work (versioning, plugins, the binary, the site).
+Updated 2026-09-22, after the platform work (versioning, plugins, the binary, the site) and the launch of
+fishtea.io.
 
 ## State
 
-- **1.1.0.** 178 tests, 0 failing, on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean; the UI builds; the
-  site builds; the compiled binary runs standalone.
+- **1.1.0.** 202 tests, 0 failing, on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean on both projects; the
+  UI builds; the site builds; the compiled binary runs standalone; 9 headless browser tests pass.
+- **fishtea.io is live** on Firebase Hosting with a Google Trust Services certificate. See
+  `docs/DEPLOY.md`. Redeploy is `bun run deploy`. The site shows the private-beta signup rather than an
+  install command, because no release binaries are published yet.
+
+### Picking up after a restart
+
+Nothing in the repository needs restoring — the working tree is committed and the site is deployed. Three
+things live outside it:
+
+```bash
+# the test database does NOT come back on its own (restart policy is "no")
+docker start fishtea-test-db
+
+# optional: the docs site, locally, on :4000
+bun run site --serve
+```
+
+`gcloud` credentials and the Playwright browser survive a reboot; nothing needs re-authenticating. The
+scratch applications used during testing lived in a temp directory and are disposable — `bun run e2e`
+builds its own from scratch each run.
+
+**One thing left hanging:** a report that fishtea.io shows "not secure" in a browser. Every server-side
+check disagrees — `curl` verifies, OpenSSL shows a complete chain (`Verify return code: 0`) including the
+GlobalSign cross-sign, Chrome here reports `isSecureContext: true`, there is no mixed content, and HSTS is
+set. The likely cause is a cached interstitial from the window earlier in the day when the certificate had
+genuinely not issued yet. Confirm in a private window before chasing anything server-side.
 - **Verified end to end during the platform work:** scaffolding, plugins and `validate` all work from the
   compiled binary with no checkout on disk; 1.1.0 and 1.2.0 install side by side and switch both
   directions; an application pinned `^1.2.0` running under 1.1.0 is told which side is stale; the
