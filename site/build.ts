@@ -30,6 +30,85 @@ const VERSION = readFileSync(join(HOME, "packages/spec/src/release.ts"), "utf8")
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const slug = (s: string) => s.toLowerCase().replace(/[^\w]+/g, "-").replace(/^-|-$/g, "");
 
+
+// ---- design tokens ---------------------------------------------------------------------------------
+/**
+ * The stylesheet's custom properties are generated from `docs/design/tokens.json`, which is the design
+ * system synced out of the Design System artifact. Hand-copying twenty colours into CSS guarantees they
+ * drift; this way re-syncing one file moves the whole site, which is the same "describe once, derive
+ * everything" bargain the framework itself makes.
+ *
+ * Ebony (dark) is listed first in the system and is therefore the primary theme: it is what `:root`
+ * carries, with Oak applied under `prefers-color-scheme: light` and by an explicit `data-theme`.
+ */
+interface Tokens {
+  color: { themes: { id: string; name: string }[]; tokens: { name: string; value: Record<string, string> | string }[] };
+  type: { families: Record<string, string>; groups: { name: string; family: string; styles: any[] }[] };
+  [family: string]: any;
+}
+
+export function readTokens(): Tokens {
+  return JSON.parse(readFileSync(join(HOME, "docs/design/tokens.json"), "utf8"));
+}
+
+const cssVar = (name: string) => `--${name}`;
+
+/** One theme's colour block. A token with a plain string value belongs to the first theme only. */
+function colourBlock(t: Tokens, theme: string, fallback: string): string {
+  return t.color.tokens.map((tok) => {
+    const v = typeof tok.value === "string" ? (theme === fallback ? tok.value : undefined) : (tok.value[theme] ?? tok.value[fallback]);
+    return v ? `  ${cssVar(tok.name)}: ${v};` : "";
+  }).filter(Boolean).join("\n");
+}
+
+export function tokenCss(t: Tokens = readTokens()): string {
+  const [primary, secondary] = t.color.themes.map((x) => x.id);
+
+  const scales = ["spacing", "radius", "border", "shadow", "timing"]
+    .filter((f) => t[f]?.tokens)
+    .map((f) => t[f].tokens.map((tok: any) => {
+      const v = typeof tok.value === "string" ? tok.value : tok.value[primary];
+      return `  ${cssVar(tok.name)}: ${v};`;
+    }).join("\n")).join("\n");
+
+  // Shadows differ per theme, so any family with per-theme values is re-emitted in the theme blocks.
+  const themed = (theme: string) => ["shadow"]
+    .filter((f) => t[f]?.tokens)
+    .map((f) => t[f].tokens.filter((tok: any) => typeof tok.value === "object")
+      .map((tok: any) => `  ${cssVar(tok.name)}: ${tok.value[theme] ?? tok.value[primary]};`).join("\n"))
+    .filter(Boolean).join("\n");
+
+  const families = Object.entries(t.type.families).map(([k, v]) => `  --font-${k}: ${v};`).join("\n");
+  const styles = t.type.groups.flatMap((g) => g.styles.map((st: any) =>
+    `  --text-${st.name}: ${st.fontWeight ?? 400} ${st.fontSize}/${st.lineHeight} var(--font-${g.family});` +
+    (st.letterSpacing ? `\n  --tracking-${st.name}: ${st.letterSpacing};` : ""))).join("\n");
+
+  return `/* Generated from docs/design/tokens.json by site/build.ts. Do not edit; edit the tokens. */
+:root {
+  color-scheme: dark;
+${colourBlock(t, primary, primary)}
+${scales}
+${themed(primary)}
+${families}
+${styles}
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="${primary}"]) {
+    color-scheme: light;
+${colourBlock(t, secondary, primary).replace(/^ {2}/gm, "    ")}
+${themed(secondary).replace(/^ {2}/gm, "    ")}
+  }
+}
+
+:root[data-theme="${secondary}"] {
+  color-scheme: light;
+${colourBlock(t, secondary, primary).replace(/^ {2}/gm, "  ")}
+${themed(secondary)}
+}
+`;
+}
+
 // ---- markdown ------------------------------------------------------------------------------------
 // Headings get stable ids and a quiet anchor; tables get a scroll container so a wide one cannot make
 // the page scroll sideways on a phone.
@@ -60,6 +139,26 @@ interface Page {
 
 const NAV_GROUPS = ["Start", "Operating", "Reference", "Design", "Project"] as const;
 
+/**
+ * A documentation page: the section list, the article, and a rail of the article's own h2s.
+ *
+ * The rail is built from the rendered HTML rather than from the Markdown, because the heading ids it
+ * links to are minted by the renderer — reading them back is the only way the two cannot disagree. Pages
+ * with fewer than three sections get no rail; a list of two is furniture, not navigation.
+ */
+function docsMain(page: Page, side: string): string {
+  const body = page.body();
+  const heads = [...body.matchAll(/<h2 id="([^"]+)">([\s\S]*?)<\/h2>/g)]
+    .map((m) => ({ id: m[1], text: m[2].replace(/<a class="anchor"[\s\S]*$/, "").replace(/<[^>]+>/g, "").trim() }));
+  const rail = heads.length < 3 ? "" :
+    `<nav class="rail" aria-label="On this page"><h4>On this page</h4><ul>${heads
+      .map((h) => `<li><a href="#${h.id}">${esc(h.text)}</a></li>`).join("")}</ul></nav>`;
+
+  return `<main id="main" class="wrap docs${rail ? " has-rail" : ""}">` +
+    `<details class="side" open><summary>Documentation</summary><div class="side-inner">${side}</div></details>` +
+    `<article class="prose">${body}</article>${rail}</main>`;
+}
+
 function layout(page: Page, pages: Page[]): string {
   const docPages = pages.filter((p) => p.nav);
   const isDoc = !page.landing;
@@ -89,6 +188,8 @@ function layout(page: Page, pages: Page[]): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(page.title)}${page.landing ? "" : " — FishTea"}</title>
 <meta name="description" content="Describe a business once in JSON; derive the database, the classifier's tools, the planner, the UI and the operator console from it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="${root}static/site.css">
 <link rel="icon" href="${root}static/img/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="${root}static/img/favicon-32.png">
@@ -107,12 +208,18 @@ function layout(page: Page, pages: Page[]): string {
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-  <a class="brand" href="${href("")}"><img src="${root}static/img/logo-mark.png" srcset="${root}static/img/logo-mark.png 1x, ${root}static/img/logo-mark@2x.png 2x" alt="" width="30" height="28"><span class="wordmark">Fish<span>Tea</span></span></a>
+  <a class="brand" href="${href("")}" aria-label="FishTea">
+    <img class="cup" src="${root}static/img/logo-mark.png" srcset="${root}static/img/logo-mark.png 1x, ${root}static/img/logo-mark@2x.png 2x" alt="" width="34" height="32">
+    <img class="wordmark on-ebony" src="${root}static/img/wordmark-dark.svg" alt="FishTea" width="103" height="26">
+    <img class="wordmark on-oak" src="${root}static/img/wordmark-light.svg" alt="" aria-hidden="true" width="103" height="26">
+  </a>
   <nav>${topNav}</nav>
+  <div class="header-end">
+    <span class="badge gold">beta</span>
+    <a class="btn small" href="${href("beta")}">Apply for access</a>
+  </div>
 </div></header>
-${isDoc
-    ? `<main id="main" class="wrap docs"><details class="side" open><summary>Documentation</summary><div class="side-inner">${side}</div></details><article class="prose">${page.body()}</article></main>`
-    : `<main id="main">${page.body()}</main>`}
+${isDoc ? docsMain(page, side) : `<main id="main">${page.body()}</main>`}
 <script>
 /* The docs sidebar is a <details> that ships open, so with no JavaScript it behaves as it always has.
    On a phone it is closed on load instead, so an article starts at the top of the screen rather than
@@ -120,7 +227,7 @@ ${isDoc
    paint them, so forcing a display value on them at desktop width does nothing. */
 (function () {
   var d = document.querySelector("details.side");
-  if (d && !window.matchMedia("(min-width: 60rem)").matches) d.removeAttribute("open");
+  if (d && !window.matchMedia("(min-width: 64rem)").matches) d.removeAttribute("open");
 })();
 </script>
 <footer class="bottom"><div class="wrap">
@@ -149,30 +256,67 @@ function landing(): string {
     ["channel", "Where a notification is delivered."],
     ["archetype", "A template <code>fishtea new</code> can start from."],
   ];
+  // The four nouns the whole framework is built from. The design system asks for one card per concept and
+  // for exactly one of them to carry the wood accent — so SPEC, the thing everything else derives from.
+  const concepts: [string, string, string, string][] = [
+    ["spec", "SPEC", "One file", "A business described once: entities, shapes, calls, rules, personas. Everything below is derived from it, and nothing may contradict it."],
+    ["shape", "SHAPE", "A question it answers", "Not a route. A shape is something a visitor may ask, with typed arguments — which is also, exactly, a tool the classifier can choose."],
+    ["call", "CALL", "A typed step", "SQL or a compute module, declared with its inputs and outputs. The planner composes calls; the model never writes one."],
+    ["vessel", "VESSEL", "Where the answer pours", "Seven shapes of answer — list, card, detail, form, confirm, timeline, note. Never a page; the vessel is chosen by the answer."],
+  ];
 
   return `
 <div class="hero"><div class="wrap">
-  <img class="hero-mark" src="static/img/logo-mark@2x.png" alt="" width="128" height="121">
-  <p class="tag">solid ground, liquid UI</p>
-  <h1>Describe a business once.<br>Derive everything else.</h1>
-  <p class="lede">
-    One <code>spec.json</code> gives you the Postgres schema, the classifier's tool list, the planner, the
-    UI and an operator console. Conversation replaces routing: a small on-device model turns what a
-    visitor says into a <strong>shape</strong>, the planner composes typed <strong>calls</strong>, and the
-    answer pours into one of seven <strong>vessels</strong>.
-  </p>
-  <div class="cta">
-    <a class="btn" href="getting-started.html">Get started</a>
-    <a class="btn ghost" href="welcome.html">Read the argument</a>
+  <div>
+    <p class="tag">solid ground, liquid UI</p>
+    <h1>Describe a business once.<br>Derive everything else.</h1>
+    <p class="lede">
+      One <code>spec.json</code> gives you the Postgres schema, the classifier's tool list, the planner, the
+      UI and an operator console. Conversation replaces routing: a small on-device model turns what a
+      visitor says into a <strong>shape</strong>, the planner composes typed <strong>calls</strong>, and the
+      answer pours into one of seven <strong>vessels</strong>.
+    </p>
+    <p class="command"><span class="prompt">$</span> curl -fsSL https://fishtea.io/install | bash</p>
+    <div class="cta" style="margin-top:var(--space-4)">
+      <a class="btn" href="getting-started.html">Get started</a>
+      <a class="btn ghost" href="welcome.html">Read the argument</a>
+    </div>
+    <p class="stack">Bun · PostgreSQL + pgvector · needle3 on device · React. No cloud model in the hot path.</p>
   </div>
-  <p style="margin-top:2rem;max-width:34rem">
-    <span class="install"><span class="prompt">$</span> curl -fsSL https://fishtea.io/install | bash</span>
-  </p>
-  <p class="post-meta" style="margin-top:0.75rem;max-width:34rem">
-    Beta. The source is private for now — <a href="beta.html">ask for access</a> if you want to read it or
-    have a hand getting started.
-  </p>
+  <div class="hero-art">
+    <img src="static/img/logo-mark@2x.png" alt="" width="256" height="242">
+  </div>
 </div></div>
+
+<section><div class="wrap">
+  <p class="key">Try it — the answer shapes itself</p>
+  <h2>One turn, end to end</h2>
+  <p class="sub">What a visitor types, what the classifier understood, what poured, and the provenance
+  underneath it. Every part of this is derived; none of it is a page.</p>
+  <div class="demo">
+    <div>
+      <p class="mouth">something linen for a summer wedding, under £80</p>
+      <p class="understood"><span class="dot high"></span> findProducts · fabric: linen · occasion: wedding · max: 80</p>
+      <p class="post-meta">The classifier picks a shape and fills its arguments. Below the budget it asks
+      instead of guessing — never a dumber model.</p>
+    </div>
+    <div class="vessel">
+      <h4>Three that fit</h4>
+      <div class="row"><span class="name">Ravello linen shirt</span><span class="price">£68</span></div>
+      <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">ships Thu</span></div>
+      <hr style="border:0;border-top:var(--hairline) solid var(--line);margin:var(--space-3) 0">
+      <div class="row"><span class="name">Bari linen trouser</span><span class="price">£74</span></div>
+      <div class="row"><span class="meta">sand · two left</span><span class="meta">ships Thu</span></div>
+      <p class="verify"><span class="read">read</span> products, stock · 41 ms · shape findProducts</p>
+    </div>
+    <div>
+      <p class="mouth">not those, something warmer</p>
+      <p class="understood shaping"><span class="dot mid"></span> same shape, next turn — tone: warm</p>
+      <p class="post-meta">A refinement is not a filter control. It is the next thing said, and the trail
+      keeps both turns so the visitor can rewind to either.</p>
+    </div>
+  </div>
+</div></section>
 
 <section><div class="wrap">
   <h2>A business is not a set of pages. It is an authority that answers questions.</h2>
@@ -189,16 +333,21 @@ function landing(): string {
       interface be the last and thinnest thing.</p>
     </div>
     <div>
-      <p><strong>Browsing is not a funnel.</strong> It is how a customer works out what they implicitly
-      like. Most of it is not purchase intent, and treating it as a path to checkout measures the wrong
-      thing.</p>
-      <p><strong>Search is not a result set to filter.</strong> The search <em>is</em> the question, and
-      what comes back is an opportunity to ignore or to go deeper. "Not those, something warmer" is not a
-      refinement — it is the next turn.</p>
-      <p><strong>Personalisation stops being a layer.</strong> If the interaction <em>is</em> the
-      conversation, every surface is already personal — by what was actually said, not by a profile.</p>
+      <ul class="claims">
+        <li><strong>Browsing is not a funnel.</strong> It is how a customer works out what they implicitly
+        like. Most of it is not purchase intent, and treating it as a path to checkout measures the wrong
+        thing.</li>
+        <li><strong>Search is not a result set to filter.</strong> The search <em>is</em> the question, and
+        what comes back is an opportunity to ignore or to go deeper.</li>
+        <li><strong>Personalisation stops being a layer.</strong> If the interaction <em>is</em> the
+        conversation, every surface is already personal — by what was actually said, not by a profile.</li>
+      </ul>
       <p><a href="blog/why-a-business-is-not-a-set-of-pages.html">The longer argument →</a></p>
     </div>
+  </div>
+  <div class="cards" style="margin-top:var(--space-6)">
+    ${concepts.map(([id, key, lead, d], i) =>
+      `<div class="card${i === 0 ? " wood" : ""}"><p class="key">${key}</p><h3>${lead}</h3><p>${d}</p></div>`).join("\n    ")}
   </div>
 </div></section>
 
@@ -228,22 +377,23 @@ $ fishtea up
 </div></section>
 
 <section><div class="wrap">
-  <h2>Five archetypes</h2>
-  <p class="sub">Each one is a complete, runnable application with seed data and an onboarding interview
-  that turns it into <em>your</em> business.</p>
-  <div class="grid">
-    ${archetypes.map(([n, d]) => `<div class="card"><h3><code>${n}</code></h3><p>${d}</p></div>`).join("\n    ")}
-  </div>
+  <p class="key">Start from an archetype</p>
+  <h2>Five, each one already running</h2>
+  <p class="sub">Every archetype is a complete application with seed data and an onboarding interview that
+  turns it into <em>your</em> business.</p>
+  <dl class="archetypes">
+    ${archetypes.map(([n, d]) => `<div class="item"><dt>${n}</dt><dd>${d}</dd></div>`).join("\n    ")}
+  </dl>
 </div></section>
 
 <section><div class="wrap">
   <h2>Plugins for everything outside the conversation</h2>
   <p class="sub">Six seams, one mechanism. A plugin is a directory with a manifest; what it contributes is
   merged when the spec loads and never written into your <code>spec.json</code>.</p>
-  <div class="grid">
-    ${seams.map(([n, d]) => `<div class="card"><h3><code>${n}</code></h3><p>${d}</p></div>`).join("\n    ")}
+  <div class="cards">
+    ${seams.map(([n, d]) => `<div class="card"><p class="key">${n}</p><p>${d}</p></div>`).join("\n    ")}
   </div>
-  <p style="margin-top:1.5rem"><a href="plugins.html">How plugins work →</a></p>
+  <p style="margin-top:var(--space-5)"><a href="plugins.html">How plugins work →</a></p>
 </div></section>
 
 <section><div class="wrap">
@@ -271,9 +421,17 @@ files      2 to update, 1 new, 1 conflicting, 3 yours
     </div>
   </div>
 </div></section>
+
+<section style="border-bottom:0"><div class="wrap">
+  <h2>The homepage is where the conversation is</h2>
+  <p class="sub">FishTea ${VERSION} · beta · the source is private for now.</p>
+  <div class="cta">
+    <a class="btn" href="beta.html">Apply for access</a>
+    <a class="btn ghost" href="welcome.html">Start with Welcome</a>
+  </div>
+</div></section>
 `;
 }
-
 // ---- generated: the spec reference -----------------------------------------------------------------
 function specReference(): string {
   const schema = JSON.parse(readFileSync(join(HOME, "packages/spec/schema/spec.schema.json"), "utf8"));
@@ -607,6 +765,9 @@ export async function build(): Promise<{ written: string[] }> {
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
   cpSync(join(HOME, "site/static"), join(OUT, "static"), { recursive: true });
+  // The palette is not written by hand. site.css imports this; tokens.json is the only place a colour,
+  // a step of spacing or a radius is decided, and it is shared verbatim with the design system.
+  writeFileSync(join(OUT, "static/tokens.generated.css"), tokenCss());
 
   const all = await pages();
   const written: string[] = [];

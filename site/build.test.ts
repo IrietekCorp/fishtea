@@ -9,7 +9,7 @@ import { describe, expect, test, beforeAll } from "bun:test";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import { build, posts } from "./build.ts";
+import { build, posts, readTokens } from "./build.ts";
 
 const HOME = join(import.meta.dir, "..");
 const OUT = join(HOME, "site/dist");
@@ -63,10 +63,23 @@ describe("the site builds", () => {
     expect(sh).toContain("checksum mismatch");
   });
 
-  test("the stylesheet ships and defines both themes", () => {
+  test("the stylesheet ships, and the palette comes from the tokens", () => {
     const css = read("static/site.css");
-    expect(css).toContain("prefers-color-scheme: dark");
-    expect(css).toContain("--accent");
+    expect(css).toContain('@import url("tokens.generated.css")');
+
+    // Ebony is primary, so it is what bare :root carries; Oak arrives by preference and by data-theme.
+    // If this ever inverts, every page loads with the wrong ground before a single rule is read.
+    const tokens = read("static/tokens.generated.css");
+    const t = readTokens();
+    const ground = t.color.tokens.find((x: any) => x.name === "ground")!.value as Record<string, string>;
+    expect(tokens).toContain(`:root {\n  color-scheme: dark;\n  --ground: ${ground.dark};`);
+    expect(tokens).toContain("@media (prefers-color-scheme: light)");
+    expect(tokens).toContain('[data-theme="light"]');
+    expect(tokens).toContain(`--ground: ${ground.light};`);
+
+    // Nothing in the hand-written sheet may hard-code a colour: every one is a token or it is a bug.
+    const literals = css.replace(/\/\*[\s\S]*?\*\//g, "").match(/#[0-9a-f]{3,8}\b|\brgba?\(/gi) ?? [];
+    expect(literals).toEqual([]);
   });
 });
 
