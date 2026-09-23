@@ -46,9 +46,10 @@ genuinely not issued yet. Confirm in a private window before chasing anything se
   three-way file reconcile handles all six cases (update, yours, conflict, new, deleted, resolved).
 - **Bench** (warm pool, 20 iterations): every budget green, 100/100 text utterances answered.
   `packages/bench/baseline.json`.
-- **Still not verified:** the eBay adapter against the live API; accessibility (axe, screen reader); the
-  `anthropic` plugin against the live API (it is unit-tested for resolution, merge and a clear error
-  without credentials, not for a real completion).
+- **Still not verified:** the eBay adapter against the live API — and it will not be, see §3; a real
+  screen reader (axe and keyboard-only are covered, see §0); the `anthropic` plugin against the live API
+  (it is unit-tested for resolution, merge and a clear error without credentials, not for a real
+  completion).
 
 ## Work list, in priority order
 
@@ -135,9 +136,39 @@ Everything up to publishing is built and verified; publishing itself was deliber
 - The site is `bun run site` → `site/dist`, static, and serves `install` from its root so
   `curl fishtea.io/install | bash` is one file to host.
 
-### 3. Vendor feeds for real (one day)
-- `templates/ecommerce/calls/adapters/ebay.ts`: run with `EBAY_APP_ID`/`EBAY_CERT_ID` (sandbox first:
-  `EBAY_SANDBOX=1`); fix field names.
+### 3. Connectors — reframed
+**This used to say "vendor feeds for real": make the eBay adapter work against the live API. That is no
+longer the plan.** See `docs/CONNECTORS.md` for the position; the short version is that FishTea carries
+the *seam* and connectors that name no vendor, while a connector to a specific marketplace is built in
+the product that needs it — where there are credentials, live traffic, and somebody who notices the
+morning the response shape changes — and comes back as a plugin if it is worth sharing.
+
+FishTea cannot honestly test an eBay client. Writing one here produces an unverified API client wearing
+the framework's name, which is worse than not having one.
+
+**a. Let a vendor adapter be a plugin** (half a day) — the one real blocker, and small.
+`templates/ecommerce/calls/inventory_pull.ts` dispatches with
+`ctx.resolve("calls/adapters/" + v.adapter + ".ts")`, which only looks inside the application. A
+plugin's adapter is unreachable, so "promote it back as a plugin" is advice the framework cannot yet
+honour for this one kind of connector. Make the dispatcher consult the application's plugins first, then
+fall back to `calls/` — the same precedence everything else uses.
+
+**b. Decide what happens to `ebay.ts`** (an hour). It is 32 lines of unverified OAuth and query-string
+assembly in an archetype, carrying its own "verify field names before relying on it". Either delete it
+and let `csv`/`http` be the shipped answer, or move it under a clearly-marked `examples/` that the
+scaffolder does not copy. Deleting is the cleaner story and loses nothing that was ever verified.
+
+**c. General connectors, which do belong here.** Judged by one question: would every archetype want
+this, or only a shop?
+- **email relay** — a `channel` plugin. The socket now exists (§6); no relay is written.
+- **analytics** — there is no seam at all, and it is the interesting one. Page views are not the events
+  that matter here; a shape classified, a pour delivered, a write confirmed and an utterance nobody
+  could answer are, and the last is already collected in the `unmet` view. Wants an `analytics` plugin
+  kind with a `record(event)` the engine calls after each turn, carrying the same facts the verify strip
+  already shows the visitor.
+- **payments**, **object storage** — not started.
+
+**d. Still worth doing regardless of who writes the connectors:**
 - Scheduled sync: `rules.inventory.syncEveryHours` is declared and unread. Simplest: a `setInterval` in
   `packages/cli/src/serve.ts` running `engine.operate("op.syncInventory", {})` when the spec has that
   shape, enqueuing the `inventory.synced` notification.

@@ -711,6 +711,7 @@ async function pages(): Promise<Page[]> {
     { slug: "versioning", title: "Versioning and updates", nav: "Versioning & updates", group: "Operating", body: () => fromMarkdown("docs/VERSIONING.md", "Versioning and updates") },
     { slug: "plugins", title: "Plugins", nav: "Plugins", group: "Operating", body: () => fromMarkdown("docs/PLUGINS.md", "Plugins") },
     { slug: "operating", title: "Running it", nav: "Running it", group: "Operating", body: () => fromMarkdown("docs/OPERATING.md", "Running it") },
+    { slug: "connectors", title: "Connectors", nav: "Connectors", group: "Operating", body: () => fromMarkdown("docs/CONNECTORS.md", "Connectors") },
 
     { slug: "glossary", title: "Glossary", nav: "Glossary", group: "Reference", body: () => fromMarkdown("docs/GLOSSARY.md", "Glossary") },
     { slug: "spec-reference", title: "Spec reference", nav: "Spec reference", group: "Reference", body: specReference },

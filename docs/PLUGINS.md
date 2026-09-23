@@ -177,3 +177,14 @@ nothing is otherwise invisible and maddening.
   still `ask`, never a slower brain. This is for composing an answer that needs more capability than a
   small on-device model has — summarising a long policy, drafting a reply, reading a pasted document.
   Set `ANTHROPIC_API_KEY`.
+
+## Which connectors belong here
+
+A connector to a **specific vendor** — eBay, Amazon, a particular wholesaler — is built in the product
+that needs it, where there are credentials and live traffic, and comes back here as a plugin if it is
+worth sharing. A connector to a **general service** every business needs — a frontier model, an email
+relay, analytics, payments — belongs here, because every archetype wants it and because it can be tested
+here.
+
+The line is not how hard the integration is. It is who can honestly test it. See
+[Connectors](connectors.html) for the argument and for what this repository still gets wrong.
