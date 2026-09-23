@@ -28,4 +28,34 @@ export function renderNotification(template: string, args: Record<string, unknow
   });
 }
 
+/**
+ * A notification on its way to someone who is not looking at the page.
+ *
+ * The in-browser path is the Hub: a connected visitor gets the turn over SSE and there is nothing to
+ * deliver. A channel exists for the other case — the visitor has gone, and "your order shipped" is only
+ * true if it reaches them. So a channel is handed the rendered text, the chips that would have been
+ * offered, and whatever the framework knows about how to address this person.
+ */
+export interface Outbound {
+  /** the queued notification's id, so a channel can be idempotent about retries */
+  id: string;
+  visitorId: string;
+  text: string;
+  /** the spec notification's name, absent when an operator typed it */
+  name?: string;
+  author: "system" | "operator";
+  next: Chip[];
+  /**
+   * How to reach them, as far as the framework knows. `email` is null for a visitor who never became
+   * known — which is not an error: a channel that cannot address someone says so and the notification
+   * stays queued for their next visit, exactly as it did before there were channels.
+   */
+  to: { email: string | null; customerId: string | null };
+}
+
+export interface Channel {
+  readonly name: string;
+  deliver(n: Outbound): Promise<{ ok: boolean; detail?: string }>;
+}
+
 export type { Chip };

@@ -165,19 +165,45 @@ Everything up to publishing is built and verified; publishing itself was deliber
 completion. Script it with Playwright so the blueprint's "faster than conventional" claim is measured the
 way it is stated.
 
-### 6. Plugin system, second pass
-The mechanism is done and tested; these are the parts that were scoped out deliberately.
+### 6. ~~Plugin system, second pass~~ — mostly done
+Three of the four sockets now exist. A plugin kind that resolves, merges, lists — and is then read by
+nothing — was the failure this pass removed, because it surfaces as "why is this not working" weeks
+later rather than as an error.
 
-- **Vessel overrides.** A `ui` plugin can declare `vessels`, and `plugin info` reports them, but only
-  `tokens` is wired into the browser bundle. Overriding a vessel needs a generated registry module that
-  `container.tsx` consults with a fallback.
-- **`auth`, `classifier` and `channel` plugins** have a manifest kind, resolution and merge, but no
-  framework-side consumer yet: nothing reads a `classifier` plugin to build a `Classifier`, and
-  `notifications.*.channel` still has no delivery extension point. Each is a small, separate piece of
-  wiring — the seam exists, the socket does not.
+- **`classifier` plugins are read.** `classifierFor` prefers one when the application has one; two
+  enabled at once is a `SetupError`, because silently picking a brain is not a thing to do. A plugin's
+  classifier is wrapped in `withBudget`, which the shipped ones do not need — it is somebody else's code
+  on the request path, and "every classify call has a hard budget" is a rule of the house, not a request
+  to the author. Overrun and throw both become the `ask` the engine already knows how to pour.
+- **`channel` plugins are read.** `Engine.notify` hands a notification to every channel when the visitor
+  is **not** connected; a connected one has already been told over SSE and sending again would be the
+  same notification twice. Channels get the rendered text, the chips, and `to: { email, customerId }`
+  from the same lookup the persona rules use. A channel that throws is absorbed — the notification is
+  queued either way, so it is still there on their next visit, exactly as before there were channels.
+- **Vessel overrides are wired.** `fishtea ui-assets` now writes `plugins.generated.ts` beside the
+  stylesheet: a registry of vessel name → component, which `container.tsx` consults with a fallback to
+  the built-in. Verified through a real `vite build` that an absolute path into a plugin outside the UI
+  root resolves and lands in the bundle — the one assumption in this that was worth proving.
+- **Still no `auth` consumer**, and deliberately. The other three are wiring: a seam existed and needed
+  a socket. "How a visitor becomes known" is not — it is the engine's identity model, the persona
+  expressions that read it, and `becomeKnown` in every archetype. Wiring it as a module without deciding
+  what an authenticated visitor *is* would produce exactly the half-thing this pass just removed. It is
+  the same shape of open question as §1b.
 - **An interactive `plugin add`.** The config questions use the same vocabulary as `onboard.json`, so the
   TUI's interview component should be able to ask them directly instead of `--set`.
 - Plugin dependencies on other plugins, if that ever proves necessary. It has not yet.
+
+Two things fell out of this that are worth knowing:
+
+- **A fresh clone could not build the UI.** `index.css` imports `plugins.generated.css` and now
+  `container.tsx` imports `plugins.generated.ts`; both are git-ignored and written by `fishtea
+  ui-assets`, so `bun run typecheck` and `vite build` failed on a missing import until someone happened
+  to run a command that created them. `scripts/ui-assets-base.ts` writes the empty versions when they
+  are absent and runs in front of typecheck, `vite dev` and `vite build`.
+- **A seam scaffold is a working seam.** `fishtea plugin create x classifier` writes a module that runs
+  and answers `ask`; the channel one refuses an unaddressable visitor and logs otherwise. Both are
+  asserted by loading the scaffold and calling it, so the templates cannot rot into something that does
+  not compile.
 
 ### 7. Later
 - Operator auth beyond `FISHTEA_OPERATOR_TOKEN`.

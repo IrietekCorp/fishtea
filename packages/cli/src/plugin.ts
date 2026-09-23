@@ -143,6 +143,68 @@ function skeleton(name: string, kind: PluginKind): Record<string, string> {
       },
     };
     files["ping.ts"] = `/** A compute call contributed by the ${name} plugin. Input shapes come from the manifest. */\nexport default async function ping(input: { echo?: string | null; greeting: string }) {\n  return { said: [input.greeting, input.echo].filter(Boolean).join(" ") };\n}\n`;
+  } else if (kind === "classifier") {
+    // A classifier plugin *is* its module, so the skeleton is a working one: this answers every
+    // utterance with "ask", which is exactly what the engine pours when nothing is understood. It runs,
+    // it is honest, and replacing the body is the whole job.
+    manifest.module = "classify.ts";
+    manifest.config = [{ id: "floor", ask: "Confidence below which it should not guess", type: "number", default: 0.35 }];
+    files["classify.ts"] = [
+      'import type { ClassifyRequest, ClassifyResult, Classifier } from "@fishtea/core";',
+      "",
+      "/**",
+      " * Called once, when the engine is built. Return something that satisfies Classifier.",
+      " *",
+      " * `config` is the answers to this plugin's own questions; `env` is the process environment, which is",
+      " * where a key belongs — a config question with an `env` is prompted but never written to spec.json.",
+      " */",
+      "export function createClassifier({ config, env }: { config: Record<string, unknown>; env: Record<string, string | undefined> }): Classifier {",
+      "  return {",
+      `    name: ${JSON.stringify(name)},`,
+      "",
+      "    async classify(req: ClassifyRequest): Promise<ClassifyResult> {",
+      "      // req.tools is the persona-filtered tool list: the only shapes this visitor may ask for.",
+      '      // Returning no calls pours "ask", which is the right answer until you write a real one.',
+      `      return { calls: [], confidence: 0, ms: 0, classifier: ${JSON.stringify(name)} };`,
+      "    },",
+      "",
+      "    // Optional. The engine calls this on load and on hot-reload, with every tool and the",
+      "    // per-persona subsets, so a pool can warm one agent per persona.",
+      "    async reload(tools, subsets) {},",
+      "",
+      "    async health() { return { ok: true }; },",
+      "  };",
+      "}",
+      "",
+    ].join("\n");
+  } else if (kind === "channel") {
+    manifest.module = "deliver.ts";
+    manifest.config = [{ id: "from", ask: "Who does a notification come from?", type: "string", default: "hello@example.com" }];
+    files["deliver.ts"] = [
+      'import type { Channel, Outbound } from "@fishtea/core";',
+      "",
+      "/**",
+      " * Called once, when the engine is built. Return something that satisfies Channel.",
+      " *",
+      " * deliver() runs only when the visitor is **not** connected: a visitor watching the page already got",
+      " * the turn over SSE, and sending it again would be the same notification twice. The notification stays",
+      " * queued on the trail whatever you return, so failing here loses nothing — they see it on their next",
+      " * visit exactly as they would with no channel at all.",
+      " */",
+      "export function createChannel({ config, env }: { config: Record<string, unknown>; env: Record<string, string | undefined> }): Channel {",
+      "  return {",
+      `    name: ${JSON.stringify(name)},`,
+      "",
+      "    async deliver(n: Outbound) {",
+      '      if (!n.to.email) return { ok: false, detail: "no address for this visitor" };',
+      "      // Send n.text to n.to.email, from config.from. n.next are the chips the page would have offered.",
+      `      console.log("[${name}] would send to " + n.to.email + ": " + n.text);`,
+      "      return { ok: true };",
+      "    },",
+      "  };",
+      "}",
+      "",
+    ].join("\n");
   } else {
     manifest.provides = {};
     files["README.md"] = `# ${name}\n\nA \`${kind}\` plugin. Declare what it contributes under \`provides\` in fishtea.plugin.json.\n`;
@@ -184,7 +246,9 @@ export function promote(name: string, appDir: string, home: string, opts: { copy
  * Generated rather than dynamic because the UI is a Vite build — a stylesheet has to exist at build time.
  * The file is written into packages/ui/src and is git-ignored; it is derived, like everything else here.
  */
-export function generateUiAssets(appDir: string, home: string): { plugins: string[]; css: string; path: string; warnings: string[] } {
+export const VESSEL_EXPORT = "Vessel";
+
+export function generateUiAssets(appDir: string, home: string): { plugins: string[]; css: string; path: string; warnings: string[]; vessels: string[]; registryPath: string } {
   const ui = installed(appDir, home).filter((p) => p.manifest.kind === "ui" && p.use.enabled !== false);
   const warnings: string[] = [];
   const parts: string[] = [
@@ -217,7 +281,48 @@ export function generateUiAssets(appDir: string, home: string): { plugins: strin
   const css = parts.join("\n");
   const path = join(home, "packages/ui/src/plugins.generated.css");
   writeFileSync(path, css);
-  return { plugins: ui.map((p) => p.as), css, path, warnings };
+
+  // ---- vessel overrides ------------------------------------------------------------------------
+  //
+  // A design system that only restyles is a stylesheet, which is the common case and why tokens came
+  // first. Replacing a vessel outright — a shop that wants its own product card — needs a component,
+  // and the browser bundle is a Vite build, so the set of components has to be known at build time.
+  // Hence a generated registry rather than a dynamic import: `container.tsx` consults it and falls
+  // back to the built-in for every vessel nobody claimed.
+  //
+  // Later plugins win, matching the stylesheet order above: the last one to speak decides how it looks.
+  const claims = new Map<string, { plugin: string; file: string }>();
+  const imports: string[] = [];
+  for (const p of ui) {
+    for (const [vessel, rel] of Object.entries(p.manifest.vessels ?? {})) {
+      const file = join(p.dir, rel);
+      if (!existsSync(file)) throw new Error(`${p.as}: vessel "${vessel}" names ${rel}, which is not in the plugin`);
+      const prior = claims.get(vessel);
+      if (prior) warnings.push(`${vessel}: "${p.as}" overrides "${prior.plugin}", which also claims it`);
+      claims.set(vessel, { plugin: p.as, file });
+    }
+  }
+  const entries: string[] = [];
+  [...claims.entries()].forEach(([vessel, { plugin, file }], i) => {
+    const id = `V${i}`;
+    imports.push(`import { ${VESSEL_EXPORT} as ${id} } from ${JSON.stringify(file)};   // ${plugin}`);
+    entries.push(`  ${JSON.stringify(vessel)}: ${id},`);
+  });
+  const registry = [
+    "/* Generated by `fishtea ui-assets` from this application's ui plugins. Do not edit; it is derived. */",
+    'import type { ComponentType } from "react";',
+    ...imports,
+    "",
+    "/** vessel name → the component that replaces the built-in. Empty is the normal case. */",
+    "export const vesselOverrides: Partial<Record<string, ComponentType<any>>> = {",
+    ...entries,
+    "};",
+    "",
+  ].join("\n");
+  const registryPath = join(home, "packages/ui/src/plugins.generated.ts");
+  writeFileSync(registryPath, registry);
+
+  return { plugins: ui.map((p) => p.as), css, path, warnings, vessels: [...claims.keys()], registryPath };
 }
 
 /** Every plugin directory the framework ships, for `fishtea plugin list` outside an application. */

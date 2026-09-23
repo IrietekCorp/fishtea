@@ -11,7 +11,7 @@ import { Planner, PlanError, resolve as resolveRefs, type Provenance } from "./p
 import { type Pour, type Chip, type ClassMeta, askPour, formPour, confirmPour, answerPour, chip, phraseFor, nextChips } from "./pour.ts";
 import type { Classifier, ClassifyResult } from "./classify/index.ts";
 import { LexicalClassifier, tokens } from "./classify/lexical.ts";
-import { Hub, renderNotification } from "./notify/index.ts";
+import { Hub, renderNotification, type Channel, type Outbound } from "./notify/index.ts";
 
 export type Utterance =
   | { text: string }
@@ -52,7 +52,7 @@ export function parseEnvelope(app: App, raw: Record<string, unknown>): Envelope 
 
 const escapeContext = (s: string) => s.replace(/[\r\n]+/g, " ").replace(/[<>{}]/g, "").slice(0, 160);
 
-export interface EngineOptions { app: App; db: Db; classifier?: Classifier; strict?: boolean; log?: (s: string) => void }
+export interface EngineOptions { app: App; db: Db; classifier?: Classifier; strict?: boolean; log?: (s: string) => void; channels?: Channel[] }
 
 export class Engine {
   app: App;
@@ -66,6 +66,8 @@ export class Engine {
   private tools!: ToolSpec[];
   private log: (s: string) => void;
   private lexicalGate = new LexicalClassifier();
+  /** where a notification goes when the visitor is not connected; empty means it simply waits for them */
+  channels: Channel[];
 
   constructor(opts: EngineOptions) {
     this.app = opts.app;
@@ -73,6 +75,7 @@ export class Engine {
     this.classifier = opts.classifier ?? new LexicalClassifier();
     this.strict = opts.strict ?? process.env.FISHTEA_STRICT === "1";
     this.log = opts.log ?? (() => {});
+    this.channels = opts.channels ?? [];
     this.trails = new TrailService(this.db);
     this.bind();
   }
@@ -486,14 +489,40 @@ export class Engine {
     const next = (def?.next ?? []).map((x) => chip(this.app.spec, x.shape, resolveRefs(x.args ?? {}, n.args ?? {}) as Record<string, unknown>, x.label)).filter(Boolean);
     const author = n.author ?? (def ? "system" : "operator");
     const id = await this.trails.enqueueNotification(visitorId, { author, name: n.name, text, next });
-    if (this.hub.connected(visitorId)) {
+    const connected = this.hub.connected(visitorId);
+    if (connected) {
       const trail = await this.trails.latest(visitorId);
       if (trail) {
         const pours = await this.flushNotifications(visitorId, trail.id);
         for (const p of pours) this.hub.publish(visitorId, { type: "notification", data: p });
       }
     }
-    return { id, text, author, delivered: this.hub.connected(visitorId) };
+
+    // Offline delivery. Only when nobody is watching: a connected visitor has already been told, and
+    // emailing them as well would be the same notification twice. The notification stays queued either
+    // way, so a channel that fails changes nothing about what they see on their next visit — which is
+    // why a channel throwing is logged and swallowed rather than failing the operator's request.
+    const sent: { channel: string; ok: boolean; detail?: string }[] = [];
+    if (!connected && this.channels.length) {
+      const out: Outbound = { id, visitorId, text, name: n.name, author, next: next as Outbound["next"], to: await this.addressFor(visitorId) };
+      for (const ch of this.channels) {
+        try { sent.push({ channel: ch.name, ...(await ch.deliver(out)) }); }
+        catch (e) { sent.push({ channel: ch.name, ok: false, detail: (e as Error).message }); this.log(`channel ${ch.name} threw: ${(e as Error).message}`); }
+      }
+    }
+    return { id, text, author, delivered: connected, sent };
+  }
+
+  /** What a channel can address this visitor by. Same email lookup the persona rules use. */
+  private async addressFor(visitorId: string): Promise<Outbound["to"]> {
+    const v = await this.trails.visitor(visitorId);
+    if (!v?.customerId) return { email: null, customerId: null };
+    for (const [name, ent] of specEntities(this.app.spec)) {
+      if (!("email" in ent.fields)) continue;
+      const rows = await this.db.unsafe(`SELECT email FROM business."${snake(name)}" WHERE id = $1`, [v.customerId]).catch(() => [] as any[]);
+      if (rows.length) return { email: rows[0].email ?? null, customerId: v.customerId };
+    }
+    return { email: null, customerId: v.customerId };
   }
 
   /** Operator shapes: a separate registry (§12.5). Only op.unmetReport and op.notify have engine-side plans. */

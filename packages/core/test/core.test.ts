@@ -101,3 +101,80 @@ describe("phase 3: headless core", () => {
   });
   test("prints", () => { console.log(lines.join("\n")); });
 });
+
+/**
+ * Channels: where a notification goes when nobody is watching the page.
+ *
+ * Before this, `channel` was a plugin kind with no consumer — a notification for a visitor who had
+ * closed the tab simply waited on the trail. It still waits; what is new is that it can also be sent.
+ */
+describe("notification channels", () => {
+  /** A channel that records rather than sends, so the test can assert on what it was handed. */
+  const recorder = () => {
+    const got: any[] = [];
+    return { got, channel: { name: "recorder", async deliver(n: any) { got.push(n); return { ok: true }; } } };
+  };
+
+  test("a disconnected visitor's notification reaches the channel, with what it needs to address them", async () => {
+    const { got, channel } = recorder();
+    const e = new Engine({ app, db, classifier: new LexicalClassifier(), channels: [channel] });
+    await e.primeLexical();
+
+    // The engine issues visitor ids; a client cannot claim one, so the id to notify is the one it hands back.
+    const { visitor } = await e.utter({ text: "hello" });
+    const res = await e.notify(visitor.id, { text: "your order shipped", author: "operator" });
+
+    expect(res.delivered).toBe(false);                    // nobody was connected
+    expect(res.sent).toEqual([{ channel: "recorder", ok: true }]);
+    expect(got.length).toBe(1);
+    expect(got[0].text).toBe("your order shipped");
+    expect(got[0].author).toBe("operator");
+    expect(got[0].id).toBe(res.id);                       // the queued id, so a channel can be idempotent
+    expect(got[0].to).toHaveProperty("email");            // null here: this visitor never became known
+  });
+
+  test("a connected visitor is told once, over SSE, and the channel is not used", async () => {
+    const { got, channel } = recorder();
+    const e = new Engine({ app, db, classifier: new LexicalClassifier(), channels: [channel] });
+    await e.primeLexical();
+
+    const { visitor } = await e.utter({ text: "hello" });
+    const visitorId = visitor.id;
+    const seen: any[] = [];
+    const off = e.hub.subscribe(visitorId, (ev) => seen.push(ev));
+
+    const res = await e.notify(visitorId, { text: "your order shipped", author: "operator" });
+    off();
+
+    expect(res.delivered).toBe(true);
+    expect(res.sent).toEqual([]);                         // not the same notification twice
+    expect(got).toEqual([]);
+    expect(seen.some((ev) => ev.type === "notification")).toBe(true);
+  });
+
+  test("a channel that throws is absorbed: the notification still waits on the trail", async () => {
+    const boom = { name: "boom", async deliver() { throw new Error("smtp down"); } };
+    const e = new Engine({ app, db, classifier: new LexicalClassifier(), channels: [boom] });
+    await e.primeLexical();
+
+    const { visitor } = await e.utter({ text: "hello" });
+    const visitorId = visitor.id;
+    const res = await e.notify(visitorId, { text: "your order shipped", author: "operator" });
+
+    expect(res.sent).toEqual([{ channel: "boom", ok: false, detail: "smtp down" }]);
+    expect(res.id).toBeTruthy();                          // queued regardless, which is the point
+
+    // And it is genuinely still there for them: the next visit pours it.
+    const back = await e.utter({ text: "hello again" }, { visitorId });
+    expect(JSON.stringify(back)).toContain("your order shipped");
+  });
+
+  test("with no channels at all, nothing changes", async () => {
+    const e = new Engine({ app, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const res = await e.notify(visitor.id, { text: "hi", author: "operator" });
+    expect(res.delivered).toBe(false);
+    expect(res.sent).toEqual([]);
+  });
+});

@@ -296,11 +296,92 @@ describe("ui plugins", () => {
     expect(r.warnings.join()).toContain("--boutique-nothing-matches-this");
   });
 
-  test("no ui plugin still writes a valid, importable stylesheet", async () => {
+  test("no ui plugin still writes a valid, importable stylesheet and an empty registry", async () => {
     const w = await world();
     const r = generateUiAssets(w.app, w.home);
     expect(r.plugins).toEqual([]);
     expect(existsSync(r.path)).toBe(true);
+    // The registry is imported unconditionally by container.tsx, so "no plugins" must still be a module.
+    expect(r.vessels).toEqual([]);
+    const mod = await import(r.registryPath);
+    expect(mod.vesselOverrides).toEqual({});
+  });
+});
+
+/**
+ * Vessel overrides: a design system that replaces a component rather than restyling one.
+ *
+ * Declarable since the first pass, and until now completely inert — `plugin info` would list a vessel
+ * the browser bundle had never heard of.
+ */
+describe("vessel overrides", () => {
+  /** A ui plugin in the application's own plugins/, with the given manifest bits and files. */
+  function uiPlugin(app: string, name: string, over: Record<string, unknown>, files: Record<string, string> = {}) {
+    const dir = join(app, "plugins", name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "fishtea.plugin.json"), JSON.stringify({
+      name, version: "1.0.0", kind: "ui", tokens: "tokens.css", ...over,
+    }));
+    writeFileSync(join(dir, "tokens.css"), ":root { --radius: 0.5rem; }\n");
+    for (const [f, c] of Object.entries(files)) writeFileSync(join(dir, f), c);
+    const spec = JSON.parse(readFileSync(join(app, "spec.json"), "utf8"));
+    spec.plugins = { ...(spec.plugins ?? {}), [name]: { use: name } };
+    writeFileSync(join(app, "spec.json"), JSON.stringify(spec, null, 2));
+    return dir;
+  }
+
+  const component = (label: string) => `export function Vessel({ pour }: any) { return { label: ${JSON.stringify(label)}, pour }; }\n`;
+
+  test("a declared vessel lands in the registry, importing the plugin's own component", async () => {
+    const w = await world();
+    uiPlugin(w.app, "shopfront", { vessels: { list: "List.tsx", card: "Card.tsx" } },
+      { "List.tsx": component("list"), "Card.tsx": component("card") });
+
+    const r = generateUiAssets(w.app, w.home);
+    expect(r.vessels.sort()).toEqual(["card", "list"]);
+    expect(r.warnings).toEqual([]);
+
+    const mod = await import(r.registryPath);
+    expect(Object.keys(mod.vesselOverrides).sort()).toEqual(["card", "list"]);
+    // And it is the plugin's component, not a name in a table: call it.
+    expect(mod.vesselOverrides.list({ pour: { kind: "answer" } }).label).toBe("list");
+  });
+
+  test("a vessel nobody claims is simply absent, so the built-in stands", async () => {
+    const w = await world();
+    uiPlugin(w.app, "shopfront", { vessels: { list: "List.tsx" } }, { "List.tsx": component("list") });
+    const mod = await import(generateUiAssets(w.app, w.home).registryPath);
+    expect(mod.vesselOverrides.timeline).toBeUndefined();
+    expect(mod.vesselOverrides.confirm).toBeUndefined();
+  });
+
+  test("a vessel name that is not a vessel is refused at validation", () => {
+    const problems = validateManifest({ name: "x", version: "1.0.0", kind: "ui", vessels: { lsit: "L.tsx" } }, "x");
+    expect(problems.join()).toContain('"lsit" is not a vessel');
+  });
+
+  test("a vessel file outside the plugin is refused, and so is a non-ui plugin claiming one", () => {
+    expect(validateManifest({ name: "x", version: "1.0.0", kind: "ui", vessels: { list: "../../evil.tsx" } }, "x").join())
+      .toContain("must name a file inside the plugin");
+    expect(validateManifest({ name: "x", version: "1.0.0", kind: "integration", vessels: { list: "L.tsx" } }, "x").join())
+      .toContain("only a ui plugin may override vessels");
+  });
+
+  test("a vessel file the manifest names but that is not there fails loudly at generate time", async () => {
+    const w = await world();
+    uiPlugin(w.app, "shopfront", { vessels: { list: "Missing.tsx" } });
+    expect(() => generateUiAssets(w.app, w.home)).toThrow(/vessel "list" names Missing\.tsx/);
+  });
+
+  test("two design systems claiming one vessel: the later wins, and says so", async () => {
+    const w = await world();
+    uiPlugin(w.app, "base", { vessels: { list: "List.tsx" } }, { "List.tsx": component("base") });
+    uiPlugin(w.app, "shopfront", { vessels: { list: "List.tsx" } }, { "List.tsx": component("shopfront") });
+
+    const r = generateUiAssets(w.app, w.home);
+    expect(r.warnings.join()).toContain("shopfront");
+    const mod = await import(r.registryPath);
+    expect(mod.vesselOverrides.list({ pour: {} }).label).toBe("shopfront");
   });
 });
 

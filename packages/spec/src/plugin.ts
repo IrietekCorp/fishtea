@@ -25,6 +25,7 @@
  * silently picking one would be a bug you would find much later, so it is an error.
  */
 import { satisfies } from "./release.ts";
+import type { VesselName } from "./spec.ts";
 
 export const PLUGIN_KINDS = ["integration", "ui", "auth", "classifier", "channel", "archetype"] as const;
 export type PluginKind = (typeof PLUGIN_KINDS)[number];
@@ -62,7 +63,36 @@ export interface PluginManifest {
   tokens?: string;
   /** ui plugins: vessel name → component file, relative to the plugin directory */
   vessels?: Record<string, string>;
+  /**
+   * classifier and channel plugins: the module that implements the seam, relative to the plugin
+   * directory. What it must export depends on the kind — see SEAM_EXPORT — and is checked when it is
+   * loaded, not here, because reading a manifest must never run anybody's code.
+   */
+  module?: string;
 }
+
+/**
+ * The vessels a `ui` plugin may override, which is all of them: seven shapes of answer plus the three
+ * the engine pours directly. A name outside this list is a typo, and a typo that silently overrides
+ * nothing is the exact failure this second pass exists to remove.
+ */
+export const ANSWER_VESSELS = ["list", "card", "detail", "compare", "timeline", "confirm"] as const;
+export const VESSELS = [...ANSWER_VESSELS, "ask", "form", "confirm-write", "notification"] as const;
+export type OverridableVessel = (typeof VESSELS)[number];
+
+/** The six a shape may name must stay exactly spec.ts's VesselName; the compiler checks both directions. */
+const _answersMatch: readonly VesselName[] = ANSWER_VESSELS;
+const _noExtras: (typeof ANSWER_VESSELS)[number] = null as unknown as VesselName;
+void _answersMatch; void _noExtras;
+
+/** The export a seam plugin's `module` must provide, by kind. Kinds absent here have no seam module. */
+export const SEAM_EXPORT: Partial<Record<PluginKind, string>> = {
+  classifier: "createClassifier",
+  channel: "createChannel",
+};
+
+/** Kinds whose whole purpose is the module they carry, so a manifest without one cannot work. */
+export const SEAM_KINDS = Object.keys(SEAM_EXPORT) as PluginKind[];
 
 /** How an application asks for a plugin (spec.plugins.<localName>). */
 export interface PluginUse {
@@ -103,6 +133,23 @@ export function validateManifest(m: unknown, where: string): string[] {
     }
   }
   for (const q of p.config ?? []) if (!q.id || !q.ask) problems.push(`${where}: every config question needs an id and an ask`);
+  // A classifier or channel plugin *is* its module. Without one it resolves, merges and contributes
+  // nothing, which used to be a plugin that looked installed and did nothing at all.
+  if (SEAM_KINDS.includes(p.kind) && !p.module) {
+    problems.push(`${where}: a ${p.kind} plugin needs "module", the file exporting ${SEAM_EXPORT[p.kind]}()`);
+  }
+  if (p.module && (p.module.startsWith("/") || p.module.includes(".."))) {
+    problems.push(`${where}: "module" must be a path inside the plugin, not ${p.module}`);
+  }
+  for (const [vessel, file] of Object.entries(p.vessels ?? {})) {
+    if (!VESSELS.includes(vessel as OverridableVessel)) {
+      problems.push(`${where}: "${vessel}" is not a vessel (one of ${VESSELS.join(", ")})`);
+    }
+    if (typeof file !== "string" || file.startsWith("/") || file.includes("..")) {
+      problems.push(`${where}: vessel "${vessel}" must name a file inside the plugin, not ${String(file)}`);
+    }
+  }
+  if (p.vessels && p.kind !== "ui") problems.push(`${where}: only a ui plugin may override vessels`);
   return problems;
 }
 

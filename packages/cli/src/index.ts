@@ -13,7 +13,7 @@ import { resolve, join, dirname } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import pc from "picocolors";
 import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, frameworkHome, type App } from "@fishtea/spec";
-import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier } from "@fishtea/core";
+import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier, type Channel, withBudget, loadSeam, seamsOfKind } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
 import { readManifest } from "./manifest.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact, type Flags } from "./env.ts";
@@ -72,15 +72,60 @@ export function loadOrDie(dir: string): App {
   }
 }
 
-export function classifierFor(flags: Flags): Classifier {
+/**
+ * Which brain answers.
+ *
+ * A `classifier` plugin wins when the application has one, because asking for it is an explicit choice
+ * and there is no sensible way to half-honour it. Everything else is the existing rule: needle when a
+ * pool is pointed at, the lexical harness otherwise.
+ *
+ * A plugin's classifier is wrapped in `withBudget`, which the shipped ones do not need. It is somebody
+ * else's code on the request path, and "every classify call has a hard budget" is a rule of the house,
+ * not a request to the author.
+ */
+export async function classifierFor(flags: Flags, app?: App): Promise<Classifier> {
+  const seams = app ? seamsOfKind(app.plugins, "classifier") : [];
+  if (seams.length > 1) {
+    throw new SetupError(`${seams.length} classifier plugins are enabled (${seams.map((p) => p.as).join(", ")})`, [
+      "Only one can answer. Disable the others: fishtea plugin remove <name>",
+      'or set "enabled": false on it in spec.plugins.',
+    ]);
+  }
+  if (seams[0]) return withBudget(await loadSeam<Classifier>(seams[0]));
+
   const intent = String(flags.intent ?? process.env.FISHTEA_INTENT ?? (process.env.CLASSIFIER_URL || flags.classifier ? "needle" : "lexical"));
   return intent === "needle" ? new NeedleClient(classifierUrl(flags)) : new LexicalClassifier();
 }
 
+/**
+ * Where notifications go when the visitor is not connected.
+ *
+ * Unlike the classifier there can be several: delivering the same notification by email and to a Slack
+ * room is a reasonable thing to want, and they do not compete for one slot. A channel that cannot be
+ * loaded is reported and skipped rather than fatal — an application whose email plugin has a bad key
+ * should still serve, with its notifications waiting on the trail as they did before.
+ */
+export async function channelsFor(app: App, log: (s: string) => void = () => {}): Promise<Channel[]> {
+  const out: Channel[] = [];
+  for (const p of seamsOfKind(app.plugins, "channel")) {
+    try {
+      const ch = await loadSeam<Channel>(p);
+      if (typeof ch?.deliver !== "function") { console.error(pc.yellow(`⚠ channel "${p.as}" has no deliver() — notifications will wait on the trail`)); continue; }
+      out.push(ch);
+      log(`channel ${p.as} ready`);
+    } catch (e) {
+      console.error(pc.yellow(`⚠ ${(e as Error).message}`));
+      console.error(pc.dim(`  notifications will wait on the trail until the visitor returns, as they do with no channel at all`));
+    }
+  }
+  return out;
+}
+
 export async function buildEngine(app: App, flags: Flags, opts: { log?: (s: string) => void } = {}) {
   const db = connect(databaseUrl(flags));
-  const classifier = classifierFor(flags);
-  const engine = new Engine({ app, db, classifier, strict: flags.strict === true || process.env.FISHTEA_STRICT === "1", log: opts.log });
+  const classifier = await classifierFor(flags, app);
+  const channels = await channelsFor(app, opts.log);
+  const engine = new Engine({ app, db, classifier, channels, strict: flags.strict === true || process.env.FISHTEA_STRICT === "1", log: opts.log });
   if (classifier instanceof LexicalClassifier) await engine.primeLexical();
   else if (classifier.reload) {
     const h = await classifier.health();

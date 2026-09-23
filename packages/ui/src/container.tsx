@@ -19,6 +19,7 @@ import { TimelineVessel } from "./vessels/timeline";
 import { ConfirmVessel } from "./vessels/confirm";
 import { FormVessel } from "./vessels/form";
 import { AskVessel, Chips } from "./vessels/ask";
+import { vesselOverrides } from "./plugins.generated";
 import { Notice } from "./vessels/notice";
 
 export function Container() {
@@ -119,7 +120,22 @@ export function Container() {
   );
 }
 
+/**
+ * A ui plugin may replace a vessel outright, not just restyle it.
+ *
+ * `plugins.generated.ts` is written by `fishtea ui-assets` and is an empty object for almost every
+ * application; a design system that only moves tokens needs no component at all. An override is handed
+ * the same props the built-in would have received plus the whole pour, so it can be as thin as a
+ * different card or as thick as it likes — and anything it does not claim stays the built-in, which is
+ * why this is a lookup with a fallback rather than a registry the framework depends on.
+ */
+function overrideFor(name: string) {
+  return vesselOverrides[name];
+}
+
 function Vessel({ pour, pick, submitForm }: { pour: Pour; pick: (c: Chip) => void; submitForm: (shape: string) => (args: Record<string, unknown>, confirm: boolean) => void }) {
+  const Override = overrideFor(pour.kind === "answer" ? pour.vessel : pour.kind);
+  if (Override) return <Override pour={pour} onPick={pick} submitForm={submitForm} />;
   switch (pour.kind) {
     case "ask": return <AskVessel phrase={pour.phrase} hint={pour.hint} options={pour.options} onPick={pick} />;
     case "form": return <><FormVessel shape={pour.shape} fields={pour.fields} known={pour.known} errors={pour.errors} error={pour.error} hint={pour.hint} phrase={pour.phrase} write={false} onSubmit={submitForm(pour.shape)} />{pour.options && <Chips chips={pour.options} onPick={pick} label="Or" />}</>;

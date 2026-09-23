@@ -53,6 +53,12 @@ bunx tsc -p tsconfig.json --noEmit
 - Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.
 - Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain.
 - A plugin is merged at *load* time and never written into `spec.json`; the application always wins a name clash, and two plugins clashing is an error.
+- A `classifier` or `channel` plugin *is* its `module` — the manifest must name one, it is imported when
+  something wants the behaviour (never when a manifest is read), and every way of getting it wrong names
+  the plugin and the file. A plugin classifier is wrapped in `withBudget`: the budget rule holds whether
+  or not its author remembered it.
+- `packages/ui/src/plugins.generated.{css,ts}` are derived and git-ignored. `scripts/ui-assets-base.ts`
+  writes the empty versions so a fresh clone builds; `fishtea ui-assets` writes the real ones.
 - Three versions, kept apart: the framework build (semver, pinned by an application), the spec *format* (`spec.fishtea`, what migrations key off), and the business revision. See `docs/VERSIONING.md`.
 - `.fishtea/manifest.json` records two hashes per archetype file — the archetype's and the application's — because the scaffolder transforms files as it copies them. That is what makes `fishtea update` a three-way merge instead of a guess.
 - Tests run against a real Postgres (pgvector). Keep them that way.

@@ -8,4 +8,5 @@ export * from "./pour.ts";
 export * from "./calls/index.ts";
 export * from "./classify/index.ts";
 export * from "./notify/index.ts";
+export * from "./plugins/seam.ts";
 export { createServer } from "./http.ts";
