@@ -27,6 +27,9 @@ const HOME = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const OUT = join(HOME, "site/dist");
 const VERSION = readFileSync(join(HOME, "packages/spec/src/release.ts"), "utf8").match(/FISHTEA_VERSION = "([^"]+)"/)![1];
 
+/** Whether this build publishes the installer and the release tarballs. Closed beta: it does not. */
+export const PUBLISH_INSTALL = process.env.PUBLISH_INSTALL === "1";
+
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const slug = (s: string) => s.toLowerCase().replace(/[^\w]+/g, "-").replace(/^-|-$/g, "");
 
@@ -276,11 +279,12 @@ function landing(): string {
       visitor says into a <strong>shape</strong>, the planner composes typed <strong>calls</strong>, and the
       answer pours into one of seven <strong>vessels</strong>.
     </p>
-    <p class="command"><span class="prompt">$</span> curl -fsSL https://fishtea.io/install | bash</p>
-    <div class="cta" style="margin-top:var(--space-4)">
-      <a class="btn" href="getting-started.html">Get started</a>
+    <div class="cta">
+      <a class="btn" href="beta.html">Apply for access</a>
       <a class="btn ghost" href="welcome.html">Read the argument</a>
     </div>
+    <p class="stack">FishTea ${VERSION}, in closed beta. The binary and the source come with the
+    invitation — <a href="welcome.html">start with Welcome</a> to see whether it is for you.</p>
     <p class="stack">Bun · PostgreSQL + pgvector · needle3 on device · React. No cloud model in the hot path.</p>
   </div>
   <div class="hero-art">
@@ -618,12 +622,12 @@ built. Tell me what you would make with it.</p>
 
 <p>Or write to <a href="mailto:${BETA_EMAIL}?subject=FishTea%20beta">${BETA_EMAIL}</a> directly.</p>
 
-<h2 id="you-do-not-need-us-to-install-it">You do not need us to install it</h2>
-<pre><code>curl -fsSL https://fishtea.io/install | bash</code></pre>
-<p>That is a real install: it fetches a signed-for-size binary for your platform, verifies it against the
-published checksums, and puts <code>fishtea</code> under <code>~/.fishtea</code>. Read the script first if
-you like — <a href="https://fishtea.io/install">it opens in a browser</a>.</p>
-<p>With a checkout you can build the same thing yourself: <code>./install.sh --from ./fishtea</code>.</p>
+<h2 id="what-happens-next">What happens next</h2>
+<p>You get a reply with the installer and a checkout, and one command to run. There is nothing to download
+from this site in the meantime: while the beta is closed the binaries are not published here, so the
+invitation is the way in rather than a formality in front of a public link.</p>
+<p>Builds exist for linux-x64, linux-arm64, darwin-x64, darwin-arm64 and windows-x64. Postgres and the
+classifier pool run in Docker; everything else is one binary.</p>
 
 <script>
 (function () {
@@ -777,10 +781,17 @@ export async function build(): Promise<{ written: string[] }> {
     writeFileSync(file, layout(page, all));
     written.push(file.slice(OUT.length + 1));
   }
-  // The installer is served from the site root, so `curl fishtea.io/install | bash` is one file to host.
-  cpSync(join(HOME, "install.sh"), join(OUT, "install"));
-  written.push("install");
-  written.push(...stageReleases());
+  // While the beta is closed, the site publishes no way to install: no `/install`, no `/releases`.
+  //
+  // Not hidden — absent. A route that merely goes unlinked is still a route, and `fishtea.io/install` is
+  // not a URL anybody has to guess. Access comes with the invitation instead, which is the whole point of
+  // asking people to apply. `bun run site` and `bun run deploy` both honour PUBLISH_INSTALL=1, so opening
+  // it back up is one environment variable and a deploy, not a hunt through this file.
+  if (PUBLISH_INSTALL) {
+    cpSync(join(HOME, "install.sh"), join(OUT, "install"));
+    written.push("install");
+    written.push(...stageReleases());
+  }
   return { written };
 }
 

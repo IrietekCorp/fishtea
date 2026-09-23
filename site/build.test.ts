@@ -9,7 +9,7 @@ import { describe, expect, test, beforeAll } from "bun:test";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import { build, posts, readTokens } from "./build.ts";
+import { build, posts, readTokens, PUBLISH_INSTALL } from "./build.ts";
 
 const HOME = join(import.meta.dir, "..");
 const OUT = join(HOME, "site/dist");
@@ -30,10 +30,28 @@ describe("the site builds", () => {
     }
   });
 
+  test("while the beta is closed, the site publishes no way in", () => {
+    if (PUBLISH_INSTALL) return;                     // the open-beta shape is asserted below instead
+
+    // Absent, not merely unlinked. `fishtea.io/install` is not a URL anyone has to guess, so the test
+    // is that the file is not there — and that no page hands out the command either, which is the way
+    // this would quietly come back: one <pre> in one doc page, published and forgotten.
+    expect(existsSync(join(OUT, "install"))).toBe(false);
+    expect(existsSync(join(OUT, "releases"))).toBe(false);
+
+    const offenders = readdirSync(OUT, { recursive: true, encoding: "utf8" })
+      .filter((f) => f.endsWith(".html"))
+      .filter((f) => /fishtea\.io\/install|curl -fsSL/.test(read(f)));
+    expect(offenders).toEqual([]);
+
+    // The way in is the application form, and it has to be reachable from the front door.
+    expect(read("index.html")).toContain('href="beta.html"');
+  });
+
   test("the installer is served, and the landing page offers it", () => {
+    if (!PUBLISH_INSTALL) return;                    // closed beta: asserted absent above
     expect(existsSync(join(OUT, "install"))).toBe(true);
     expect(read("install")).toContain("FISHTEA_ROOT");
-    expect(read("index.html")).toContain("curl -fsSL https://fishtea.io/install");
   });
 
   test("releases are published with a latest marker and checksums that match", () => {
@@ -58,6 +76,7 @@ describe("the site builds", () => {
   });
 
   test("the installer verifies what it downloads", () => {
+    if (!PUBLISH_INSTALL) return;
     const sh = read("install");
     expect(sh).toContain("SHA256SUMS");
     expect(sh).toContain("checksum mismatch");

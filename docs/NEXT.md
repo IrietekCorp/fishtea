@@ -11,8 +11,12 @@ fishtea.io.
 - **1.1.0.** 202 tests, 0 failing, on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean on both projects; the
   UI builds; the site builds; the compiled binary runs standalone; 9 headless browser tests pass.
 - **fishtea.io is live** on Firebase Hosting with a Google Trust Services certificate. See
-  `docs/DEPLOY.md`. Redeploy is `bun run deploy`. The site shows the private-beta signup rather than an
-  install command, because no release binaries are published yet.
+  `docs/DEPLOY.md`. Redeploy is `bun run deploy`. The site is built from the design system's tokens
+  (`docs/design/tokens.json` → `static/tokens.generated.css`); `site.css` hand-writes no colour and a
+  test fails on any hex literal in it.
+- **The site publishes no way to install.** While the beta is closed there is no `/install` and no
+  `/releases` — absent, not unlinked — and every route in is the application form on `/beta`. One
+  variable reopens it: `PUBLISH_INSTALL=1 bun run deploy`.
 
 ### Picking up after a restart
 
@@ -47,6 +51,28 @@ genuinely not issued yet. Confirm in a private window before chasing anything se
   without credentials, not for a real completion).
 
 ## Work list, in priority order
+
+### 0. ~~Accessibility~~ — done
+`packages/ui/e2e/a11y.e2e.ts`, nine tests, run by `bun run e2e` alongside the walkthrough. axe
+(wcag2a/aa, wcag21a/aa) scans each vessel in the state that produces it — greeting, list, detail, form,
+confirm dialog, timeline — and four keyboard tests cover a whole turn with no pointer, the confirm
+dialog's focus trap and Escape, tab stops that are all visible, and one polite live region that is not
+empty after a pour. **18/18 green, and no product defect found**: focus management, the trap, the
+announcements and the field names were all already right.
+
+Two things worth keeping:
+
+- **The one failure was mine, not the UI's.** Scanning straight after a pour reported 53 contrast
+  violations at `#918d89`/3.15:1 — a colour in no stylesheet, because `.pour-enter` fades opacity 0 → 1
+  over 220ms and axe composites whatever it finds mid-animation. `muted-foreground` is `#68625e`, a
+  comfortable 5.9:1. `scan()` now waits for `document.getAnimations()` to settle, which is also the
+  state a reader actually reads.
+- **The suite was mutation-tested**, because nine tests green on the first run deserve suspicion:
+  washing out `--muted-foreground` produces `color-contrast`, stripping `aria-label` off the buttons
+  produces `button-name`, and unmodified is clean.
+
+Not covered: a real screen reader, and `prefers-reduced-motion` as a rendering mode rather than a
+respected setting.
 
 ### 1. ~~Click through the web UI~~ — done
 Walked steps 1–8 of `packages/ui/e2e/README.md` against a live stack. Seven real defects found and fixed,
@@ -86,8 +112,7 @@ its keep by catching a tenth bug the manual pass could not prove — react-hook-
 flat default keys and nested live values, and reading the flat key first let a stale empty default shadow
 everything the visitor had typed.
 
-**Not covered**: accessibility. `@axe-core/playwright` is installed and unused — an axe pass per vessel,
-plus keyboard-only navigation and focus order, is the obvious next step.
+**Not covered** at the time: accessibility — since done, see §0 above.
 
 ### 1b. Prefill what the visitor already told us (half a day)
 The acceptance checklist says "knowns pre-filled", and they are not: a customer who has just given their

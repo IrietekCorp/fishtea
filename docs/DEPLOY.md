@@ -53,7 +53,11 @@ for u in / /welcome /static/site.css; do
 done
 ```
 
-**When you restore the installer**, add its rule back — it needs `Content-Type: text/plain; charset=utf-8`
+The `/install` and `/releases/*` rules are kept although nothing is published at those paths right now
+(see below): a rule for a file that does not exist costs nothing, and keeping them means reopening the
+beta is one environment variable rather than one variable and a forgotten header.
+
+**About the installer's rule** — it needs `Content-Type: text/plain; charset=utf-8`
 so <https://fishtea.io/install> opens *readable in a browser*. `curl` ignores content types, so this does
 not affect `curl … | bash` working; what it affects is whether somebody can read the script before piping
 it to their shell, which is the only honest answer to "why should I run this?"
@@ -163,7 +167,30 @@ returns a bare `403 The caller does not have permission` even to a project Owner
 
 ## Releases
 
-Binaries are published at `https://fishtea.io/releases`, which is what `FISHTEA_RELEASES` defaults to.
+**Nothing is published while the beta is closed.** `bun run site` writes no `install` and no `releases/`,
+so `https://fishtea.io/install` is a 404 rather than an unlinked page — a route nobody has to guess is
+not hidden by leaving it out of the navigation. The binary and the checkout go out with the invitation
+instead, which is what the application form on `/beta` is for.
+
+Both download paths already fail well against a host with nothing on it, and both name the fallback:
+
+```
+$ fishtea upgrade
+✗ https://fishtea.io/releases/latest answered 404.
+  No releases are published at https://fishtea.io/releases yet.
+  Build from a checkout instead: fishtea upgrade --from /path/to/fishtea
+```
+
+To open it back up, build the site with `PUBLISH_INSTALL=1` and deploy. The hosting rules for both paths
+are still in `firebase.json`, and `bun test site` swaps which shape it asserts on the same variable — so
+there is nothing else to remember.
+
+```bash
+PUBLISH_INSTALL=1 bun run deploy      # deploy runs the site build, so one variable covers both
+```
+
+Once published, binaries live at `https://fishtea.io/releases`, which is what `FISHTEA_RELEASES` defaults
+to.
 
 ```bash
 bun run release <version>                    # move every version site, if this is a new version

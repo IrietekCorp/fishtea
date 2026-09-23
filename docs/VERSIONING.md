@@ -134,12 +134,10 @@ edit you made before tracking began.
 ./install.sh --from /path/to/fishtea                 # build from a checkout — the only route today
 ```
 
-Once releases are published, the installer also serves from the site and takes a version:
-
-```bash
-curl -fsSL https://fishtea.io/install | bash         # the newest release
-curl -fsSL https://fishtea.io/install | bash -s 1.1.0
-```
+That is the only route while the beta is closed: no release binaries are published at `fishtea.io`, so
+the installer's download path has nothing to fetch and `fishtea upgrade` says so and points at `--from`.
+The same script serves both — once releases are published it will also install from the site and take a
+version argument, with no change to what lands on disk.
 
 The layout is deliberate:
 
