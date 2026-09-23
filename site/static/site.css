@@ -65,11 +65,14 @@ header.top {
 }
 header.top .wrap { display: flex; align-items: center; gap: var(--space-5); min-height: 64px; }
 
-.brand { display: inline-flex; align-items: center; gap: var(--space-3); flex: none; text-decoration: none; }
+/* The mark and the wordmark are one lockup, so they sit tight and share a centre line. The wordmark's
+   own artboard carries a little left bearing of its own, which is why the gap here is smaller than it
+   looks — measured, the glyphs land about 10px from the cup. */
+.brand { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; text-decoration: none; }
 .brand .cup { display: block; height: 34px; width: auto; }
 /* The wordmark carries its own fills — "fish" in ink, "tea" in green — so it swaps per theme rather
    than inheriting currentColor. A-dark on Ebony, A-light on Oak, exactly as the asset notes say. */
-.brand .wordmark { display: block; height: 26px; width: auto; }
+.brand .wordmark { display: block; height: 39px; width: auto; }
 .brand .wordmark.on-oak { display: none; }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .brand .wordmark.on-ebony { display: none; }

@@ -213,8 +213,8 @@ function layout(page: Page, pages: Page[]): string {
 <header class="top"><div class="wrap">
   <a class="brand" href="${href("")}" aria-label="FishTea">
     <img class="cup" src="${root}static/img/logo-mark.png" srcset="${root}static/img/logo-mark.png 1x, ${root}static/img/logo-mark@2x.png 2x" alt="" width="34" height="32">
-    <img class="wordmark on-ebony" src="${root}static/img/wordmark-dark.svg" alt="FishTea" width="103" height="26">
-    <img class="wordmark on-oak" src="${root}static/img/wordmark-light.svg" alt="" aria-hidden="true" width="103" height="26">
+    <img class="wordmark on-ebony" src="${root}static/img/wordmark-dark.svg" alt="FishTea" width="97" height="39">
+    <img class="wordmark on-oak" src="${root}static/img/wordmark-light.svg" alt="" aria-hidden="true" width="97" height="39">
   </a>
   <nav>${topNav}</nav>
   <div class="header-end">
