@@ -719,6 +719,7 @@ async function pages(): Promise<Page[]> {
 
     { slug: "blueprint", title: "The blueprint", nav: "The blueprint", group: "Design", body: () => fromMarkdown("docs/BLUEPRINT.md", "The blueprint") },
     { slug: "measured", title: "What the build measured", nav: "What we measured", group: "Design", body: () => fromMarkdown("docs/DESIGN.md", "What the build measured") },
+    { slug: "nested-shapes", title: "Shapes within shapes", nav: "Shapes within shapes", group: "Design", body: () => fromMarkdown("docs/NESTED-SHAPES.md", "Shapes within shapes") },
 
     { slug: "beta", title: "Join the beta", nav: "Join the beta", group: "Project", body: beta },
     { slug: "blog", title: "Blog", nav: "Blog", group: "Project", body: blogIndex },

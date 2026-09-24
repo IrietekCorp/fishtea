@@ -175,6 +175,22 @@ this, or only a shop?
 - UI: products with `affiliateUrl` and `stock = 0` need a "buy at vendor" treatment.
   `packages/ui/src/fields.tsx` treats fields by name; add one for `affiliateUrl`.
 
+### 3b. Shapes within shapes — a proposal to measure
+`docs/NESTED-SHAPES.md`. Top-level shapes as *areas* of a business — `vendor`, inventory browse, product
+details, secure a purchase, reports — each a boundary owning its classification vocabulary, its guard,
+its calls and its UI composition, with subjects (get information) and verbs (commit, react, schedule)
+inside it. Server-driven UI, except the components are composed per turn rather than named by a tree.
+
+Much of it already exists unnamed: `allow` is the guard, `next` is the stitching drawn one hop at a
+time, and `personaSubsets` is already scoped classification keyed by persona rather than by area.
+
+**It is not a decision yet, and the first two steps are measurements, not code.** Area-sized tool
+subsets should classify faster and better; they also multiply the pool's subsets, and `contract.md`
+measured a subset switch at 0.7–1.2 s and a worker at ~160 MB, with ecommerce on 3 subsets today. Four
+areas × three personas is twelve. `packages/bench` can answer whether the gain pays for that before
+anything is built. The composite pour is the expensive change and the one that brushes against "seven
+vessels, never a page".
+
 ### 4. Small correctness items (hours each)
 - `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4; several NICs or NAT needs it set by
   hand. There is no TLS story: the core speaks HTTP and expects something in front of it.
