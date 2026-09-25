@@ -226,6 +226,27 @@ areas × three personas is twelve. `packages/bench` can answer whether the gain 
 anything is built. The composite pour is the expensive change and the one that brushes against "seven
 vessels, never a page".
 
+### 3c. Authentication — one thing fixed, several open
+`docs/ACCESS.md`. The **authorisation** model is sound and in the right place: the gate is after
+classification, on the converged path, so a shape posted directly as a chip is checked exactly like a
+shape the classifier chose. Needle needs no controls and must never be trusted with any — the chip path
+does not go through it, its input is attacker-controlled text, and since §6 it can be third-party code.
+Five tests now assert that invariant from different directions (`core.test.ts`, "the gate").
+
+**Authentication is the weak part.** `visitorOf` accepts the visitor id from a header or a cookie and
+whoever presents one becomes that visitor, so the id is a bearer credential. It was minted from
+`Date.now()` plus six characters of `Math.random()` — a public half and a predictable half. **Fixed**:
+96 bits from the platform CSPRNG, existing ids unaffected.
+
+Still open, in rough priority order:
+- The credential is **unsigned**, so a forged id is rejected only by missing the table, and a stolen one
+  cannot be revoked. An HMAC with a server secret fixes both.
+- **Identifier and credential are the same string**, and it appears in `/op/visitors` and in logs.
+- The SPA keeps it in `localStorage`, so `httpOnly` on the cookie buys nothing against XSS. Deliberate
+  for a cross-origin SPA, but it should be a decision: same-site cookie plus a CSRF token is the
+  alternative.
+- Operator auth is one shared token (see §7), and the rate limiter is per process (see below).
+
 ### 4. Small correctness items (hours each)
 - `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4; several NICs or NAT needs it set by
   hand. There is no TLS story: the core speaks HTTP and expects something in front of it.

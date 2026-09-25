@@ -48,6 +48,11 @@ bunx tsc -p tsconfig.json --noEmit
 - The spec is the only source. If something is entity-specific in code outside a template's or app's `calls/`, it is a bug.
 - SQL files use `$1..$n` in declared input order; never string-build SQL. jsonb params are passed as JS values (postgres.js encodes them).
 - Writes always pour `confirm-write` first; the model never evaluates a rule; rules live in `spec.rules` and compute modules.
+- **The classifier proposes, the gate disposes, the database has the last word.** Permission is checked
+  *after* classification, where the classified path and the posted-chip path converge (`engine.ts`,
+  `!allowed.includes(shapeName)`) — never by filtering needle's tools, which is for accuracy and
+  latency. Row ownership is the call's own SQL (`AND visitor_id = $n`) and nothing else substitutes.
+  A visitor id is a bearer credential: mint it with `newId`, which uses the CSPRNG, never `Math.random`.
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.

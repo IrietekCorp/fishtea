@@ -178,3 +178,76 @@ describe("notification channels", () => {
     expect(res.sent).toEqual([]);
   });
 });
+
+/**
+ * Access control: the gate is after classification, never on the classifier.
+ *
+ * The classifier is a router. It is fed attacker-controlled text, it can be a third-party plugin since
+ * §6 of the work list, and — most simply — the chip path does not go through it at all: the client
+ * posts `{shape, args}` directly. So filtering needle's tool list by persona is a quality measure, not
+ * a security one, and every one of these asserts the same invariant from a different direction.
+ */
+describe("the gate", () => {
+  test("a chip for a shape this persona may not ask is refused, though it never touches the classifier", async () => {
+    const e = new Engine({ app, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+
+    // A stranger may not check out. This arrives as a direct shape, exactly as a forged chip would.
+    const r = await e.utter({ shape: "checkout", args: { email: "a@b.c", shipTo: {} } }, { visitorId: visitor.id });
+    expect(r.persona).toBe("stranger");
+    expect(r.pour.kind).not.toBe("confirm-write");
+    expect((r.pour as any).shape).not.toBe("checkout");
+
+    // And nothing was written on the way to refusing.
+    const orders = await db`SELECT count(*)::int AS n FROM business."order" WHERE visitor_id = ${visitor.id}`;
+    expect(orders[0].n).toBe(0);
+  });
+
+  test("an operator shape cannot be reached from the visitor surface at all", async () => {
+    const e = new Engine({ app, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const r = await e.utter({ shape: "op.unmetReport", args: {} }, { visitorId: visitor.id });
+    expect(r.pour.kind).toBe("ask");
+    // The visitor is told "not a thing I can do"; the *operator* log records why (reasonUnmet).
+    expect((r.pour as any).reason).toBe("no-match");
+    expect(JSON.stringify(r.pour)).not.toContain("unmet");
+  });
+
+  test("a shape nobody declared is refused rather than planned", async () => {
+    const e = new Engine({ app, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const r = await e.utter({ shape: "dropEverything", args: {} }, { visitorId: visitor.id });
+    expect(r.pour.kind).toBe("ask");
+    expect((r.pour as any).reason).toBe("no-match");
+  });
+
+  test("a read is scoped to its owner: another visitor's order id yields nothing", async () => {
+    const e = new Engine({ app, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    // An order that exists and belongs to somebody else.
+    const [row] = await db`SELECT id, visitor_id FROM business."order" LIMIT 1`;
+    if (!row) return;                                   // no orders seeded in this run: nothing to assert
+
+    const { visitor } = await e.utter({ text: "hello" });
+    expect(visitor.id).not.toBe(row.visitor_id);
+    const r = await e.utter({ shape: "orderStatus", args: { orderId: row.id } }, { visitorId: visitor.id });
+    // Either the persona gate refuses it, or the SQL returns no row. Both are correct; leaking is not.
+    expect(JSON.stringify(r.pour)).not.toContain(row.id);
+  });
+
+  test("a visitor id is unguessable, because presenting one is how you become that visitor", async () => {
+    const e = new Engine({ app, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const ids = new Set<string>();
+    for (let i = 0; i < 12; i++) ids.add((await e.utter({ text: "hello" })).visitor.id);
+    expect(ids.size).toBe(12);
+
+    // The entropy itself comes from the platform CSPRNG and is not something a test can measure. What
+    // this can catch is the regression that matters: an id short enough to be a guessable bearer token.
+    // v_ + ~8 chars of base36 time + 16 chars of base64url from 96 random bits.
+    for (const id of ids) expect({ id, long: id.length >= 24 }).toEqual({ id, long: true });
+  });
+});

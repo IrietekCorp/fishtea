@@ -3,6 +3,7 @@
  * A trail is an append-only tree of turns per visitor. Rewind moves the head; branch appends a child
  * to an older turn. Nothing is ever deleted.
  */
+import { randomBytes } from "node:crypto";
 import type { Db } from "../db/index.ts";
 import type { TrailFact } from "../persona.ts";
 import { EMBED_DIM } from "@fishtea/spec";
@@ -17,7 +18,21 @@ export interface Turn {
 }
 export interface Trail { id: string; visitorId: string; headTurnId: string | null; envelope: Record<string, unknown>; openedAt: string }
 
-export const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+/**
+ * Ids, and why this uses crypto randomness.
+ *
+ * A visitor id is not only a name — `visitorOf` in http.ts accepts it from a cookie *or* the
+ * `x-fishtea-visitor` header, and whoever presents one gets that visitor's `customer_id`, and therefore
+ * their persona, their cart and their orders. It is a bearer credential.
+ *
+ * It used to be `Date.now()` plus six characters of `Math.random()`: the time half is public, and the
+ * random half is neither long enough nor unpredictable. `Math.random()` is a PRNG whose internal state
+ * can be recovered from a handful of its own outputs, and an attacker can mint outputs on demand simply
+ * by asking for new visitors. 96 bits from the platform CSPRNG costs nothing and removes the class.
+ *
+ * Existing ids keep working: this changes what new ones look like, not how they are read.
+ */
+export const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${randomBytes(12).toString("base64url")}`;
 
 const rowTurn = (r: any): Turn => ({
   id: r.id, trailId: r.trail_id, parentId: r.parent_id, seq: r.seq, author: r.author, at: r.at instanceof Date ? r.at.toISOString() : r.at,
