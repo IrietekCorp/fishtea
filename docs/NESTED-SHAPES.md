@@ -141,6 +141,102 @@ to contribute subjects, verbs, calls and UI together, instead of dropping a file
 and hoping the dispatcher finds it. And `next` mostly disappears: within an area the siblings are the
 chips.
 
+## A top-level shape is an address
+
+*Added after the first draft: for SEO, bookmarking and linking, top-level shapes should be pages.*
+
+This looks like it contradicts the whole thesis, and it does not. The essay is precise about what the
+complaint actually is:
+
+> A URL is a string. We ask that string to carry where you are, what you filtered, what you sorted, which
+> step of a flow you reached, sometimes who you are. **It is a location pretending to be a memory**, and
+> it is terrible at it.
+
+The objection is to the URL as *memory*. A location is what a URL is genuinely good at. And the blueprint
+already said where the locations would come from:
+
+> **No routes.** Intent classification replaces routing. There are no URLs to memorize and no funnel to
+> re-walk. **The shape names *are* the routes**, and the classifier picks them.
+
+Top-level shapes as pages is that sentence taken literally. `/browse`, `/purchase`, `/orders`,
+`/vendor` — a small, stable set of places you can walk up to, one per area, named by the spec.
+
+### What the address carries: nothing
+
+The URL names the area and stops. No filters, no sort, no step, no cursor, no trail id. Memory stays on
+the trail, where it is append-only, rewindable and branchable, and where it belongs to a visitor rather
+than to a string.
+
+That gives a property worth stating plainly, because it is the thesis rather than a compromise of it:
+**two people opening the same link get the same place and different conversations.** Under URL-as-state
+that is impossible — the link *is* the state, so it has to reproduce somebody else's screen. Here the
+link is an address and the personalisation is intact.
+
+It also means the rules stay true. "No URLs to memorize" survives: you land on them, you do not assemble
+them. "Never a page" survives in the form that matters — **the page is an entrance, not a corridor.**
+There is still nothing to navigate *between* you and an answer.
+
+### What this does not get you, which is most of the SEO
+
+Being honest, because this is the part that would otherwise disappoint.
+
+Four or five area pages is a thin crawlable surface. For a shop, the pages that actually rank are the
+*things*: `/product/ravello-linen-shirt`, thousands of them, each answering a long-tail query nobody
+would think to type into a conversation. Areas give you bookmarking and linking. They give you very
+little search traffic.
+
+So addresses probably want two levels, not one:
+
+| address | what it is | what it is for |
+|---|---|---|
+| `/purchase` | a top-level shape | bookmarking, "take me back to where I was" |
+| `/product/<slug>` | an entity the spec already declares | search, sharing a *thing*, link previews |
+
+The second is derivable — the spec knows its entities, their fields and which are addressable — but it
+is a larger change than the first and should be judged separately.
+
+### The blocker: nothing is server-rendered
+
+`packages/ui` is a Vite SPA and the core serves JSON only — `GET /` returns `pour(resume)` and nothing
+else. A crawler currently receives an empty `<div id="root">`. Google will sometimes execute the
+JavaScript, late and unreliably; most other crawlers do not, and the LLM crawlers that increasingly
+decide what gets recommended largely do not either.
+
+**SEO here is not a metadata problem. It is a rendering problem**, and it is the real cost of this
+section.
+
+The seam is at least clean. `GET /` already produces exactly the thing a page needs; the work is to
+accept an area in the path and content-negotiate the result:
+
+```
+GET /purchase   Accept: application/json   → the pour, as today
+GET /purchase   Accept: text/html          → the same pour, rendered, with the SPA hydrating onto it
+```
+
+One pour, two encodings. The vessels already know how to render it in the browser; making them render on
+the server is the piece of work, and it is not small.
+
+### What falls out of the spec for free
+
+Once areas and entities have addresses, a good deal of what SEO wants is derivable rather than written,
+which is the framework's whole argument applied to its own weakest surface:
+
+- **`sitemap.xml`** — the areas, plus a row per addressable entity. Generated, never maintained.
+- **Structured data** — `schema.org/Product`, `Offer`, `Event`, `Person` from the entity's declared
+  fields. The spec already knows a `money` field is a price.
+- **Open Graph and link previews** — title, description and image from the same field ranking
+  `fields.tsx` already computes for the card vessel.
+- **Canonical URLs and `robots.txt`** — one per area, one per addressable entity, nothing else indexable.
+
+### The line that must not be crossed
+
+A shareable link must never carry conversation state, and specifically must never carry a trail id. That
+would reintroduce URL-as-memory with a privacy bug attached: anyone with the link inherits somebody
+else's conversation.
+
+Sharing a *conversation* is a separate feature and should look like one — an explicit "share this", a
+minted token with a scope and an expiry, not something that leaks into the address bar by default.
+
 ## Where this conflicts with what is written down
 
 Being honest about the tensions, because the blueprint is explicit and this is not a small change.
@@ -153,6 +249,9 @@ Being honest about the tensions, because the blueprint is explicit and this is n
   regrouping. The versioning machinery for that already exists and has been exercised.
 - **`VesselName` and the pour union are load-bearing.** `packages/ui`, the TUI, the headless runner, the
   bench and the e2e suite all switch on pour kind.
+- **Server rendering is a new capability, not a change to an existing one.** Nothing in the framework
+  renders HTML today. This is the largest single piece of work the proposal implies, and it arrives for
+  a reason — findability — that the original design did not weigh.
 
 ## What to do first
 
@@ -166,4 +265,8 @@ In order, and each one answers a question rather than building the thing:
    predicts ~1 s each and ~160 MB each; confirm it.
 3. **Prototype the composite pour** as a list of existing pours, behind one archetype, and see what the
    verify strip has to become.
-4. **Only then** change the spec format.
+4. **Prototype one area as an address** — `GET /purchase` content-negotiating JSON and HTML — before
+   nested shapes exist at all. It can be tested against the flat shape list, it answers whether the
+   rendering cost is what it looks like, and it is the part with a deadline attached: a site nobody can
+   find is a problem today, not after a format change.
+5. **Only then** change the spec format.

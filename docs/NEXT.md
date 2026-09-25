@@ -184,7 +184,25 @@ inside it. Server-driven UI, except the components are composed per turn rather 
 Much of it already exists unnamed: `allow` is the guard, `next` is the stitching drawn one hop at a
 time, and `personaSubsets` is already scoped classification keyed by persona rather than by area.
 
-**It is not a decision yet, and the first two steps are measurements, not code.** Area-sized tool
+**Top-level shapes are also addresses.** `/browse`, `/purchase`, `/orders` — for SEO, bookmarking and
+linking. That is not a retreat from "no pages": the essay's objection is to the URL as *memory*, and the
+blueprint already said "the shape names *are* the routes". An area URL carries the area and nothing
+else — no filters, no step, no trail id — so two people opening the same link get the same place and
+different conversations, which is the thesis rather than a compromise of it. The page is an entrance,
+not a corridor.
+
+The cost is real and it is rendering, not metadata: `packages/ui` is a Vite SPA, the core serves JSON
+only, and a crawler gets an empty div today. The seam is clean — `GET /` already produces the pour a
+page needs, so the work is an area in the path and content negotiation — but server rendering is a
+capability the framework does not have at all. Worth doing **before** nested shapes, because it can be
+prototyped against the flat shape list and because a site nobody can find is a problem now.
+
+Also note that areas alone are thin SEO: four or five pages. What ranks for a shop is
+`/product/<slug>`, thousands of them. Addressable entities are derivable from the spec — as are
+`sitemap.xml`, schema.org structured data and Open Graph — but that is a larger change than area URLs
+and should be judged separately.
+
+**The nesting itself is not a decision yet, and the first two steps are measurements, not code.** Area-sized tool
 subsets should classify faster and better; they also multiply the pool's subsets, and `contract.md`
 measured a subset switch at 0.7–1.2 s and a worker at ~160 MB, with ecommerce on 3 subsets today. Four
 areas × three personas is twelve. `packages/bench` can answer whether the gain pays for that before
