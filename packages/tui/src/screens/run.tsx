@@ -1,3 +1,4 @@
+import { selfCommand } from "../lib/scaffolder.ts";
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { migrate, seed } from "@fishtea/core";
@@ -71,7 +72,7 @@ export function Run() {
         case "headless": {
           const home = process.env.FISHTEA_HOME!;
           await suspend(async () => {
-            const p = Bun.spawn(["bun", `${home}/packages/cli/src/index.ts`, "headless", "--app", dir], { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_APP: dir } });
+            const p = Bun.spawn([...selfCommand(home), "headless", "--app", dir], { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_APP: dir } });
             await p.exited;
             const wait = Bun.spawn(["bash", "-c", "read -n1 -s -r -p '\\n[any key to return to the console]'"], { stdio: ["inherit", "inherit", "inherit"] });
             await wait.exited;
@@ -81,7 +82,7 @@ export function Run() {
         case "bench": {
           const home = process.env.FISHTEA_HOME!;
           await suspend(async () => {
-            const p = Bun.spawn(["bun", `${home}/packages/cli/src/index.ts`, "bench", "--app", dir, "--no-fail"], { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_APP: dir } });
+            const p = Bun.spawn([...selfCommand(home), "bench", "--app", dir, "--no-fail"], { stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_APP: dir } });
             await p.exited;
             const wait = Bun.spawn(["bash", "-c", "read -n1 -s -r -p '\\n[any key to return to the console]'"], { stdio: ["inherit", "inherit", "inherit"] });
             await wait.exited;

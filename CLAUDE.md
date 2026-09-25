@@ -56,6 +56,9 @@ bunx tsc -p tsconfig.json --noEmit
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.
+- A release ships `templates/`, `plugins/` and `packages/ui/` beside the binary and **no source**. Never
+  build an import or a subprocess from a path into `packages/cli/src` — pass the function in (the
+  `Scaffolder` seam) or re-invoke `selfCommand()`. `packages/tui/test/seams.test.ts` enforces it.
 - Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain.
 - A plugin is merged at *load* time and never written into `spec.json`; the application always wins a name clash, and two plugins clashing is an error.
 - A `classifier` or `channel` plugin *is* its `module` — the manifest must name one, it is imported when

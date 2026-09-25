@@ -331,6 +331,14 @@ Two things fell out of this that are worth knowing:
 - `bun build --compile` folds a *conditional* dynamic import into the bundle and evaluates it eagerly.
   That is why `packages/tui/src/devtools-stub.ts` exists and is aliased in `tsconfig.json`; if the binary
   ever dies at startup on a missing package, this is the shape of the problem.
+- **The compiled binary has no source tree, and the console used to forget that.** `@fishtea/cli`
+  imports `@fishtea/tui`, so the console cannot import the CLI back without a cycle; it dodged that with
+  ``await import(`${fishteaHome}/packages/cli/src/new.ts`)``, which works in a checkout and can never
+  work in a release. `fishtea new … --interactive` and the console's Onboard screen both died on a
+  missing module. The fix is the `Scaffolder` seam (`packages/tui/src/lib/scaffolder.ts`): the CLI passes
+  `listTemplates` and `scaffold` in. `selfCommand()` is the same problem for subprocesses — a compiled
+  binary re-runs `process.execPath`, a checkout runs `bun …/index.ts`. `packages/tui/test/seams.test.ts`
+  fails on any new templated dynamic import, because this class is invisible until someone installs.
 - The compiled binary has no source tree, so `frameworkHome()` falls back to `<exe>/../..` and then
   `~/.fishtea/current`, accepting only a directory that has `templates/`. A release therefore must ship
   `templates/`, `plugins/` and `packages/ui` beside the binary — `scripts/build-release.ts` does.

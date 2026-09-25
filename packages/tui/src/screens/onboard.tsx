@@ -19,16 +19,15 @@ type Step =
 
 /** Create a new application: pick an archetype, answer its interview, write the directory. */
 export function Onboard() {
-  const { fishteaHome, toast, busy } = useCtx();
+  const { fishteaHome, scaffolder, toast, busy } = useCtx();
   const [step, setStep] = useState<Step>({ at: "template" });
   const [templates, setTemplates] = useState<any[] | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const { listTemplates } = await import(`${fishteaHome}/packages/cli/src/new.ts`);
-      setTemplates(listTemplates(fishteaHome));
+      setTemplates(scaffolder.listTemplates(fishteaHome));
     })();
-  }, [fishteaHome]);
+  }, [fishteaHome, scaffolder]);
 
   if (!templates) return <Text color={theme.dim}>reading templates…</Text>;
 
@@ -104,8 +103,7 @@ export function Onboard() {
           <Confirm message="" initial onAnswer={async (yes) => {
             if (!yes) return setStep({ at: "template" });
             try {
-              const { scaffold } = await import(`${fishteaHome}/packages/cli/src/new.ts`);
-              const out = (await busy("scaffolding", () => scaffold({ id: step.id, template: step.template, dir: target, name: String(step.answers.name), fishteaHome, answers: step.answers }))) as { dir: string };
+              const out = await busy("scaffolding", () => scaffolder.scaffold({ id: step.id, template: step.template, dir: target, name: String(step.answers.name), fishteaHome, answers: step.answers }));
               toast(`created ${out.dir}`, "ok");
               setStep({ at: "done", dir: out.dir });
             } catch (e) { toast((e as Error).message, "bad"); setStep({ at: "template" }); }

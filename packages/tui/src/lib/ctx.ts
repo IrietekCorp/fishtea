@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect } from "react";
 import type { Core } from "./core.ts";
 import type { Snapshot } from "./app-state.ts";
+import type { Scaffolder } from "./scaffolder.ts";
 
 export interface Ctx {
   dir: string;
   fishteaHome: string;
   core: Core;
+  /** The CLI's scaffolding functions, passed in rather than imported: see lib/scaffolder.ts. */
+  scaffolder: Scaffolder;
   snap: Snapshot;
   refresh: () => Promise<void>;
   toast: (text: string, tone?: "ok" | "warn" | "bad") => void;

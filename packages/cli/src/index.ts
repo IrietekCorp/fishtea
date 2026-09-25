@@ -15,6 +15,7 @@ import pc from "picocolors";
 import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, frameworkHome, type App } from "@fishtea/spec";
 import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier, type Channel, withBudget, loadSeam, seamsOfKind } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
+import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
@@ -63,6 +64,15 @@ export function resolveAppDir(flags: Flags): string {
   if (existsSync(resolve("spec.json"))) return resolve(".");
   throw new Error("no application: pass --app <dir> or set FISHTEA_APP (a directory containing spec.json)");
 }
+
+/**
+ * What the console is given instead of importing the CLI back.
+ *
+ * `@fishtea/cli` imports `@fishtea/tui`, so the console cannot import this package without a cycle. It
+ * used to `await import(`${fishteaHome}/packages/cli/src/new.ts`)` — fine in a checkout, impossible in
+ * a compiled binary, which ships no source. See packages/tui/src/lib/scaffolder.ts.
+ */
+const SCAFFOLDER: Scaffolder = { listTemplates, scaffold };
 
 export function loadOrDie(dir: string): App {
   try { return loadApp(dir); }
@@ -333,7 +343,7 @@ async function main() {
       if (flags.interactive === true) {
         const { interview } = await import("@fishtea/tui");
         const subject = typeof flags.name === "string" ? flags.name : id.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
-        answers = await interview(FISHTEA_HOME, template, { name: subject });
+        answers = await interview(FISHTEA_HOME, template, SCAFFOLDER, { name: subject });
       }
       const out = await scaffold({ id, template, dir: typeof flags.dir === "string" ? flags.dir : undefined, name: typeof flags.name === "string" ? flags.name : undefined, doc: typeof flags.doc === "string" ? flags.doc : undefined, fishteaHome: FISHTEA_HOME, force: flags.force === true, answers, flags });
       console.log(pc.green(`✓ created ${out.dir} from the ${out.template} archetype${out.answered.length ? ` (${out.answered.length} answers applied)` : " (defaults; run the TUI to onboard)"}`));
@@ -421,7 +431,7 @@ async function main() {
     case "tui": {
       const dir = resolveAppDir(flags);
       const { tui } = await import("@fishtea/tui");
-      await tui({ dir, fishteaHome: FISHTEA_HOME, flags });
+      await tui({ dir, fishteaHome: FISHTEA_HOME, scaffolder: SCAFFOLDER, flags });
       return;
     }
     case "up": case "down": case "stop": case "start": case "ps": case "logs": case "restart": {

@@ -67,7 +67,18 @@ export function applyAnswer(spec: any, q: Question, value: unknown, side: { seed
 }
 
 export async function scaffold(o: ScaffoldOptions): Promise<{ dir: string; template: string; answered: string[] }> {
-  if (!/^[a-z][a-z0-9-]{1,40}$/.test(o.id)) throw new Error("id must be lowercase letters, digits and dashes, starting with a letter");
+  // The id is an identifier, not a title: it becomes spec.business.id (the JSON schema pins the same
+  // pattern), the package name, and the default directory. A domain name is a natural thing to type
+  // here, so say what to do rather than only what is wrong.
+  if (!/^[a-z][a-z0-9-]{1,40}$/.test(o.id)) {
+    const suggestion = o.id.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^[^a-z]+|-+$/g, "").slice(0, 41) || "myapp";
+    throw new Error(
+      `"${o.id}" cannot be an application id — it must be lowercase letters, digits and dashes, starting with a letter.\n` +
+      `  The id names the business in spec.json, not the folder. Try:\n` +
+      `      fishtea new ${suggestion} --template ${o.template} --dir ${o.id}\n` +
+      `  which gives you a directory called ${o.id} and the id ${suggestion}. Add --name "Your Name" for the display name.`,
+    );
+  }
   const tpl = listTemplates(o.fishteaHome).find((t) => t.name === o.template);
   if (!tpl) throw new Error(`unknown template "${o.template}"; use one of ${listTemplates(o.fishteaHome).map((t) => t.name).join(", ")}`);
   const dir = targetDir(o.id, o);

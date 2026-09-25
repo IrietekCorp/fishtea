@@ -12,10 +12,11 @@ import { App, ALT_ON, ALT_OFF } from "./app.tsx";
 import { Core } from "./lib/core.ts";
 import { closeDatabase } from "./lib/app-state.ts";
 import { Form, type Question } from "./components/form.tsx";
+import type { Scaffolder } from "./lib/scaffolder.ts";
 
 /** A repeated CLI flag arrives as an array; readers test for a string first. */
 export type TuiFlags = Record<string, string | boolean | string[] | undefined>;
-export interface TuiOptions { dir: string; fishteaHome: string; flags?: TuiFlags }
+export interface TuiOptions { dir: string; fishteaHome: string; scaffolder: Scaffolder; flags?: TuiFlags }
 
 export async function tui(o: TuiOptions) {
   if (!process.stdin.isTTY) throw new Error("the console needs a terminal (stdin is not a tty)");
@@ -27,16 +28,15 @@ export async function tui(o: TuiOptions) {
   let left = false;
   const leave = () => { if (left) return; left = true; process.stdout.write(ALT_OFF); };
   process.on("exit", leave);
-  const instance = render(<App dir={o.dir} fishteaHome={o.fishteaHome} core={core} onExit={leave} />, { exitOnCtrlC: false });
+  const instance = render(<App dir={o.dir} fishteaHome={o.fishteaHome} core={core} scaffolder={o.scaffolder} onExit={leave} />, { exitOnCtrlC: false });
   await instance.waitUntilExit();
   leave();
   await closeDatabase();
 }
 
 /** Run one archetype's onboarding interview and resolve with the answers. Used by `fishtea new --interactive`. */
-export async function interview(fishteaHome: string, template: string, seed: { name?: string } = {}): Promise<Record<string, unknown>> {
-  const { listTemplates } = await import(`${fishteaHome}/packages/cli/src/new.ts`);
-  const tpl = (listTemplates(fishteaHome) as any[]).find((t) => t.name === template);
+export async function interview(fishteaHome: string, template: string, scaffolder: Scaffolder, seed: { name?: string } = {}): Promise<Record<string, unknown>> {
+  const tpl = scaffolder.listTemplates(fishteaHome).find((t) => t.name === template);
   if (!tpl) throw new Error(`unknown template ${template}`);
   if (!process.stdin.isTTY) throw new Error("--interactive needs a terminal; pass --answers instead");
   return new Promise((resolve, reject) => {
@@ -56,4 +56,6 @@ export async function interview(fishteaHome: string, template: string, seed: { n
 }
 
 export { Form };
+export { isCompiled, selfCommand } from "./lib/scaffolder.ts";
 export type { Question };
+export type { Scaffolder, ScaffoldRequest, TemplateInfo } from "./lib/scaffolder.ts";

@@ -1,3 +1,4 @@
+import type { Scaffolder } from "./lib/scaffolder.ts";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput, useStdin, useStdout } from "ink";
 import { theme, SCREENS, type ScreenId } from "./theme.ts";
@@ -14,7 +15,7 @@ import { Versions } from "./screens/versions.tsx";
 
 const ALT_ON = "\x1b[?1049h", ALT_OFF = "\x1b[?1049l";
 
-export function App({ dir, fishteaHome, core, onExit }: { dir: string; fishteaHome: string; core: Core; onExit: () => void }) {
+export function App({ dir, fishteaHome, core, scaffolder, onExit }: { dir: string; fishteaHome: string; core: Core; scaffolder: Scaffolder; onExit: () => void }) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const { stdin, setRawMode } = useStdin();
@@ -50,7 +51,7 @@ export function App({ dir, fishteaHome, core, onExit }: { dir: string; fishteaHo
 
   const quit = useCallback(() => { onExit(); exit(); }, [exit, onExit]);
   const lockApi = useMemo(() => ({ push: () => setLocks((n) => n + 1), pop: () => setLocks((n) => Math.max(0, n - 1)) }), []);
-  const ctx: Ctx = useMemo(() => ({ dir, fishteaHome, core, snap, refresh, toast, suspend, busy, quit }), [dir, fishteaHome, core, snap, refresh, toast, suspend, busy, quit]);
+  const ctx: Ctx = useMemo(() => ({ dir, fishteaHome, core, scaffolder, snap, refresh, toast, suspend, busy, quit }), [dir, fishteaHome, core, scaffolder, snap, refresh, toast, suspend, busy, quit]);
 
   useInput((input, key) => {
     if (key.ctrl && input === "c") return quit();
