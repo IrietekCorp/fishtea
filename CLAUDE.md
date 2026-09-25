@@ -55,6 +55,9 @@ bunx tsc -p tsconfig.json --noEmit
   A visitor id is a bearer credential: mint it with `newId`, which uses the CSPRNG, never `Math.random`.
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
+- A port nobody chose may move: `serve` and `up` probe first and step to the next free one, saying so. A
+  port somebody named (`--port`, `PORT`, `FISHTEA_*_PORT`) never moves — it is a `SetupError`, because
+  serving somewhere other than where you were told is worse than not serving.
 - Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.
 - A release ships `templates/`, `plugins/`, all of `packages/` and the root manifests beside the binary.
   It is two things at once: data the framework reads, **and** the docker build context `fishtea up`

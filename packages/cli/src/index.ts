@@ -17,7 +17,7 @@ import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassi
 import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
-import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, publicHost, publicUrl, redact, type Flags } from "./env.ts";
+import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
 /**
  * The framework's own files. Resolved by @fishtea/spec so that a source checkout, a compiled binary and a
@@ -73,6 +73,36 @@ export function resolveAppDir(flags: Flags): string {
  * a compiled binary, which ships no source. See packages/tui/src/lib/scaffolder.ts.
  */
 const SCAFFOLDER: Scaffolder = { listTemplates, scaffold };
+
+/**
+ * Host ports for `fishtea up`, avoiding whatever is already listening.
+ *
+ * Only the ones nobody chose move: a set FISHTEA_CORE_PORT is an instruction, and quietly publishing
+ * somewhere else would be worse than failing. The container-side ports never change — these are the
+ * left-hand sides of compose's `"${FISHTEA_CORE_PORT:-3000}:3000"`.
+ */
+export async function composePorts(): Promise<Record<string, string>> {
+  const wanted: [string, number, string][] = [
+    ["FISHTEA_CORE_PORT", 3000, "the core"],
+    ["FISHTEA_UI_PORT", 5173, "the UI"],
+    ["FISHTEA_DB_PORT", 5432, "postgres"],
+    ["FISHTEA_CLASSIFIER_PORT", 8081, "the classifier"],
+  ];
+  const out: Record<string, string> = {};
+  const moved: string[] = [];
+  for (const [envVar, fallback, label] of wanted) {
+    if (process.env[envVar]) continue;                       // chosen: leave it, and let docker complain
+    const free = await nextFreePort(fallback);
+    if (free === undefined || free === fallback) continue;    // free already, or nothing nearby is
+    out[envVar] = String(free);
+    moved.push(`${label} ${fallback} → ${free}`);
+  }
+  if (moved.length) {
+    console.log(pc.yellow(`⚠ ports in use, publishing elsewhere: ${moved.join(", ")}`));
+    console.log(pc.dim(`  pin one instead: ${wanted[0][0]}=<n> bun run up`));
+  }
+  return out;
+}
 
 export function loadOrDie(dir: string): App {
   try { return loadApp(dir); }
@@ -451,7 +481,12 @@ async function main() {
       else if (cmd === "logs") args.push("logs", "-f", "--tail", String(flags.tail ?? 80), ...extra);
       else args.push(cmd);
       if (cmd !== "restart" && cmd !== "logs") args.push(...extra.filter((a) => !["-v", "--volumes", "-d"].includes(a)));
-      const proc = Bun.spawn(["docker", ...args], { cwd: dir, stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_HOME } });
+      // Compose publishes four host ports, each `${VAR:-default}`. A developer machine usually has
+      // something on 3000 already, and docker's answer to that is a wall of text ending in "address
+      // already in use" after the healthy containers have started. Pick free ones up front, for the
+      // ports nobody named — an explicitly set FISHTEA_*_PORT is left exactly as given.
+      const composeEnv = cmd === "up" ? await composePorts() : {};
+      const proc = Bun.spawn(["docker", ...args], { cwd: dir, stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_HOME, ...composeEnv } });
       const code = await proc.exited;
       if (cmd === "down" && code === 0) console.log(pc.green(`✓ stopped${dropData ? " and deleted the data" : "; data kept, bun run up brings it back"}`));
       if (cmd === "stop" && code === 0) console.log(pc.green("✓ paused; bun run start resumes it untouched"));

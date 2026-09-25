@@ -8,12 +8,17 @@ import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
 import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
-import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, publicUrl, reachableUrls, redact, selfHosts, type Flags } from "./env.ts";
+import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, portWasChosen, publicUrl, reachableUrls, redact, resolvePort, selfHosts, type Flags } from "./env.ts";
 
 export async function serve(app: App, flags: Flags, dir: string) {
   const host = bindHost(flags);
-  const port = bindPort(flags);
+  const wanted = bindPort(flags);
   const log = (s: string) => console.log(pc.dim(new Date().toISOString().slice(11, 19)) + " " + s);
+
+  // Bind somewhere that works. A developer usually has three things on 3000 and does not care which one
+  // this is; someone who passed --port or PORT does care, and gets an error instead of a surprise.
+  const { port, moved } = await resolvePort(wanted, host, { chosen: portWasChosen(flags) });
+  if (moved) log(pc.yellow(`port ${wanted} was busy — using ${port} (pass --port to pin one)`));
   await checkDatabase(databaseUrl(flags), { appDir: dir });
   const { engine, db } = await buildEngine(app, flags, { log });
 
@@ -63,6 +68,8 @@ export async function serve(app: App, flags: Flags, dir: string) {
     },
   });
   Bun.serve({ hostname: host, port, fetch: server.fetch, idleTimeout: 255 });
+  // Everything printed from here has to describe the port actually bound, not the one asked for.
+  const publicFlags: Flags = moved ? { ...flags, port: String(port) } : flags;
   const urls = reachableUrls(host, port);
   log(pc.green(`${app.spec.business.name} core listening on ${host}:${port}`));
   for (const u of urls) log(`  ${pc.cyan(u)}`);
@@ -70,7 +77,7 @@ export async function serve(app: App, flags: Flags, dir: string) {
   log(pc.dim(`  database   ${redact(databaseUrl(flags))}`));
   log(pc.dim(`  spec       ${app.specPath}`));
   if (host === "0.0.0.0") log(pc.dim(`  reachable from other machines; set FISHTEA_HOST=127.0.0.1 to keep it local`));
-  log(pc.dim(`  the UI needs VITE_CORE_URL=${publicUrl(flags)}`));
+  log(pc.dim(`  the UI needs VITE_CORE_URL=${publicUrl(publicFlags)}`));
   log(pc.dim(`  browser origins ${cors.origins === "*" ? pc.yellow("any (FISHTEA_CORS_ORIGINS=*)") : cors.origins?.length ? cors.origins.join(", ") : `any port on ${cors.hosts.join(", ")}`}`));
   await new Promise(() => {});
 }

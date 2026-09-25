@@ -5,6 +5,7 @@
  * and its core bound to every interface; each is a flag, then an environment variable, then a default.
  */
 import { networkInterfaces } from "node:os";
+import { createServer } from "node:net";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 
@@ -14,6 +15,68 @@ const str = (v: unknown): string | undefined => (typeof v === "string" && v.leng
 /** The address the core binds. 0.0.0.0 by default so the stack is reachable from other machines. */
 export const bindHost = (flags: Flags = {}): string => str(flags.host) ?? process.env.FISHTEA_HOST ?? "0.0.0.0";
 export const bindPort = (flags: Flags = {}): number => Number(str(flags.port) ?? process.env.PORT ?? 3000);
+
+/**
+ * Did someone actually ask for this port, or is it just the default?
+ *
+ * The distinction is the whole of the auto-port behaviour below: moving off a port nobody chose is a
+ * convenience, and moving off one somebody named is ignoring an instruction.
+ */
+export const portWasChosen = (flags: Flags = {}): boolean => !!(str(flags.port) ?? process.env.PORT);
+
+/**
+ * Can we bind this port on this host?
+ *
+ * Probing the *bind host* rather than localhost matters: something listening only on 127.0.0.1 still
+ * blocks a bind to 0.0.0.0, and something on one LAN address does not block another. Asking the kernel
+ * the same question the server will ask is the only answer that is not a guess.
+ */
+export function portFree(port: number, host = "0.0.0.0"): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = createServer();
+    probe.once("error", () => resolve(false));
+    probe.once("listening", () => probe.close(() => resolve(true)));
+    try { probe.listen(port, host === "0.0.0.0" ? undefined : host); } catch { resolve(false); }
+  });
+}
+
+/** The first free port at or after `from`, or undefined if `tries` of them are all taken. */
+export async function nextFreePort(from: number, host = "0.0.0.0", tries = 40): Promise<number | undefined> {
+  for (let p = from; p < from + tries && p <= 65535; p++) if (await portFree(p, host)) return p;
+  return undefined;
+}
+
+/**
+ * The port to actually bind.
+ *
+ * Free, or nobody chose it and we may move: the first free one above it, reported so the printed URLs
+ * and anything reading them stay true. Somebody chose it and it is taken: a SetupError naming what to
+ * do, because silently serving somewhere else is how you spend twenty minutes wondering why your
+ * requests reach the wrong application.
+ */
+export async function resolvePort(
+  wanted: number,
+  host: string,
+  o: { chosen: boolean; label?: string } = { chosen: false },
+): Promise<{ port: number; moved: boolean }> {
+  if (await portFree(wanted, host)) return { port: wanted, moved: false };
+  const what = o.label ?? "the core";
+  if (o.chosen) {
+    throw new SetupError(`port ${wanted} is already in use, and you asked for it specifically`, [
+      `Find what has it:  ss -ltnp | grep :${wanted}`,
+      `Pick another:      --port <n>   (or PORT=<n>)`,
+      `Or let ${what} choose one: unset PORT and drop --port`,
+    ]);
+  }
+  const port = await nextFreePort(wanted + 1, host);
+  if (!port) {
+    throw new SetupError(`port ${wanted} is in use and so are the next 40`, [
+      `Find what has them: ss -ltnp | grep :${wanted}`,
+      `Name a free one:    --port <n>`,
+    ]);
+  }
+  return { port, moved: true };
+}
 
 /** The host other machines should use to reach this core. Used for printed URLs and for the UI's VITE_CORE_URL. */
 export function publicHost(flags: Flags = {}): string {
