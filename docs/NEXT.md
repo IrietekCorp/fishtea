@@ -184,7 +184,8 @@ inside it. Server-driven UI, except the components are composed per turn rather 
 Much of it already exists unnamed: `allow` is the guard, `next` is the stitching drawn one hop at a
 time, and `personaSubsets` is already scoped classification keyed by persona rather than by area.
 
-**Top-level shapes are also addresses.** `/browse`, `/purchase`, `/orders` — for SEO, bookmarking and
+**Addresses: `docs/ADDRESSES.md`, and it can ship without the nesting.** Top-level shapes are also
+addresses — `/browse`, `/purchase`, `/orders` — for SEO, bookmarking and
 linking. That is not a retreat from "no pages": the essay's objection is to the URL as *memory*, and the
 blueprint already said "the shape names *are* the routes". An area URL carries the area and nothing
 else — no filters, no step, no trail id — so two people opening the same link get the same place and
@@ -201,6 +202,22 @@ Also note that areas alone are thin SEO: four or five pages. What ranks for a sh
 `/product/<slug>`, thousands of them. Addressable entities are derivable from the spec — as are
 `sitemap.xml`, schema.org structured data and Open Graph — but that is a larger change than area URLs
 and should be judged separately.
+
+**The timeline question has an answer that costs nothing to start.** A point in a conversation is a
+*question*, not a stored state, so a marker names the shape and its typed arguments and the point
+reconstitutes itself by re-asking. The URL says *where* (an area, maybe a question); the browser history
+entry says *when* (`history.pushState` state, which is per-entry, never copied with the link, and
+therefore the right place for a turn id). Push on area boundaries, replace within one — so back means
+"the previous place" and returning to an area returns you to the depth you left it at. `POST
+/trail/rewind` already exists and branches correctly; what is missing is binding it to `popstate`.
+
+Which points are addressable is **derived**: `effect: "read"` and `allow` includes `stranger`. Run
+against the ecommerce spec unmodified that yields exactly `findProducts`, `relatedProducts`,
+`compareProducts` and `trending` — the cart and orders excluded because they are persona-guarded, the
+writes excluded because they are writes. Nobody annotated anything.
+
+**Steps 1 and 2 of that doc are days and need no decisions**, and step 1 (client-side `pushState` +
+`popstate` → rewind) makes back and forward correct today regardless of whether any of the rest happens.
 
 **The nesting itself is not a decision yet, and the first two steps are measurements, not code.** Area-sized tool
 subsets should classify faster and better; they also multiply the pool's subsets, and `contract.md`
