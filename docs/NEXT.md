@@ -247,6 +247,30 @@ Still open, in rough priority order:
   alternative.
 - Operator auth is one shared token (see §7), and the rate limiter is per process (see below).
 
+### 3d. Generative UI, and the encoding to borrow
+`docs/GENERATIVE-UI.md` — a read of Vercel's [json-render](https://json-render.dev/), the closest public
+thing to the part of FishTea that turns an answer into an interface.
+
+The divergence is total and in our favour: their model composes the layout and a catalogue constrains
+it; our model never picks a vessel at all, because the answer's shape does. And their spec is frozen
+after generation — as documented, an action's only effect is `setState`, so nothing an interaction does
+can change *what the interface is*. A frozen tree has no way to say no. Our `ask`, the gate,
+`confirm-write` and the unmet channel are the disagreement machinery they have no concept of, and those
+four are worth naming as one idea.
+
+Three things they are ahead on, all worth taking:
+
+- **`{root, elements}` — a flat, id-addressed map instead of a nested tree.** An element can be sent,
+  replaced or patched without its ancestors. This is a **prerequisite** for composite pours rather than
+  a refinement, and it should be decided before §3b rather than after.
+- **Progressive streaming render.** We pour whole, at the end. The encoding above is what makes partial
+  meaningful.
+- **An action log** in the operator console — the trail already holds the data; it is a screen.
+
+Three to refuse: the model composing layout, a frozen spec with accumulating client state (a second,
+worse trail), and `$cond`/`$template`/`$computed` — a programming language in JSON, and a rule the model
+wrote, which the house rules forbid outright.
+
 ### 4. Small correctness items (hours each)
 - `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4; several NICs or NAT needs it set by
   hand. There is no TLS story: the core speaks HTTP and expects something in front of it.

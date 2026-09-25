@@ -106,7 +106,10 @@ What has to be decided:
   return is more fluid and much harder to reason about when it goes wrong.
 - **What a part is.** Most cheaply: a pour is a *list of the existing pours*, so every vessel keeps its
   current contract and the container renders a sequence. Vessel overrides (already wired) then compose
-  too, for free.
+  too, for free. **But a list is probably the wrong encoding** — see
+  [Generative UI](generative-ui.html): json-render's `{root, elements}`, a flat map of ids, is what lets
+  an element be patched or streamed without resending its ancestors. A composite that can only be
+  replaced whole cannot stream, and none of its parts can be referred to afterwards.
 - **The verify strip.** Today it reports one shape, its calls, its reads and writes. A composite has
   several, and the strip is the thing that makes the system inspectable — so it has to say which part
   came from where, not collapse into one line. This is a feature, not an obstacle: a composite answer
