@@ -194,7 +194,7 @@ to.
 
 ```bash
 bun run release <version>                    # move every version site, if this is a new version
-bun test packages site && bun run typecheck
+bun test packages site scripts && bun run typecheck
 bun run build-release --target linux-x64 --target linux-arm64 \
                       --target darwin-x64 --target darwin-arm64 --target windows-x64 --tarball
 bun run deploy

@@ -125,7 +125,7 @@ rather than guessed at.
 ### 2. Publish (half a day, whenever you want it public)
 Everything up to publishing is built and verified; publishing itself was deliberately left to you.
 
-- `bun run release <v>` → `bun test packages` → commit → `git tag v<v>`.
+- `bun run release <v>` → `bun test packages site scripts` → commit → `git tag v<v>`.
 - `bun publish` per package. `workspace:*` is rewritten to a concrete version in the packed manifest
   (verified), so npm clients resolve correctly. Packages ship TypeScript source, which is correct for a
   Bun-only framework but means node consumers are not supported — decide whether to say so in the
@@ -331,6 +331,14 @@ Two things fell out of this that are worth knowing:
 - `bun build --compile` folds a *conditional* dynamic import into the bundle and evaluates it eagerly.
   That is why `packages/tui/src/devtools-stub.ts` exists and is aliased in `tsconfig.json`; if the binary
   ever dies at startup on a missing package, this is the shape of the problem.
+- **A release is also a docker build context, and staging forgot it.** `fishtea up` runs compose with
+  the release directory as the context, and `Dockerfile.core` copies `package.json`, `bun.lock`,
+  `tsconfig.json` and `packages/` before `bun install --frozen-lockfile`. The staged release had none of
+  the first three and only two of the seven workspace packages, so an installed `fishtea up` died on
+  `"/tsconfig.json": not found` — and would have failed on the missing members next, because an install
+  resolves the whole workspace and one absent package.json fails it. All of `packages/` is ~730 KB
+  beside an 83 MB binary; there was never anything to optimise. `scripts/release.test.ts` parses the
+  Dockerfiles' COPY lines and fails on anything RUNTIME_FILES does not cover.
 - **The compiled binary has no source tree, and the console used to forget that.** `@fishtea/cli`
   imports `@fishtea/tui`, so the console cannot import the CLI back without a cycle; it dodged that with
   ``await import(`${fishteaHome}/packages/cli/src/new.ts`)``, which works in a checkout and can never

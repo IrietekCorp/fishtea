@@ -34,8 +34,29 @@ export function hostTarget(): Target {
   return `${os}-${arch}` as Target;
 }
 
-/** Runtime data a compiled binary cannot contain but the framework reads. */
-const RUNTIME_FILES = ["templates", "plugins", "packages/ui", "Dockerfile.core", "Dockerfile.classifier", "packages/classifier", "docker-compose.yml"];
+/**
+ * What ships beside the binary.
+ *
+ * Two different reasons, and conflating them is what broke `fishtea up` from an install:
+ *
+ *   **data the framework reads** — `templates/` (archetypes) and `plugins/` (the builtins). A compiled
+ *   binary embeds code, not directories, so these have to be on disk.
+ *
+ *   **source the Dockerfiles build** — `fishtea up` runs docker compose with the release directory as
+ *   the build context, and Dockerfile.core copies `package.json`, `bun.lock`, `tsconfig.json` and
+ *   `packages/`, then runs `bun install --frozen-lockfile`. That needs **every** workspace member, not
+ *   just the two the container happens to execute: `workspaces: ["packages/*", "plugins/*"]`, and an
+ *   install fails on a member whose package.json is missing. Shipping only packages/ui and
+ *   packages/classifier gave `"/tsconfig.json": not found` and would have failed on the rest next.
+ *
+ * All of packages/ is ~900 KB of TypeScript beside an 83 MB binary, so there is nothing to optimise
+ * here — and `releaseNeeds()` in the test asserts this list still covers what the Dockerfiles copy.
+ */
+export const RUNTIME_FILES = [
+  "templates", "plugins", "packages",
+  "package.json", "bun.lock", "tsconfig.json",
+  "Dockerfile.core", "Dockerfile.classifier", "docker-compose.yml",
+];
 
 export async function build(target: Target, o: { outDir: string; quiet?: boolean } = { outDir: join(HOME, "dist") }): Promise<string> {
   const staged = join(o.outDir, `fishtea-${VERSION}-${target}`);

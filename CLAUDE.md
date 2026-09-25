@@ -7,7 +7,7 @@ Describe a business once in `spec.json`; derive the data layer, the classifier's
 ```bash
 bun install
 docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18
-bun test packages                 # spec + core + http + templates + tui (needs the container above on :5434)
+bun test packages scripts         # spec + core + http + templates + tui + release staging (needs the container above on :5434)
 bun test packages/tui             # the console, driven through a pty
 bun run e2e                       # the browser walkthrough, headless (skips cleanly with no browser/db)
 bun run typecheck                 # both projects, including packages/ui
@@ -56,9 +56,12 @@ bunx tsc -p tsconfig.json --noEmit
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - Generated applications live outside the framework checkout. `targetDir()` enforces it; `scaffold()` refuses otherwise.
-- A release ships `templates/`, `plugins/` and `packages/ui/` beside the binary and **no source**. Never
-  build an import or a subprocess from a path into `packages/cli/src` — pass the function in (the
-  `Scaffolder` seam) or re-invoke `selfCommand()`. `packages/tui/test/seams.test.ts` enforces it.
+- A release ships `templates/`, `plugins/`, all of `packages/` and the root manifests beside the binary.
+  It is two things at once: data the framework reads, **and** the docker build context `fishtea up`
+  uses, so anything a Dockerfile copies must be staged (`scripts/release.test.ts` enforces it).
+  Code still never runs from there — never build an import or a subprocess from a path into
+  `packages/cli/src`; pass the function in (the `Scaffolder` seam) or re-invoke `selfCommand()`.
+  `packages/tui/test/seams.test.ts` enforces that half.
 - Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain.
 - A plugin is merged at *load* time and never written into `spec.json`; the application always wins a name clash, and two plugins clashing is an error.
 - A `classifier` or `channel` plugin *is* its `module` — the manifest must name one, it is imported when
