@@ -122,14 +122,124 @@ What this comparison does say is that our medium is currently coarse. One pour, 
 the end. The conversation is real but each utterance produces a single monolithic reply. That is where
 their encoding earns its place with us.
 
-## What to actually do
+## What to borrow, concretely
 
-1. **Adopt `{root, elements}` for composite pours.** A flat, id-addressed map, patchable per element.
-   This is a prerequisite for composites rather than a nice-to-have, and it should be decided before the
-   [nested-shapes](nested-shapes.html) work, not after.
-2. **Stream a pour progressively**, once the encoding allows a partial one to be meaningful.
-3. **An action log in the operator console** — every turn's shape, args, calls and outcome, in order.
-   Most of the data is already on the trail; it is a screen, not a system.
-4. **`watch`, only if it can be server-side.** An element reacting to a change is useful; a second
-   client-side state tree is not. If it cannot be expressed as a turn, do not build it.
-5. **No expression language.** If a spec needs a condition, it is a rule, and rules have a home.
+Four things, in dependency order. The first is the one the others need; the last two are days of work
+and independent of everything else.
+
+### 1. A composite pour is a flat map of parts
+
+Today an answer is one vessel and one blob:
+
+```ts
+export interface AnswerPour {
+  kind: "answer"; shape: string; phrase: string;
+  vessel: VesselName; answer: unknown; next: Chip[]; provenance: Provenance;
+}
+```
+
+Borrowing their encoding, and *only* their encoding:
+
+```ts
+export interface CompositePour {
+  kind: "composite";
+  shape: string;
+  phrase: string;
+  root: string;                        // which part leads
+  parts: Record<string, Part>;         // id → part, flat, patchable
+  next: Chip[];
+  provenance: Provenance[];            // one per part that ran calls
+  classifier?: ClassMeta;
+}
+
+export interface Part {
+  /** An existing pour, unchanged. Not a new component type. */
+  of: AnswerPour | FormPour | NotificationPour;
+  children?: string[];
+  /** which plan step produced it, so the verify strip can stay honest */
+  from?: string;
+}
+```
+
+The important line is the comment. json-render had to invent a component catalogue because a model was
+choosing the components; **we already have seven vessels and they keep their contracts exactly.** A part
+*is* a pour. `container.tsx` gains one case, every vessel is untouched, and vessel overrides compose for
+free because they are looked up per pour kind already.
+
+Why a map rather than the list I first suggested in [nested shapes](nested-shapes.html): a list can only
+be replaced whole. A map means one part can be patched while the others stand, a part can be *named* —
+by a chip, by a stream patch, by an anchor — and the thing can arrive in pieces. None of that is
+possible with an array, and all of it is the point.
+
+**This is additive.** `composite` is a new member of the `Pour` union; nothing that exists changes
+shape. Every `switch (pour.kind)` gains a case and keeps its others. That is what makes it worth doing
+before the spec-format work rather than as part of it.
+
+### 2. Streaming is plan progress, not token progress
+
+We already have the channel — `/events`, and `Event { type: "turn" | "notification" | "ping" | "reload" }`.
+Two more kinds:
+
+```ts
+{ type: "part", data: { turnId, id, part } }   // upsert one part of a composite
+{ type: "settled", data: { turnId } }          // the plan finished; nothing more is coming
+```
+
+The planner already runs steps in order and records `{ id, call, ms, kind }` per step, so the emit point
+exists. The visitor sees the catalogue results while the recommendations are still running.
+
+Note what is being streamed. json-render streams *the model emitting a spec* — the UI appears because
+generation is slow. We would stream *the plan resolving*, which is a better thing to show: not "the
+model is still typing" but "the products are here, the delivery estimate is still coming". It also keeps
+the classifier where it is, inside its hard budget, rather than on the critical path of the render.
+
+### 3. `watch` becomes a chip that fires itself
+
+Theirs reacts to a change by mutating local state. Ours should react to a change by *taking a turn* —
+which is one field on something that already exists:
+
+```ts
+export interface Chip {
+  label: string; shape: string; args?: Record<string, unknown>; gated?: boolean;
+  /** fire on this field changing rather than on a click */
+  on?: { field: string };
+}
+```
+
+A country select changes, the chip fires, the engine classifies nothing and runs `loadCities{country}`
+as a normal utterance: gated by persona, planned, provenanced, and appended to the trail. The cities
+part is replaced by a patch from §2.
+
+**Their watcher is a state mutation; ours is an utterance.** That difference is the whole reason not to
+copy it directly — a watcher that writes to a client-side tree is the beginning of the second, worse
+memory this document warns about twice.
+
+### 4. An action log in the operator console
+
+Every turn: persona, shape, confidence, the calls with their timings, what was read and written, the
+outcome — including the refusals, which is what makes it interesting. The trail already holds all of
+it and `Provenance` is already the right record. This is a query and a screen, not a system.
+
+## What not to borrow, and one more
+
+The three from above stand: the model composing layout, a frozen spec with accumulating client state,
+and the `$cond`/`$template`/`$computed` expression language.
+
+One more, which is tempting: **code export**, turning a generated UI into a standalone React component
+with no runtime dependency. It is a good escape hatch for their model — generation is expensive and
+freezing a good result is sensible. For us it is backwards: our UI is derived from the spec, and the
+whole argument of `fishtea update` is that derived things move when the source does. An exported copy is
+a fork with extra steps.
+
+## Order, and cost
+
+| | | cost |
+|---|---|---|
+| 1 | composite pour, `{root, parts}` | the big one — touches `packages/ui`, the TUI, the headless runner, the bench and the e2e suite, because the pour union is load-bearing. Additive, so no migration. |
+| 2 | streamed parts | small once 1 exists; the emit points are already there |
+| 3 | self-firing chips | a day, independent |
+| 4 | action log | a day, independent |
+
+3 and 4 can be done now and are worth doing whether or not 1 ever happens. 1 should be decided before
+[nested shapes](nested-shapes.html), because a composite is the thing an area pours and the encoding is
+harder to change afterwards than to choose now.

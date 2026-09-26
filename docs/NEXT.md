@@ -269,7 +269,25 @@ Three things they are ahead on, all worth taking:
 
 Three to refuse: the model composing layout, a frozen spec with accumulating client state (a second,
 worse trail), and `$cond`/`$template`/`$computed` — a programming language in JSON, and a rule the model
-wrote, which the house rules forbid outright.
+wrote, which the house rules forbid outright. Also their code export: freezing a derived UI is a fork
+with extra steps, and the whole argument of `fishtea update` is that derived things move.
+
+**The concrete borrowings, in dependency order** (designs in the doc):
+
+1. **`CompositePour { root, parts }`** — a flat id→part map where a `Part.of` is an *existing* pour, so
+   all seven vessels keep their contracts and overrides compose for free. Additive: one new member of
+   the `Pour` union, every `switch` gains a case and keeps its others. The big one — the union is
+   load-bearing across `packages/ui`, the TUI, headless, bench and e2e — and it should be decided
+   **before** §3b, because a composite is what an area pours.
+2. **Streamed parts** over the existing SSE — `{type:"part"}` and `{type:"settled"}`. We would stream
+   *the plan resolving*, not a model emitting; the planner already records per-step timings so the emit
+   points exist. Small once 1 lands.
+3. **A chip that fires itself** — `Chip.on = { field }`. Their watcher mutates client state; ours takes
+   a turn, so it is gated, planned, provenanced and on the trail. A day, independent.
+4. **An action log** in the operator console — every turn including the refusals. `Provenance` is
+   already the right record; this is a query and a screen. A day, independent.
+
+3 and 4 are worth doing whether or not 1 happens.
 
 ### 4. Small correctness items (hours each)
 - `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4; several NICs or NAT needs it set by
