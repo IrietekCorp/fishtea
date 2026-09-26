@@ -139,3 +139,30 @@ describe("http", () => {
     expect(r.head).toBe(first.id);
   });
 });
+
+describe("the action log", () => {
+  test("every turn appears, with the refusals marked", async () => {
+    const h = { "content-type": "application/json", "x-fishtea-visitor": "" };
+    // A turn that answers, and one the gate refuses — the second is the interesting row.
+    const first = await (await fetch(`${base}/utter`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: "something for a wedding" }) })).json() as any;
+    const v = first.visitor.id;
+    await fetch(`${base}/utter`, { method: "POST", headers: { ...h, "x-fishtea-visitor": v }, body: JSON.stringify({ shape: "checkout", args: {} }) });
+
+    const res = await fetch(`${base}/op/actions?since=1h&visitor=${v}`, { headers: { "x-fishtea-operator": OP } });
+    expect(res.status).toBe(200);
+    const { actions } = await res.json() as any;
+
+    expect(actions.length).toBeGreaterThanOrEqual(2);
+    for (const a of actions) {
+      expect(a.visitorId).toBe(v);
+      expect(a).toHaveProperty("kind");
+      expect(a).toHaveProperty("latencyMs");
+    }
+    // The refusal carries why, which is the whole reason to keep a log rather than a success counter.
+    expect(actions.some((a: any) => a.answered === false && a.unmet)).toBe(true);
+  });
+
+  test("it is behind the operator token like everything else under /op", async () => {
+    expect((await fetch(`${base}/op/actions`)).status).toBe(403);   // 403 throughout /op, not 401
+  });
+});

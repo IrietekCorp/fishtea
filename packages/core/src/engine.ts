@@ -8,7 +8,7 @@ import { bindCalls, type BoundCall } from "./calls/index.ts";
 import { TrailService, type Turn, type Author, type PourKind } from "./trail/index.ts";
 import { derivePersona, allowedShapes, checkPersonas, type Identity } from "./persona.ts";
 import { Planner, PlanError, resolve as resolveRefs, type Provenance } from "./plan/index.ts";
-import { type Pour, type Chip, type ClassMeta, askPour, formPour, confirmPour, answerPour, chip, phraseFor, nextChips } from "./pour.ts";
+import { type Pour, type Chip, type ClassMeta, askPour, formPour, confirmPour, answerPour, compositePour, type AnswerPour, chip, phraseFor, nextChips } from "./pour.ts";
 import type { Classifier, ClassifyResult } from "./classify/index.ts";
 import { LexicalClassifier, tokens } from "./classify/lexical.ts";
 import { Hub, renderNotification, type Channel, type Outbound } from "./notify/index.ts";
@@ -354,7 +354,10 @@ export class Engine {
             try {
               const r = await this.planner.run({ shapeName, shape, args, visitor, persona });
               provenance = r.provenance;
-              pour = answerPour(this.app.spec, shapeName, shape, args, r.answer, r.provenance, persona, { classifier: meta });
+              const lead = answerPour(this.app.spec, shapeName, shape, args, r.answer, r.provenance, persona, { classifier: meta });
+              pour = shape.compose?.length
+                ? await this.composeParts({ shape: shapeName, pour: lead, provenance: r.provenance }, shape, args, visitor, persona, meta)
+                : lead;
               for (const c of extraCalls) { const ch = chip(this.app.spec, c.name, c.arguments, undefined, persona); if (ch && !(pour as any).next.some((x: Chip) => x.shape === ch.shape)) (pour as any).next.push(ch); }
             } catch (e) {
               const err = e as PlanError;
@@ -388,6 +391,45 @@ export class Engine {
       timings: { classifyMs: Math.round(classifyMs), planMs: Math.round(planMs), totalMs: Math.round(performance.now() - t0) },
       classifier: this.classifier.name,
     };
+  }
+
+  /**
+   * Run a shape's composed siblings and build one pour out of the lot.
+   *
+   * The gate is re-applied per part, though the loader already refused a part the asking persona cannot
+   * have: the loader checks the *declared* personas, and a persona is derived per request. Checking
+   * both is the difference between a rule and a rule that holds.
+   *
+   * A part that fails or is refused is dropped, not fatal. The lead answer is what was asked for; a
+   * recommendation strip that could not load is a missing strip, not a failed turn — and the part's
+   * absence is visible in the provenance, which is where an operator would look.
+   */
+  private async composeParts(
+    lead: { shape: string; pour: AnswerPour; provenance: Provenance },
+    shape: ShapeDef,
+    args: Record<string, unknown>,
+    visitor: { id: string; customerId: string | null },
+    persona: string,
+    meta?: ClassMeta,
+  ): Promise<Pour> {
+    const parts: { shape: string; pour: AnswerPour; provenance: Provenance }[] = [];
+    for (const name of shape.compose ?? []) {
+      const def = getShape(this.app.spec, name);
+      if (!def || def.effect === "write" || !def.allow.includes(persona)) continue;
+      // A part is given the arguments it shares with the lead; anything else falls to its declared
+      // defaults. A part is never handed an argument the visitor did not supply for it.
+      const partArgs: Record<string, unknown> = {};
+      for (const k of Object.keys(def.input)) if (args[k] !== undefined) partArgs[k] = args[k];
+      const parsed = inputSchema(def, this.app.spec).safeParse(partArgs);
+      if (!parsed.success) { this.log(`compose ${name}: skipped (${parsed.error.issues[0]?.message ?? "bad args"})`); continue; }
+      try {
+        const r = await this.planner.run({ shapeName: name, shape: def, args: parsed.data, visitor, persona });
+        parts.push({ shape: name, pour: answerPour(this.app.spec, name, def, parsed.data, r.answer, r.provenance, persona), provenance: r.provenance });
+      } catch (e) {
+        this.log(`compose ${name}: skipped (${(e as Error).message})`);
+      }
+    }
+    return parts.length ? compositePour(lead, parts, { classifier: meta }) : lead.pour;
   }
 
   private argsLine(args: unknown): string {

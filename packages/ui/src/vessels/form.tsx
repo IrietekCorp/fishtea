@@ -10,9 +10,30 @@ import { labelOf } from "../fields";
 import type { Field as FieldDef } from "../lib/client";
 
 /** form and confirm-write: fields from the shape's input schema; knowns pre-filled; writes confirm in an AlertDialog with a focus trap. */
-export function FormVessel({ shape, fields, known, errors, error, hint, phrase, write, summary, onSubmit }: { shape: string; fields: FieldDef[]; known: Record<string, unknown>; errors?: Record<string, string>; error?: string; hint?: string; phrase: string; write: boolean; summary?: string; onSubmit: (args: Record<string, unknown>, confirm: boolean) => void }) {
+export function FormVessel({ shape, fields, known, errors, error, hint, phrase, write, summary, onSubmit, watch: watchChips, onFire }: { shape: string; fields: FieldDef[]; known: Record<string, unknown>; errors?: Record<string, string>; error?: string; hint?: string; phrase: string; write: boolean; summary?: string; onSubmit: (args: Record<string, unknown>, confirm: boolean) => void; watch?: { field: string; shape: string; args?: Record<string, unknown> }[]; onFire?: (c: { shape: string; args?: Record<string, unknown> }) => void }) {
   const flat = flatten(fields, known);
-  const { register, handleSubmit, getValues, setFocus, formState } = useForm({ defaultValues: flat.defaults });
+  const { register, handleSubmit, getValues, setFocus, formState, watch } = useForm({ defaultValues: flat.defaults });
+
+  /**
+   * A chip that fires on a field changing rather than on a click.
+   *
+   * It sends the same utterance the click would have, so the turn is gated, planned and on the trail —
+   * nothing is kept here. `useRef` holds the last value seen so a re-render does not re-fire, and the
+   * first render never fires: this reacts to a *change*, not to existing.
+   */
+  const seen = useRef<Record<string, unknown>>({});
+  const values = watch();
+  useEffect(() => {
+    for (const w of watchChips ?? []) {
+      // A watched field may be named by its flat key ("shipTo.country") or by its leaf ("country").
+      const key = flat.fields.find((f) => f.key === w.field || f.path.at(-1) === w.field)?.key ?? w.field;
+      const now = (values as Record<string, unknown>)[key];
+      if (!(key in seen.current)) { seen.current[key] = now; continue; }
+      if (seen.current[key] === now) continue;
+      seen.current[key] = now;
+      if (now !== undefined && now !== "") onFire?.({ shape: w.shape, args: { ...(w.args ?? {}), [w.field]: now } });
+    }
+  }, [values, watchChips, onFire, flat.fields]);
   const [confirming, setConfirming] = useState<Record<string, unknown> | null>(null);
   const firstEmpty = useRef<string | null>(flat.fields.find((f) => f.required && (flat.defaults[f.key] == null || flat.defaults[f.key] === ""))?.key ?? null);
   useEffect(() => { if (firstEmpty.current) setFocus(firstEmpty.current as any); }, [setFocus]);

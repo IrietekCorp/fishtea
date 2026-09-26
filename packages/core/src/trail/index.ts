@@ -9,7 +9,7 @@ import type { TrailFact } from "../persona.ts";
 import { EMBED_DIM } from "@fishtea/spec";
 
 export type Author = "visitor" | "system" | "operator";
-export type PourKind = "ask" | "form" | "confirm-write" | "answer" | "notification";
+export type PourKind = "ask" | "form" | "confirm-write" | "answer" | "notification" | "composite";
 
 export interface Turn {
   id: string; trailId: string; parentId: string | null; seq: number; author: Author; at: string;
@@ -158,6 +158,39 @@ export class TrailService {
     const m = since.match(/^(\d+)\s*(d|h|m|days?|hours?|minutes?)$/);
     const interval = m ? `${m[1]} ${({ d: "days", h: "hours", m: "minutes" } as any)[m[2][0]]}` : since;
     return this.db.unsafe(`SELECT asked, campaign, customer_id AS "customerId", visitor_id AS "visitorId", at FROM conversation.unmet WHERE at > now() - $1::interval ORDER BY at DESC LIMIT 200`, [interval]) as any;
+  }
+
+  /**
+   * The action log: every turn, newest first, with what it did and whether it worked.
+   *
+   * Borrowed in spirit from json-render's devtools, which log the actions a spec fires. The difference
+   * is where the data comes from — theirs is a client-side recorder, ours is the trail, which already
+   * holds every turn with its provenance because that is what the trail is for. So this is a query.
+   *
+   * The refusals are the point. A log of what succeeded tells you less than one showing where the gate
+   * turned somebody away, where the classifier gave up, and where a plan failed.
+   */
+  async actions(o: { since?: string; limit?: number; visitorId?: string } = {}): Promise<Record<string, unknown>[]> {
+    const m = (o.since ?? "24h").match(/^(\d+)\s*(d|h|m|days?|hours?|minutes?)$/);
+    const interval = m ? `${m[1]} ${({ d: "days", h: "hours", m: "minutes" } as any)[m[2][0]]}` : (o.since ?? "24 hours");
+    const limit = Math.min(Math.max(Number(o.limit ?? 100), 1), 500);
+    return this.db.unsafe(
+      `SELECT t.id, t.seq, t.at, t.trail_id AS "trailId", tr.visitor_id AS "visitorId",
+              t.author, t.shape, t.kind, t.confidence, t.answered, t.latency_ms AS "latencyMs",
+              t.utterance -> 'persona'              AS persona,
+              t.provenance -> 'calls'               AS calls,
+              t.provenance -> 'read'                AS read,
+              t.provenance -> 'wrote'               AS wrote,
+              t.provenance ->> 'unmet'              AS unmet,
+              t.provenance -> 'classifier' ->> 'name' AS classifier
+         FROM conversation.turn t
+         JOIN conversation.trail tr ON tr.id = t.trail_id
+        WHERE t.at > now() - $1::interval
+          AND ($2::text IS NULL OR tr.visitor_id = $2::text)
+        ORDER BY t.at DESC
+        LIMIT $3`,
+      [interval, o.visitorId ?? null, limit],
+    ) as any;
   }
 
   // ── notifications ────────────────────────────────────────────────────────

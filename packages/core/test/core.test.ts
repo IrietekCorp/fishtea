@@ -251,3 +251,105 @@ describe("the gate", () => {
     for (const id of ids) expect({ id, long: id.length >= 24 }).toEqual({ id, long: true });
   });
 });
+
+/**
+ * Composite pours: several vessels, composed for one turn.
+ *
+ * The encoding is borrowed from json-render — a flat `id → part` map rather than a nested tree, so a
+ * part can be patched without its siblings and can be named. What is not borrowed is the idea that a
+ * model composes it: `compose` is declared in the spec, each part is planned in its own right, and a
+ * part is an ordinary pour so every vessel keeps its contract.
+ */
+describe("composite pours", () => {
+  /**
+   * The ecommerce archetype does not compose anything — whether a shop's product search also shows
+   * trending is that shop's decision. So these build an app whose spec declares it.
+   *
+   * `structuredClone` cannot be used on an App: it carries a `resolve` function and would throw. Only
+   * the spec is cloned, and the rest of the App is reused by reference.
+   */
+  const composing = (edit: (spec: any) => void = () => {}) => {
+    const spec = structuredClone(app.spec) as any;
+    spec.shapes.findProducts.compose = ["trending"];
+    edit(spec);
+    return { ...app, spec } as typeof app;
+  };
+
+  test("a shape with compose pours its lead and its parts, each keeping its own vessel", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const r = await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id });
+
+    expect(r.pour.kind).toBe("composite");
+    const p = r.pour as any;
+    expect(p.root).toBe("findProducts");
+    expect(Object.keys(p.parts).sort()).toEqual(["findProducts", "trending"]);
+    expect(p.parts.findProducts.children).toEqual(["trending"]);
+
+    // Each part is a whole pour, not a fragment: it kept its kind, its vessel and its own answer.
+    for (const id of ["findProducts", "trending"]) {
+      expect(p.parts[id].of.kind).toBe("answer");
+      expect(p.parts[id].of.vessel).toBeTruthy();
+      expect(p.parts[id].from).toBe(id);
+    }
+    expect(p.parts.findProducts.of.answer).not.toEqual(p.parts.trending.of.answer);
+  });
+
+  test("provenance is per part, so a composite can still be taken apart", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const p = (await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id })).pour as any;
+
+    expect(Array.isArray(p.provenance)).toBe(true);
+    expect(p.provenance.map((x: any) => x.shape)).toEqual(["findProducts", "trending"]);
+    for (const prov of p.provenance) expect(prov.calls.length).toBeGreaterThan(0);
+  });
+
+  test("next is the union of every part's chips, each once", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const p = (await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id })).pour as any;
+
+    const keys = p.next.map((c: any) => `${c.shape}:${JSON.stringify(c.args ?? {})}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(p.next.length).toBeGreaterThan(0);
+  });
+
+  test("a composite is persisted and comes back on resume", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id });
+
+    // The turn table has a CHECK on kind; "composite" had to be added to it, and a pour that cannot be
+    // appended is a turn that never happened.
+    const resumed = await e.resume({ visitorId: visitor.id, hadToken: true, envelope: {} });
+    expect(resumed.pour.kind).toBe("composite");
+    expect((resumed.pour as any).parts.trending).toBeTruthy();
+  });
+
+  test("a part the persona may not ask is dropped, not smuggled in", async () => {
+    // The loader refuses a part that widens access, so this asserts the *runtime* half of the same rule:
+    // personas are derived per request, and composeParts re-checks rather than trusting the load-time
+    // check it already passed.
+    const narrowed = composing((spec) => { spec.shapes.trending.allow = ["customer"]; });
+    const e = new Engine({ app: narrowed, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });        // a stranger
+    const r = await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id });
+
+    expect(r.persona).toBe("stranger");
+    expect(r.pour.kind).toBe("answer");                          // no parts survived, so no composite
+    expect(r.pour).not.toHaveProperty("parts");
+
+    // The *chip* for trending is still offered and still marked gated — that is the gate showing the
+    // way in, which is existing behaviour and the opposite of a leak. What must not appear is trending's
+    // data, and the only way to have that is to have planned it.
+    const chip = (r.pour as any).next.find((c: any) => c.shape === "trending");
+    expect(chip?.gated).toBe(true);
+    expect(chip).not.toHaveProperty("answer");
+  });
+});

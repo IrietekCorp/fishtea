@@ -29,6 +29,14 @@ export interface NextDef {
   shape: string;
   args?: Record<string, unknown>;
   each?: string;
+  /**
+   * Fire when this form field changes rather than when somebody clicks.
+   *
+   * The interesting part is what it is *not*: json-render's equivalent mutates a client-side state tree,
+   * which is a second memory beside the trail. This sends the same utterance a click would have sent, so
+   * the turn is gated by persona, planned, given provenance and appended like any other.
+   */
+  on?: { field: string };
 }
 
 export type VesselName = "list" | "card" | "detail" | "compare" | "timeline" | "confirm";
@@ -46,6 +54,14 @@ export interface ShapeDef {
   vessel?: VesselName;
   next?: NextDef[];
   triggers?: string[];
+  /**
+   * Sibling shapes whose answers pour beside this one, as parts of one composite.
+   *
+   * Each is planned in its own right and keeps its own vessel and provenance — this composes answers,
+   * it does not merge them. A composed shape must be a `read` the asking persona is allowed, so a
+   * composite can never smuggle in a write or something the gate would have refused on its own.
+   */
+  compose?: string[];
 }
 
 export interface GreetingDef { shape?: string; hint?: string; resume?: boolean; offer?: string[] }

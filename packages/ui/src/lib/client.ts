@@ -6,14 +6,19 @@ export const CORE = (import.meta.env.VITE_CORE_URL as string | undefined) ?? "ht
 const KEY = "fishtea_visitor";
 
 export type Utterance = { text: string } | { shape: string; args?: Record<string, unknown>; submit?: boolean; confirm?: boolean } | { arrive: true };
-export interface Chip { label: string; shape: string; args?: Record<string, unknown>; gated?: boolean }
+export interface Chip { label: string; shape: string; args?: Record<string, unknown>; gated?: boolean; on?: { field: string } }
 export interface Field { name: string; label: string; type: string; required: boolean; array: boolean; default?: unknown; enumValues?: string[]; doc?: string; min?: number; max?: number }
 export type Pour =
   | { kind: "ask"; phrase: string; hint?: string; shape?: string; fields?: Field[]; options: Chip[]; reason: string; classifier?: any }
   | { kind: "form"; shape: string; phrase: string; hint?: string; fields: Field[]; known: Record<string, unknown>; errors?: Record<string, string>; error?: string; options?: Chip[]; classifier?: any }
   | { kind: "confirm-write"; shape: string; phrase: string; summary: string; fields: Field[]; known: Record<string, unknown>; classifier?: any }
   | { kind: "answer"; shape: string; phrase: string; vessel: "list" | "card" | "detail" | "compare" | "timeline" | "confirm"; answer: any; next: Chip[]; provenance: any; classifier?: any; stale?: boolean }
-  | { kind: "notification"; author: string; name?: string | null; text: string; next: Chip[] };
+  | { kind: "notification"; author: string; name?: string | null; text: string; next: Chip[] }
+  // A composite is a flat id → part map, so a part can be replaced without resending its siblings and
+  // can be named by a chip or a stream patch. Each part's `of` is one of the pours above, unchanged.
+  | { kind: "composite"; shape: string; phrase: string; root: string; parts: Record<string, Part>; next: Chip[]; provenance: any[]; classifier?: any };
+
+export interface Part { of: Pour; children?: string[]; from?: string }
 export interface Response { pour: Pour; turn: { id: string; seq: number; trailId: string; parentId: string | null }; visitor: { id: string; created: boolean }; persona: string; understood?: { shape: string; confidence: number; phrase: string }; notifications: Pour[]; timings: { classifyMs: number; planMs: number; totalMs: number }; classifier: string }
 
 export const visitorId = () => { try { return localStorage.getItem(KEY); } catch { return null; } };

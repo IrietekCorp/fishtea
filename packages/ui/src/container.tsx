@@ -91,11 +91,18 @@ export function Container() {
             </p>
           )}
           <Vessel pour={pour} pick={pick} submitForm={submitForm} />
-          {pour.kind === "answer" && (
+          {(pour.kind === "answer" || pour.kind === "composite") && (
             <>
               <Chips chips={pour.next} onPick={pick} label="Next" />
               <Separator />
-              <VerifyStrip p={pour.provenance} classifier={res.classifier} timings={res.timings} />
+              {/* A composite has several shapes, reads and writes, and collapsing them into one line
+                  would be the opacity the verify strip exists to prevent — so it gets a line each. */}
+              {pour.kind === "composite"
+                ? pour.provenance.map((p, i) => (
+                    <VerifyStrip key={p.shape ?? i} p={p} classifier={res.classifier}
+                      timings={i === 0 ? res.timings : { ...res.timings, totalMs: p.ms ?? 0, classifyMs: 0, planMs: p.ms ?? 0 }} />
+                  ))
+                : <VerifyStrip p={pour.provenance} classifier={res.classifier} timings={res.timings} />}
             </>
           )}
         </section>
@@ -138,9 +145,37 @@ function Vessel({ pour, pick, submitForm }: { pour: Pour; pick: (c: Chip) => voi
   if (Override) return <Override pour={pour} onPick={pick} submitForm={submitForm} />;
   switch (pour.kind) {
     case "ask": return <AskVessel phrase={pour.phrase} hint={pour.hint} options={pour.options} onPick={pick} />;
-    case "form": return <><FormVessel shape={pour.shape} fields={pour.fields} known={pour.known} errors={pour.errors} error={pour.error} hint={pour.hint} phrase={pour.phrase} write={false} onSubmit={submitForm(pour.shape)} />{pour.options && <Chips chips={pour.options} onPick={pick} label="Or" />}</>;
+    case "form": {
+      // A chip carrying `on` is not shown as a chip: it fires when its field changes. The rest are
+      // offered as usual, so a spec can mix "ask me when you pick a country" with "or do this instead".
+      const watch = (pour.options ?? []).filter((c) => c.on).map((c) => ({ field: c.on!.field, shape: c.shape, args: c.args }));
+      const clickable = (pour.options ?? []).filter((c) => !c.on);
+      return <>
+        <FormVessel shape={pour.shape} fields={pour.fields} known={pour.known} errors={pour.errors} error={pour.error} hint={pour.hint} phrase={pour.phrase} write={false} onSubmit={submitForm(pour.shape)}
+          watch={watch} onFire={(c) => pick({ label: "", shape: c.shape, args: c.args })} />
+        {clickable.length > 0 && <Chips chips={clickable} onPick={pick} label="Or" />}
+      </>;
+    }
     case "confirm-write": return <FormVessel shape={pour.shape} fields={pour.fields} known={pour.known} phrase={pour.phrase} summary={pour.summary} write onSubmit={submitForm(pour.shape)} />;
     case "notification": return <Notice author={pour.author} text={pour.text} next={pour.next} onPick={pick} />;
+    // A composite renders its root, then its root's children, each through this same function. Parts are
+    // ordinary pours, so nothing below needed a new branch and a vessel override still applies per part.
+    case "composite": {
+      const order = [pour.root, ...(pour.parts[pour.root]?.children ?? [])];
+      return (
+        <div className="space-y-6">
+          {order.map((id) => {
+            const part = pour.parts[id];
+            if (!part) return null;
+            return (
+              <section key={id} aria-label={part.from ?? id} className="pour-enter">
+                <Vessel pour={part.of} pick={pick} submitForm={submitForm} />
+              </section>
+            );
+          })}
+        </div>
+      );
+    }
     case "answer": {
       const a = pour.answer;
       switch (pour.vessel) {

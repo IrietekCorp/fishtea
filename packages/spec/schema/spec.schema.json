@@ -501,6 +501,19 @@
         },
         "each": {
           "type": "string"
+        },
+        "on": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "field"
+          ],
+          "properties": {
+            "field": {
+              "type": "string"
+            }
+          },
+          "description": "Fire this affordance when the named form field changes, instead of on a click. It is sent as an ordinary utterance, so it is gated, planned and recorded on the trail like any other turn."
         }
       },
       "additionalProperties": false
@@ -577,6 +590,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "compose": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sibling shapes whose answers pour alongside this one, as parts of a single composite. Each must be a read this persona may ask; a write is never composed, because a write pours confirm-write on its own and a composite must not hide one."
         }
       },
       "additionalProperties": false

@@ -164,6 +164,20 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     if (where === "operator.shapes" && !shape.allow.includes("operator")) problems.push(`${at}: operator shapes must allow "operator"`);
     if (where === "shapes" && shape.allow.includes("operator")) problems.push(`${at}: consumer shapes may not allow "operator"`);
     for (const n of shape.next ?? []) if (!getShape(spec, n.shape)) problems.push(`${at}.next: unknown shape "${n.shape}"`);
+
+    // A composite is planned part by part, so every part has to be plannable, readable and reachable by
+    // whoever asked. Catching this here rather than at runtime matters: a composed write would be a
+    // write with no confirm-write in front of it, and a composed shape the persona cannot ask would be
+    // the gate bypassed by composition.
+    for (const c of shape.compose ?? []) {
+      const composed = getShape(spec, c);
+      if (!composed) { problems.push(`${at}.compose: unknown shape "${c}"`); continue; }
+      if (c === name) { problems.push(`${at}.compose: a shape cannot compose itself`); continue; }
+      if (composed.effect === "write") problems.push(`${at}.compose: "${c}" is a write — a write pours confirm-write on its own and is never a part`);
+      if (composed.compose?.length) problems.push(`${at}.compose: "${c}" composes as well; composition is one level deep on purpose`);
+      const missing = shape.allow.filter((p) => !composed.allow.includes(p));
+      if (missing.length) problems.push(`${at}.compose: "${c}" is not allowed for ${missing.join(", ")}, who may ask ${name} — a part must never widen who can see what`);
+    }
     if (shape.plan) planProblems(at, shape, spec, problems);
     else if (!name.startsWith("op.")) problems.push(`${at}: shape has no plan`);
   }

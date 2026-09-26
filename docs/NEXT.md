@@ -272,9 +272,11 @@ worse trail), and `$cond`/`$template`/`$computed` — a programming language in 
 wrote, which the house rules forbid outright. Also their code export: freezing a derived UI is a fork
 with extra steps, and the whole argument of `fishtea update` is that derived things move.
 
+**Three of the four are built** (1, 3, 4); streaming is the one left.
+
 **The concrete borrowings, in dependency order** (designs in the doc):
 
-1. **`CompositePour { root, parts }`** — a flat id→part map where a `Part.of` is an *existing* pour, so
+1. ~~**`CompositePour { root, parts }`**~~ — **done.** — a flat id→part map where a `Part.of` is an *existing* pour, so
    all seven vessels keep their contracts and overrides compose for free. Additive: one new member of
    the `Pour` union, every `switch` gains a case and keeps its others. The big one — the union is
    load-bearing across `packages/ui`, the TUI, headless, bench and e2e — and it should be decided
@@ -282,12 +284,13 @@ with extra steps, and the whole argument of `fishtea update` is that derived thi
 2. **Streamed parts** over the existing SSE — `{type:"part"}` and `{type:"settled"}`. We would stream
    *the plan resolving*, not a model emitting; the planner already records per-step timings so the emit
    points exist. Small once 1 lands.
-3. **A chip that fires itself** — `Chip.on = { field }`. Their watcher mutates client state; ours takes
+3. ~~**A chip that fires itself**~~ — **done.** `Chip.on = { field }`. Their watcher mutates client state; ours takes
    a turn, so it is gated, planned, provenanced and on the trail. A day, independent.
-4. **An action log** in the operator console — every turn including the refusals. `Provenance` is
+4. ~~**An action log**~~ — **done.** `/op/actions` and an `actions` tab in the console — every turn including the refusals. `Provenance` is
    already the right record; this is a query and a screen. A day, independent.
 
-3 and 4 are worth doing whether or not 1 happens.
+Only **2, streamed parts**, is left: two SSE kinds (`part`, `settled`) and an emit at each plan step.
+The encoding it needs now exists, so it is the small job it was always going to be once 1 landed.
 
 ### 4. Small correctness items (hours each)
 - `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4; several NICs or NAT needs it set by
@@ -302,14 +305,31 @@ with extra steps, and the whole argument of `fishtea update` is that derived thi
   language (`packages/core/src/persona.ts`) needs a `has` operator for arrays.
 - `packages/core/src/http.ts` rate limiter is in-memory per process; fine for one core, note it if you
   scale out.
-- Familiarity threshold `rules.familiarity.threshold` (0.82) is untuned, **and its test currently
-  fails**: "a second trail gets a recalled turn" finds no response with `classifier.recalled > 0`. Three
-  consecutive runs, and identical with the pre-session core checked out, so it is not a regression — it
-  simply had not run in a long while, because the needle suite skips unless a pool answers. Recall only
-  fires on a *weak* first pass (no calls, confidence below `floor`, or a missing required argument), and
-  on the runs observed every turn in the second trail classified confidently enough not to qualify. So
-  either the threshold, the floor, or the script's resonant utterance needs choosing deliberately —
-  which is the tuning this line has always said was outstanding, now with a failing assertion attached.
+- **The familiarity threshold (0.82) is measurably meaningless, and should be re-derived.** Chasing the
+  failing recall test turned up two separate things.
+
+  The test failure was latency, not recall. Every turn of the walkthrough's second trail was timing out
+  at the shipped 400 ms budget — a persona-subset switch alone costs 0.7–1.2 s — and a timed-out
+  classify returns no embedding, so nothing was stored and recall had nothing to find. Confirmed in the
+  database: six embedded turns, all in the first trail, none in the second. The fixture now runs at a
+  raised budget, because the test is about whether recall is *correct*, not whether the machine is fast;
+  latency belongs to `packages/bench`. **The needle suite is 6/6 green.**
+
+  The threshold is the real problem. Measured against the live pool, needle3's embeddings for short
+  utterances sit crowded near 1.0:
+
+  | pair | cosine |
+  |---|---|
+  | "something bold for a wedding under 60" ~ "something bold for a wedding, again" | 0.988 |
+  | "something bold for a wedding under 60" ~ "quiet and polished for the office" | 0.942 |
+  | "something bold for a wedding under 60" ~ **"what's the weather"** | 0.938 |
+  | "show my cart" ~ "check out" | 0.907 |
+
+  At 0.82 everything resonates with everything, including an utterance about the weather, so recall is
+  effectively unconditional and its context is noise. The gap that matters is narrow — 0.988 against
+  0.942 — so the threshold wants to be somewhere near 0.97 and, more importantly, wants deriving from a
+  measured distribution rather than picked. `packages/bench` is the place; this is a tuning task with
+  evidence attached now rather than a guess.
 
 ### 5. Bench honesty (half a day)
 `packages/bench/src/conventional.ts` measures server time for the multi-page baseline, not browser task

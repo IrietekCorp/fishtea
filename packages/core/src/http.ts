@@ -167,6 +167,13 @@ export function createServer(opts: ServerOptions) {
     return c.json(await engine.notify(visitorId, { name, text, args, author: "operator" }));
   });
   op.get("/unmet", async (c) => c.json({ unmet: await engine.trails.unmet(c.req.query("since") ?? "7d") }));
+  op.get("/actions", async (c) => c.json({
+    actions: await engine.trails.actions({
+      since: c.req.query("since") ?? "24h",
+      limit: Number(c.req.query("limit") ?? 100),
+      visitorId: c.req.query("visitor") ?? undefined,
+    }),
+  }));
   op.get("/visitors", async (c) => {
     const rows = await engine.db`SELECT v.id, v.customer_id, v.last_seen, (SELECT count(*) FROM conversation.trail t WHERE t.visitor_id = v.id) AS trails FROM conversation.visitor v ORDER BY v.last_seen DESC LIMIT 50`;
     return c.json({ visitors: rows });

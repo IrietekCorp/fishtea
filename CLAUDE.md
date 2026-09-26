@@ -48,6 +48,10 @@ bunx tsc -p tsconfig.json --noEmit
 - The spec is the only source. If something is entity-specific in code outside a template's or app's `calls/`, it is a bug.
 - SQL files use `$1..$n` in declared input order; never string-build SQL. jsonb params are passed as JS values (postgres.js encodes them).
 - Writes always pour `confirm-write` first; the model never evaluates a rule; rules live in `spec.rules` and compute modules.
+- A `composite` pour is a flat `id → part` map (`root` + `parts`), and a part's `of` is an **ordinary
+  pour** — no new component types, so every vessel keeps its contract and overrides compose for free.
+  `shapes.<x>.compose` declares it; a part is always a `read` the asking persona is allowed, checked at
+  load *and* per request, so composition can never smuggle past the gate or hide a write.
 - **The classifier proposes, the gate disposes, the database has the last word.** Permission is checked
   *after* classification, where the classified path and the posted-chip path converge (`engine.ts`,
   `!allowed.includes(shapeName)`) — never by filtering needle's tools, which is for accuracy and

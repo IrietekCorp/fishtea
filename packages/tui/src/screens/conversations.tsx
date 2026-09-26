@@ -7,7 +7,7 @@ import { TextField } from "../components/input.tsx";
 import { database } from "../lib/app-state.ts";
 import { useCtx } from "../lib/ctx.ts";
 
-type Tab = "visitors" | "unmet";
+type Tab = "visitors" | "unmet" | "actions";
 type Mode = { at: "list" } | { at: "trail"; visitorId: string } | { at: "notify"; visitorId: string };
 
 export function Conversations() {
@@ -22,6 +22,17 @@ export function Conversations() {
     const db = database();
     if (!db) return setRows([]);
     try {
+      // The action log: every turn with what it did, newest first. The refusals are the point — a log
+      // of what worked says much less than one showing where the gate turned somebody away, where the
+      // classifier gave up, and where a plan failed.
+      if (tab === "actions") {
+        setRows(await db.unsafe(`SELECT t.at, t.shape, t.kind, t.confidence, t.answered, t.latency_ms,
+             t.utterance ->> 'persona' AS persona, t.provenance ->> 'unmet' AS unmet,
+             tr.visitor_id
+           FROM conversation.turn t JOIN conversation.trail tr ON tr.id = t.trail_id
+           ORDER BY t.at DESC LIMIT 200`));
+        return;
+      }
       setRows(tab === "visitors"
         ? await db.unsafe(`SELECT v.id, v.customer_id, v.last_seen,
              (SELECT count(*)::int FROM conversation.trail t WHERE t.visitor_id = v.id) AS trails,
@@ -35,7 +46,9 @@ export function Conversations() {
 
   useInput((input, key) => {
     if (mode.at !== "list") return;
-    if (input === "\t" || key.rightArrow || key.leftArrow) return setTab((t) => (t === "visitors" ? "unmet" : "visitors"));
+    const TABS: Tab[] = ["visitors", "unmet", "actions"];
+    if (input === "\t" || key.rightArrow) return setTab((t) => TABS[(TABS.indexOf(t) + 1) % TABS.length]);
+    if (key.leftArrow) return setTab((t) => TABS[(TABS.indexOf(t) + TABS.length - 1) % TABS.length]);
     if (input === "r") return void load();
   }, { isActive: mode.at === "list" });
 
@@ -68,7 +81,7 @@ export function Conversations() {
       </Box>
       <Box marginTop={1} flexDirection="column">
         {rows === null ? <Spinner label="reading the trail store" /> : rows.length === 0 ? (
-          <Text color={theme.dim}>{tab === "visitors" ? "no visitors yet — run a conversation first (bun run headless, or the UI)" : "nothing unmet: every question was answered"}</Text>
+          <Text color={theme.dim}>{tab === "visitors" ? "no visitors yet — run a conversation first (bun run headless, or the UI)" : tab === "actions" ? "no turns yet — the log fills as people talk to it" : "nothing unmet: every question was answered"}</Text>
         ) : tab === "visitors" ? (
           <SelectList rows={12} options={rows.map<Option<string>>((v) => ({
             value: v.id, label: v.id,
@@ -81,6 +94,22 @@ export function Conversations() {
             if (db) setTurns(await db.unsafe(`SELECT tu.seq, tu.author, tu.kind, tu.shape, tu.confidence, tu.answered, tu.latency_ms, tu.utterance, tu.at
               FROM conversation.turn tu JOIN conversation.trail t ON t.id = tu.trail_id WHERE t.visitor_id = $1 ORDER BY tu.at DESC LIMIT 60`, [o.value]));
           }} />
+        ) : tab === "actions" ? (
+          <Box flexDirection="column">
+            {rows.slice(0, 14).map((a, i) => (
+              <Box key={i}>
+                <Text color={theme.dim}>{new Date(a.at).toISOString().slice(11, 19)} </Text>
+                <Text color={a.answered === false ? theme.warn : theme.ok}>{(a.answered === false ? "✗" : "✓")} </Text>
+                <Text color={theme.text}>{String(a.shape ?? "—").padEnd(18).slice(0, 18)}</Text>
+                <Text color={theme.dim}>{String(a.kind ?? "").padEnd(14).slice(0, 14)}</Text>
+                <Text color={theme.dim}>{String(a.persona ?? "").padEnd(13).slice(0, 13)}</Text>
+                <Text color={theme.dim}>{a.confidence != null ? Number(a.confidence).toFixed(2) : "    "} </Text>
+                <Text color={theme.dim}>{a.latency_ms != null ? `${a.latency_ms}ms`.padStart(7) : ""}</Text>
+                {a.unmet ? <Text color={theme.warn}>  {a.unmet}</Text> : null}
+              </Box>
+            ))}
+            <Box marginTop={1}><Text color={theme.dim}>{rows.length} turns · ✗ is a turn the system declined or could not answer</Text></Box>
+          </Box>
         ) : (
           <Box flexDirection="column">
             {rows.slice(0, 14).map((u, i) => (
@@ -105,6 +134,8 @@ const Tabs = ({ tab }: { tab: Tab }) => (
     <Text color={tab === "visitors" ? theme.accent : theme.dim} bold={tab === "visitors"}>visitors</Text>
     <Text color={theme.dim}> │ </Text>
     <Text color={tab === "unmet" ? theme.accent : theme.dim} bold={tab === "unmet"}>unmet</Text>
+    <Text color={theme.dim}>  ·  </Text>
+    <Text color={tab === "actions" ? theme.accent : theme.dim} bold={tab === "actions"}>actions</Text>
   </Text>
 );
 

@@ -6,7 +6,18 @@ import { type ShapeDef, type Spec, type FormField, type VesselName, deriveForm, 
 import type { Provenance } from "./plan/index.ts";
 import { lookup, resolve } from "./plan/index.ts";
 
-export interface Chip { label: string; shape: string; args?: Record<string, unknown>; gated?: boolean }
+export interface Chip {
+  label: string; shape: string; args?: Record<string, unknown>; gated?: boolean;
+  /**
+   * Fire when this form field changes, instead of when somebody clicks.
+   *
+   * json-render's `watch` reacts to a change by mutating a client-side state tree. This reacts by
+   * taking a *turn*: the same utterance a click would have sent, so it is gated by persona, planned,
+   * given provenance and appended to the trail like everything else. A second memory in the browser is
+   * exactly what the trail exists to avoid.
+   */
+  on?: { field: string };
+}
 export interface ClassMeta { name: string; ms: number; confidence: number; reasoning?: string; calls?: { name: string; arguments: Record<string, unknown> }[]; timedOut?: boolean; error?: string; recalled?: number }
 
 export type AskReason = "greeting" | "no-match" | "low-confidence" | "budget" | "pool-down" | "not-allowed";
@@ -16,13 +27,50 @@ export interface FormPour { kind: "form"; shape: string; phrase: string; hint?: 
 export interface ConfirmWritePour { kind: "confirm-write"; shape: string; phrase: string; summary: string; fields: FormField[]; known: Record<string, unknown>; classifier?: ClassMeta }
 export interface AnswerPour { kind: "answer"; shape: string; phrase: string; vessel: VesselName; answer: unknown; next: Chip[]; provenance: Provenance; classifier?: ClassMeta; stale?: boolean }
 export interface NotificationPour { kind: "notification"; author: "system" | "operator"; name?: string | null; text: string; next: Chip[] }
-export type Pour = AskPour | FormPour | ConfirmWritePour | AnswerPour | NotificationPour;
 
-export const chip = (spec: Spec, shape: string, args?: Record<string, unknown>, label?: string, persona?: string): Chip | null => {
+/**
+ * One piece of a composite answer.
+ *
+ * `of` is an ordinary pour — not a new component type. That is the whole difference from a generative-UI
+ * catalogue: nothing here invents widgets for a model to choose between, so all seven vessels keep their
+ * contracts, `container.tsx` gains one case rather than a renderer, and a ui plugin's vessel override
+ * composes for free because overrides are already looked up per pour kind.
+ */
+export interface Part {
+  of: AnswerPour | FormPour | NotificationPour;
+  children?: string[];
+  /** the shape whose plan produced it, so the verify strip can attribute each piece */
+  from?: string;
+}
+
+/**
+ * Several vessels, composed for this turn.
+ *
+ * A flat `id → part` map rather than a nested tree or an array, for three reasons that only a map gives:
+ * one part can be replaced while the others stand (so a pour can stream in pieces), a part can be
+ * *named* — by a chip, by a stream patch, by an anchor — and nothing has to resend its ancestors to
+ * change a leaf. An array can only be replaced whole.
+ */
+export interface CompositePour {
+  kind: "composite";
+  shape: string;
+  phrase: string;
+  root: string;
+  parts: Record<string, Part>;
+  next: Chip[];
+  /** one per part that ran a plan, in the order they ran */
+  provenance: Provenance[];
+  classifier?: ClassMeta;
+}
+
+export type Pour = AskPour | FormPour | ConfirmWritePour | AnswerPour | NotificationPour | CompositePour;
+
+export const chip = (spec: Spec, shape: string, args?: Record<string, unknown>, label?: string, persona?: string, on?: { field: string }): Chip | null => {
   const s = getShape(spec, shape);
   if (!s) return null;
   const c: Chip = { label: label ?? s.asks, shape };
   if (args && Object.keys(args).length) c.args = args;
+  if (on) c.on = on;
   if (persona && !s.allow.includes(persona)) c.gated = true;
   return c;
 };
@@ -42,11 +90,11 @@ export function nextChips(spec: Spec, shape: ShapeDef, answer: unknown, args: Re
       if (!Array.isArray(arr)) continue;
       for (const item of arr.slice(0, cap)) {
         const scope = { ...base, item };
-        const c = chip(spec, n.shape, resolve(n.args ?? {}, scope) as Record<string, unknown>, n.label ? renderLabel(n.label, scope) : undefined, persona);
+        const c = chip(spec, n.shape, resolve(n.args ?? {}, scope) as Record<string, unknown>, n.label ? renderLabel(n.label, scope) : undefined, persona, n.on);
         if (c) chips.push(c);
       }
     } else {
-      const c = chip(spec, n.shape, resolve(n.args ?? {}, base) as Record<string, unknown>, n.label ? renderLabel(n.label, base) : undefined, persona);
+      const c = chip(spec, n.shape, resolve(n.args ?? {}, base) as Record<string, unknown>, n.label ? renderLabel(n.label, base) : undefined, persona, n.on);
       if (c) chips.push(c);
     }
   }
@@ -55,6 +103,42 @@ export function nextChips(spec: Spec, shape: ShapeDef, answer: unknown, args: Re
 
 export function phraseFor(shape: ShapeDef, args: Record<string, unknown>): string {
   return renderPhrase(shape.phrase, args, shape.asks);
+}
+
+/**
+ * Compose several answers into one pour.
+ *
+ * The leading shape's answer is the root; each composed shape becomes a sibling part keyed by its own
+ * name, so a part is addressable by something a human can read (`parts.trending`) rather than by
+ * position. `next` is the union of every part's chips, deduplicated — a composite offers what all of
+ * its pieces offer, once each.
+ */
+export function compositePour(
+  root: { shape: string; pour: AnswerPour; provenance: Provenance },
+  parts: { shape: string; pour: AnswerPour; provenance: Provenance }[],
+  o: { classifier?: ClassMeta } = {},
+): CompositePour {
+  const all = [root, ...parts];
+  const map: Record<string, Part> = {};
+  for (const p of all) map[p.shape] = { of: p.pour, from: p.shape };
+  map[root.shape].children = parts.map((p) => p.shape);
+
+  const next: Chip[] = [];
+  for (const p of all) {
+    for (const c of p.pour.next) {
+      if (!next.some((x) => x.shape === c.shape && JSON.stringify(x.args ?? {}) === JSON.stringify(c.args ?? {}))) next.push(c);
+    }
+  }
+  return {
+    kind: "composite",
+    shape: root.shape,
+    phrase: root.pour.phrase,
+    root: root.shape,
+    parts: map,
+    next,
+    provenance: all.map((p) => p.provenance),
+    ...(o.classifier ? { classifier: o.classifier } : {}),
+  };
 }
 
 export function askPour(p: Omit<AskPour, "kind">): AskPour { return { kind: "ask", ...p }; }

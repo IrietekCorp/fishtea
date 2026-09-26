@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS conversation.turn (
   author       text NOT NULL CHECK (author IN ('visitor','system','operator')),
   at           timestamptz NOT NULL DEFAULT now(),
   shape        text,
-  kind         text CHECK (kind IN ('ask','form','confirm-write','answer','notification')),
+  kind         text CHECK (kind IN ('ask','form','confirm-write','answer','notification','composite')),
   confidence   real,
   answered     boolean NOT NULL,
   latency_ms   integer,
@@ -67,3 +67,11 @@ CREATE OR REPLACE VIEW conversation.unmet AS
   JOIN conversation.trail tr ON tr.id = t.trail_id
   JOIN conversation.visitor v ON v.id = tr.visitor_id
   WHERE NOT t.answered AND t.author = 'visitor';
+
+-- A pour kind added after a database was created does not reach it: the table above is CREATE TABLE IF
+-- NOT EXISTS, so an existing turn table keeps whatever CHECK it was born with and every composite pour
+-- would fail to append. Restating the constraint is idempotent and cheap, and it is the only part of
+-- this file that has to run against a database that already exists.
+ALTER TABLE conversation.turn DROP CONSTRAINT IF EXISTS turn_kind_check;
+ALTER TABLE conversation.turn ADD CONSTRAINT turn_kind_check
+  CHECK (kind IN ('ask','form','confirm-write','answer','notification','composite'));
