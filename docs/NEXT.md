@@ -302,8 +302,14 @@ with extra steps, and the whole argument of `fishtea update` is that derived thi
   language (`packages/core/src/persona.ts`) needs a `has` operator for arrays.
 - `packages/core/src/http.ts` rate limiter is in-memory per process; fine for one core, note it if you
   scale out.
-- Familiarity threshold `rules.familiarity.threshold` (0.82) is untuned; the needle test only asserts a
-  recall happens.
+- Familiarity threshold `rules.familiarity.threshold` (0.82) is untuned, **and its test currently
+  fails**: "a second trail gets a recalled turn" finds no response with `classifier.recalled > 0`. Three
+  consecutive runs, and identical with the pre-session core checked out, so it is not a regression — it
+  simply had not run in a long while, because the needle suite skips unless a pool answers. Recall only
+  fires on a *weak* first pass (no calls, confidence below `floor`, or a missing required argument), and
+  on the runs observed every turn in the second trail classified confidently enough not to qualify. So
+  either the threshold, the floor, or the script's resonant utterance needs choosing deliberately —
+  which is the tuning this line has always said was outstanding, now with a failing assertion attached.
 
 ### 5. Bench honesty (half a day)
 `packages/bench/src/conventional.ts` measures server time for the multi-page baseline, not browser task
@@ -360,7 +366,12 @@ Two things fell out of this that are worth knowing:
 
 - Tests reset the `business`, `conversation` and `fishtea` schemas. They default to port **5434**; never
   point `FISHTEA_TEST_DATABASE_URL` at a stack you care about.
-- The needle test must run alone, with the pool up and warmed (`GET /healthz` → `warming: false`).
+- The needle test must run alone, with the pool up and warmed (`GET /healthz` → `warming: false`), and
+  it wants a pool **on 8082** — `FISHTEA_TEST_CLASSIFIER_URL`, defaulting to a port nothing real uses,
+  exactly as the database has `FISHTEA_TEST_DATABASE_URL` and 5434. It used to default to 8081, and
+  because it calls `pool.reload()` a plain `bun test` while any stack was up would silently swap that
+  application's tool set for the ecommerce archetype's until the container was restarted. It skips when
+  nothing answers, so the default is now "does nothing" rather than "breaks whatever is running".
 - The classifier pool: switching a worker between persona tool subsets costs ~1 s (up to 3.7 s under
   load); `NEEDLE_WORKERS` ≥ distinct persona subsets (3 for the shipped archetypes). Reload/warm are
   sequential on purpose (parallel inits thrashed to 48 s).

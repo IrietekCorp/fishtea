@@ -1,6 +1,18 @@
 /**
- * Phase 4 acceptance against the real needle3 pool. Skips when no pool answers at CLASSIFIER_URL.
- * Run alone (it resets the database): bun test packages/core/test/needle.test.ts
+ * Phase 4 acceptance against the real needle3 pool.
+ *
+ * **This test reconfigures the pool it talks to.** `pool.reload()` replaces the tool set and the persona
+ * subsets with this archetype's, so pointing it at a pool somebody is using swaps that application's
+ * brain underneath it — silently, and until the container is restarted. It used to default to
+ * `CLASSIFIER_URL` and then `localhost:8081`, which is the *production* port, so a plain `bun test` while
+ * any stack was up did exactly that.
+ *
+ * So it follows the same convention the database already had: a test-only variable, and a default port
+ * that is deliberately not the real one. Nothing runs there unless somebody started it on purpose.
+ *
+ *   docker run -d --name fishtea-test-classifier -p 8082:8081 <classifier image>
+ *   # or: NEEDLE_PORT=8082 python3 packages/classifier/needle_service.py
+ *   bun test packages/core/test/needle.test.ts        # run alone: it resets the database
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { resolve } from "node:path";
@@ -10,7 +22,7 @@ import { connect, migrate, seed, reset, Engine, runScript, NeedleClient, type Re
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const URL = process.env.FISHTEA_TEST_DATABASE_URL ?? "postgres://fishtea:fishtea@localhost:5434/fishtea";
-const POOL = process.env.CLASSIFIER_URL ?? "http://localhost:8081";
+const POOL = process.env.FISHTEA_TEST_CLASSIFIER_URL ?? "http://localhost:8082";
 const pool = new NeedleClient(POOL);
 const up = (await pool.health()).ok;
 const db = connect(URL);
