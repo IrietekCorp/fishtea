@@ -29,6 +29,7 @@ const DB = process.env.FISHTEA_E2E_DATABASE_URL ?? "postgres://fishtea:fishtea@l
 const CORE_PORT = Number(process.env.FISHTEA_E2E_CORE_PORT ?? 3111);
 const UI_PORT = Number(process.env.FISHTEA_E2E_UI_PORT ?? 5199);
 const CORE = `http://localhost:${CORE_PORT}`;
+const OP_TOKEN = process.env.FISHTEA_OPERATOR_TOKEN ?? "e2e-operator-token";
 const UI_URL = `http://localhost:${UI_PORT}`;
 
 const log = (s: string) => console.log(`  ${s}`);
@@ -106,7 +107,10 @@ try {
       cwd: HOME, stdout: "ignore", stderr: "ignore",
       // The lexical classifier is a development harness — which is exactly right here: it is
       // deterministic, so a walkthrough asserts the UI rather than a model's mood.
-      env: { ...process.env, FISHTEA_INTENT: "lexical", FISHTEA_HOST: "127.0.0.1" },
+      // The operator token is set so a test can edit a section and watch the core hot-reload — the
+      // streaming-composite test needs a shape that composes, and patching the spec is how you get one
+      // without the archetype shipping that decision for every shop.
+      env: { ...process.env, FISHTEA_INTENT: "lexical", FISHTEA_HOST: "127.0.0.1", FISHTEA_OPERATOR_TOKEN: OP_TOKEN },
     }));
     if (!await waitFor(`${CORE}/healthz`, "core")) process.exit(1);
 
@@ -124,7 +128,13 @@ try {
   log(`running: ${pw.join(" ")}\n`);
   const test = Bun.spawn(pw, {
     cwd: UI, stdio: ["inherit", "inherit", "inherit"],
-    env: { ...process.env, FISHTEA_UI_URL: has("--no-stack") ? (process.env.FISHTEA_UI_URL ?? UI_URL) : UI_URL },
+    env: {
+      ...process.env,
+      FISHTEA_UI_URL: has("--no-stack") ? (process.env.FISHTEA_UI_URL ?? UI_URL) : UI_URL,
+      // A test that edits the spec needs to reach the operator surface of *this* core, with this token.
+      FISHTEA_E2E_CORE_URL: CORE,
+      FISHTEA_OPERATOR_TOKEN: OP_TOKEN,
+    },
   });
   const code = await test.exited;
 

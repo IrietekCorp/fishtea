@@ -60,6 +60,14 @@ export interface CompositePour {
   next: Chip[];
   /** one per part that ran a plan, in the order they ran */
   provenance: Provenance[];
+  /**
+   * Parts still being planned, for a composite that is arriving in pieces.
+   *
+   * Present only while streaming: the lead is sent as soon as it is ready and each part follows over
+   * SSE as its plan finishes. Absent means the composite is whole, which is what a headless run, an API
+   * caller and a resumed turn always get — you cannot stream to something that is not listening.
+   */
+  pending?: string[];
   classifier?: ClassMeta;
 }
 

@@ -272,7 +272,7 @@ worse trail), and `$cond`/`$template`/`$computed` — a programming language in 
 wrote, which the house rules forbid outright. Also their code export: freezing a derived UI is a fork
 with extra steps, and the whole argument of `fishtea update` is that derived things move.
 
-**Three of the four are built** (1, 3, 4); streaming is the one left.
+**All four are built.**
 
 **The concrete borrowings, in dependency order** (designs in the doc):
 
@@ -281,16 +281,20 @@ with extra steps, and the whole argument of `fishtea update` is that derived thi
    the `Pour` union, every `switch` gains a case and keeps its others. The big one — the union is
    load-bearing across `packages/ui`, the TUI, headless, bench and e2e — and it should be decided
    **before** §3b, because a composite is what an area pours.
-2. **Streamed parts** over the existing SSE — `{type:"part"}` and `{type:"settled"}`. We would stream
-   *the plan resolving*, not a model emitting; the planner already records per-step timings so the emit
-   points exist. Small once 1 lands.
+2. ~~**Streamed parts**~~ — **done.** `{type:"part"}` and `{type:"settled"}` over the existing SSE, and
+   only for a visitor who is actually connected — everything else plans the composite whole, because you
+   cannot stream to something that is not listening. The stored turn is updated when the last part lands
+   (`trails.settle`), so a resume shows what was on screen rather than the lead alone.
 3. ~~**A chip that fires itself**~~ — **done.** `Chip.on = { field }`. Their watcher mutates client state; ours takes
    a turn, so it is gated, planned, provenanced and on the trail. A day, independent.
 4. ~~**An action log**~~ — **done.** `/op/actions` and an `actions` tab in the console — every turn including the refusals. `Provenance` is
    already the right record; this is a query and a screen. A day, independent.
 
-Only **2, streamed parts**, is left: two SSE kinds (`part`, `settled`) and an emit at each plan step.
-The encoding it needs now exists, so it is the small job it was always going to be once 1 landed.
+Two bugs came out of making the browser test pass, both of which only a real browser could have shown.
+A part planned against a local database lands *milliseconds* after the response that owns it and can
+beat React's state update, so an early part is buffered and drained when its turn arrives. And folding a
+part in was not idempotent — React invokes a state updater twice under StrictMode, so a two-part
+composite rendered three verify strips.
 
 ### 4. Small correctness items (hours each)
 - `FISHTEA_PUBLIC_HOST` is detected from the first non-internal IPv4; several NICs or NAT needs it set by

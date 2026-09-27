@@ -353,3 +353,83 @@ describe("composite pours", () => {
     expect(chip).not.toHaveProperty("answer");
   });
 });
+
+/**
+ * Streaming a composite: the lead answers immediately, the parts follow over SSE.
+ *
+ * What is streamed is the *plan resolving*, not a model emitting — "the products are here, the
+ * recommendations are still running". Only for a visitor who is actually connected; everything else
+ * plans the composite whole, because you cannot stream to something that is not listening.
+ */
+describe("streamed composites", () => {
+  const composing = () => {
+    const spec = structuredClone(app.spec) as any;
+    spec.shapes.findProducts.compose = ["trending"];
+    return { ...app, spec } as typeof app;
+  };
+
+  /** Subscribe like the SSE endpoint does, and collect what the hub publishes. */
+  const listen = (e: Engine, visitorId: string) => {
+    const events: { type: string; data: any }[] = [];
+    const off = e.hub.subscribe(visitorId, (ev) => events.push({ type: ev.type, data: ev.data as any }));
+    return { events, off };
+  };
+
+  const settled = async (events: { type: string }[], ms = 4000) => {
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline && !events.some((x) => x.type === "settled")) await Bun.sleep(25);
+    return events.some((x) => x.type === "settled");
+  };
+
+  test("a connected visitor gets the lead first, then each part, then settled", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const { events, off } = listen(e, visitor.id);
+
+    const r = await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id });
+
+    // The response already came back, and it does not have the part yet — that is the point.
+    expect(r.pour.kind).toBe("composite");
+    expect((r.pour as any).pending).toEqual(["trending"]);
+    expect(Object.keys((r.pour as any).parts)).toEqual(["findProducts"]);
+
+    expect(await settled(events)).toBe(true);
+    off();
+
+    const part = events.find((x) => x.type === "part");
+    expect(part?.data.id).toBe("trending");
+    expect(part?.data.turnId).toBe(r.turn.id);
+    expect(part?.data.part.of.kind).toBe("answer");
+    expect(events.at(-1)?.type).toBe("settled");
+    expect(events.at(-1)?.data.parts).toEqual(["trending"]);
+  });
+
+  test("the settled turn is what was on screen, so a resume shows the whole composite", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    const { events, off } = listen(e, visitor.id);
+    await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id });
+    expect(await settled(events)).toBe(true);
+    off();
+
+    // Without settle() the stored turn would be the lead alone, and reloading would lose the part that
+    // the visitor had actually been looking at.
+    const resumed = await e.resume({ visitorId: visitor.id, hadToken: true, envelope: {} });
+    expect(resumed.pour.kind).toBe("composite");
+    expect(Object.keys((resumed.pour as any).parts).sort()).toEqual(["findProducts", "trending"]);
+    expect((resumed.pour as any).pending ?? []).toEqual([]);
+  });
+
+  test("nobody listening means no streaming: the composite comes back whole", async () => {
+    const e = new Engine({ app: composing(), db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });        // no subscriber
+    const r = await e.utter({ shape: "findProducts", args: { tag: "wedding" } }, { visitorId: visitor.id });
+
+    expect(r.pour.kind).toBe("composite");
+    expect(r.pour).not.toHaveProperty("pending");
+    expect(Object.keys((r.pour as any).parts).sort()).toEqual(["findProducts", "trending"]);
+  });
+});

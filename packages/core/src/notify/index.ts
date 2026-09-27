@@ -4,7 +4,7 @@
  */
 import type { Chip } from "../pour.ts";
 
-export interface Event { type: "turn" | "notification" | "ping" | "reload"; data: unknown }
+export interface Event { type: "turn" | "notification" | "ping" | "reload" | "part" | "settled"; data: unknown }
 type Listener = (e: Event) => void;
 
 export class Hub {

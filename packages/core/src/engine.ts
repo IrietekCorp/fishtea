@@ -259,6 +259,8 @@ export class Engine {
     let embedding: number[] | undefined;
     let extraCalls: { name: string; arguments: Record<string, unknown> }[] = [];
     let pour: Pour | undefined;
+    /** Set when a composite will arrive in pieces; run after the turn is appended, so it has an id. */
+    let streamParts: { lead: { shape: string; pour: AnswerPour; provenance: Provenance }; shape: ShapeDef; args: Record<string, unknown>; names: string[] } | undefined;
     let classifyMs = 0;
     let answered = true;
     let reasonUnmet: string | undefined;
@@ -355,9 +357,19 @@ export class Engine {
               const r = await this.planner.run({ shapeName, shape, args, visitor, persona });
               provenance = r.provenance;
               const lead = answerPour(this.app.spec, shapeName, shape, args, r.answer, r.provenance, persona, { classifier: meta });
-              pour = shape.compose?.length
-                ? await this.composeParts({ shape: shapeName, pour: lead, provenance: r.provenance }, shape, args, visitor, persona, meta)
-                : lead;
+              if (!shape.compose?.length) {
+                pour = lead;
+              } else if (this.hub.connected(visitor.id)) {
+                // Somebody is watching, so send the lead now and let the parts follow over SSE.
+                const names = shape.compose.filter((n) => { const d = getShape(this.app.spec, n); return d && d.effect !== "write" && d.allow.includes(persona); });
+                if (names.length) {
+                  pour = { ...compositePour({ shape: shapeName, pour: lead, provenance: r.provenance }, []), pending: names };
+                  streamParts = { lead: { shape: shapeName, pour: lead, provenance: r.provenance }, shape, args, names };
+                } else pour = lead;
+              } else {
+                // Nobody to stream to — a headless run, an API caller, a test. Plan it whole.
+                pour = await this.composeParts({ shape: shapeName, pour: lead, provenance: r.provenance }, shape, args, visitor, persona, meta);
+              }
               for (const c of extraCalls) { const ch = chip(this.app.spec, c.name, c.arguments, undefined, persona); if (ch && !(pour as any).next.some((x: Chip) => x.shape === ch.shape)) (pour as any).next.push(ch); }
             } catch (e) {
               const err = e as PlanError;
@@ -382,6 +394,9 @@ export class Engine {
       parentId: opts.branchFrom ?? undefined,
     });
     if (this.hub.connected(visitor.id)) this.hub.publish(visitor.id, { type: "turn", data: { id: turn.id, seq: turn.seq, kind } });
+    // Deliberately not awaited: the point is that the answer has already gone back. Failures inside are
+    // logged and settle the turn with whatever arrived, because a missing part is a missing part.
+    if (streamParts) void this.streamComposite(turn.id, visitor, persona, meta, streamParts);
     const shapeDef = shapeName ? getShape(this.app.spec, shapeName) : undefined;
     return {
       pour, notifications, persona,
@@ -430,6 +445,47 @@ export class Engine {
       }
     }
     return parts.length ? compositePour(lead, parts, { classifier: meta }) : lead.pour;
+  }
+
+  /**
+   * Plan a composite's parts after the lead has been answered, publishing each as it lands.
+   *
+   * The encoding is what makes this possible: parts are a flat map keyed by name, so one can be sent on
+   * its own without resending its siblings. What is streamed is *the plan resolving* — "the products are
+   * here, the recommendations are still running" — not a model emitting tokens.
+   */
+  private async streamComposite(
+    turnId: string,
+    visitor: { id: string; customerId: string | null },
+    persona: string,
+    meta: ClassMeta | undefined,
+    s: { lead: { shape: string; pour: AnswerPour; provenance: Provenance }; shape: ShapeDef; args: Record<string, unknown>; names: string[] },
+  ): Promise<void> {
+    const done: { shape: string; pour: AnswerPour; provenance: Provenance }[] = [];
+    for (const name of s.names) {
+      const def = getShape(this.app.spec, name);
+      if (!def || def.effect === "write" || !def.allow.includes(persona)) continue;   // re-checked here too
+      const partArgs: Record<string, unknown> = {};
+      for (const k of Object.keys(def.input)) if (s.args[k] !== undefined) partArgs[k] = s.args[k];
+      const parsed = inputSchema(def, this.app.spec).safeParse(partArgs);
+      if (!parsed.success) { this.log(`stream ${name}: skipped (${parsed.error.issues[0]?.message ?? "bad args"})`); continue; }
+      try {
+        const r = await this.planner.run({ shapeName: name, shape: def, args: parsed.data, visitor, persona });
+        const part = answerPour(this.app.spec, name, def, parsed.data, r.answer, r.provenance, persona);
+        done.push({ shape: name, pour: part, provenance: r.provenance });
+        this.hub.publish(visitor.id, { type: "part", data: { turnId, id: name, part: { of: part, from: name } } });
+      } catch (e) {
+        this.log(`stream ${name}: skipped (${(e as Error).message})`);
+      }
+    }
+
+    // Settle: the stored turn becomes what was actually on screen, so a resume shows the whole thing.
+    const whole = done.length ? compositePour(s.lead, done, { classifier: meta }) : s.lead.pour;
+    try {
+      await this.trails.settle(turnId, whole as unknown as Record<string, unknown>,
+        { ...(Array.isArray((whole as any).provenance) ? (whole as any).provenance[0] : (whole as any).provenance), classifier: meta });
+    } catch (e) { this.log(`settle ${turnId} failed: ${(e as Error).message}`); }
+    this.hub.publish(visitor.id, { type: "settled", data: { turnId, parts: done.map((d) => d.shape) } });
   }
 
   private argsLine(args: unknown): string {

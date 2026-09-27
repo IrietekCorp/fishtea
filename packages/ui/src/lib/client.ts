@@ -16,7 +16,7 @@ export type Pour =
   | { kind: "notification"; author: string; name?: string | null; text: string; next: Chip[] }
   // A composite is a flat id → part map, so a part can be replaced without resending its siblings and
   // can be named by a chip or a stream patch. Each part's `of` is one of the pours above, unchanged.
-  | { kind: "composite"; shape: string; phrase: string; root: string; parts: Record<string, Part>; next: Chip[]; provenance: any[]; classifier?: any };
+  | { kind: "composite"; shape: string; phrase: string; root: string; parts: Record<string, Part>; next: Chip[]; provenance: any[]; pending?: string[]; classifier?: any };
 
 export interface Part { of: Pour; children?: string[]; from?: string }
 export interface Response { pour: Pour; turn: { id: string; seq: number; trailId: string; parentId: string | null }; visitor: { id: string; created: boolean }; persona: string; understood?: { shape: string; confidence: number; phrase: string }; notifications: Pour[]; timings: { classifyMs: number; planMs: number; totalMs: number }; classifier: string }
@@ -44,7 +44,7 @@ export async function resume(): Promise<Response> {
 export async function trail() { const res = await fetch(`${CORE}/trail`, { headers: headers(), credentials: "include" }); return res.json() as Promise<{ trail: any; turns: any[] }>; }
 export async function rewind(turnId: string) { const res = await fetch(`${CORE}/trail/rewind`, { method: "POST", headers: headers(), credentials: "include", body: JSON.stringify({ turnId }) }); return res.json(); }
 
-const EVENTS = ["notification", "turn", "reload", "ping"] as const;
+const EVENTS = ["notification", "turn", "reload", "ping", "part", "settled"] as const;
 
 /**
  * Listen for operator notifications and turns pushed from elsewhere.

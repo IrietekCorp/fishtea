@@ -33,9 +33,23 @@ export function Container() {
   const [showTrail, setShowTrail] = useState(false);
   const lastKey = useRef("");
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  /**
+   * Streamed parts that arrived before the response that owns them.
+   *
+   * A part is planned milliseconds after the lead is written, so over a local connection the SSE event
+   * can beat the fetch promise and React's state update. Dropping it then loses the part for good —
+   * measured, not imagined: the browser test failed exactly this way while the server was provably
+   * sending `pending: ["trending"]` and then the part. So an early part waits here for its turn.
+   */
+  const early = useRef(new Map<string, any[]>());
 
   const apply = useCallback((r: Response | null, submitted = false) => {
     if (!r) return;
+    const waiting = early.current.get(r.turn.id);
+    if (waiting?.length) {
+      early.current.delete(r.turn.id);
+      r = { ...r, pour: waiting.reduce((p, d) => patchPart(p, d), r.pour) };
+    }
     setRes(r);
     setNotices((n) => [...n, ...r.notifications]);
     const key = `${r.pour.kind}:${(r.pour as any).shape ?? ""}`;
@@ -46,6 +60,26 @@ export function Container() {
   useEffect(() => subscribe((type, data) => {
     if (type === "notification") { setNotices((n) => [...n, data]); setToast(data.text); setTimeout(() => setToast(null), 6000); }
     if (type === "reload") setToast(`Spec reloaded → v${data.version}`);
+
+    // A composite arrives in pieces: the lead came back with the response, each part follows here.
+    // Patching one part is the reason the encoding is a flat map — nothing else has to be resent, and
+    // React keeps every sibling's DOM as it was.
+    if (type === "part" || type === "settled") {
+      const d = { ...data, _settled: type === "settled" };
+      setRes((prev) => {
+        if (!prev || prev.turn.id !== d.turnId) {
+          // The response has not landed yet. Keep it; apply() drains this when the turn appears.
+          const q = early.current.get(d.turnId) ?? [];
+          early.current.set(d.turnId, [...q, d]);
+          return prev;
+        }
+        return { ...prev, pour: patchPart(prev.pour, d) };
+      });
+    }
+    // Deliberately not keyed on the current turn: a part lands milliseconds after the response that
+    // created it, which is exactly when a turn-keyed effect would be tearing its EventSource down and
+    // building a new one — and the event falls in the gap. The handler reads the turn from `prev`
+    // instead, so the subscription can outlive any number of turns.
   }), [res?.visitor.id]);
 
   const send = useCallback(async (u: Parameters<typeof utter>[0], submitted = false) => {
@@ -173,6 +207,11 @@ function Vessel({ pour, pick, submitForm }: { pour: Pour; pick: (c: Chip) => voi
               </section>
             );
           })}
+          {pour.pending?.length ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              still coming: {pour.pending.join(", ")}
+            </p>
+          ) : null}
         </div>
       );
     }
@@ -189,6 +228,33 @@ function Vessel({ pour, pick, submitForm }: { pour: Pour; pick: (c: Chip) => voi
     }
   }
   return null;
+}
+
+/**
+ * Fold one streamed part (or the settled marker) into a composite pour.
+ *
+ * Pure, because it is applied from two places: live, when the part arrives after its response, and
+ * replayed, when it arrived before. A flat parts map is what makes this a merge rather than a rebuild.
+ */
+function patchPart(pour: Pour, d: any): Pour {
+  if (pour.kind !== "composite") return pour;
+  const next = { ...pour, parts: { ...pour.parts }, pending: [...(pour.pending ?? [])] };
+  if (d._settled) { next.pending = []; return next; }          // whatever has not arrived is not coming
+
+  // Idempotent, because the same part can be folded in more than once: React invokes a state updater
+  // twice under StrictMode, an SSE stream can redeliver after a reconnect, and a part buffered before
+  // its response could otherwise be applied on top of one already there. Caught by a browser test
+  // counting three verify strips for a two-part composite.
+  if (next.parts[d.id]) return pour;
+
+  next.parts[d.id] = d.part;
+  const root = next.parts[next.root];
+  if (root && !(root.children ?? []).includes(d.id)) next.parts[next.root] = { ...root, children: [...(root.children ?? []), d.id] };
+  next.pending = next.pending.filter((n) => n !== d.id);
+  const chips = d.part?.of?.next ?? [];
+  next.next = [...next.next, ...chips.filter((c: any) => !next.next.some((x) => x.shape === c.shape && JSON.stringify(x.args ?? {}) === JSON.stringify(c.args ?? {})))];
+  if (d.part?.of?.provenance) next.provenance = [...next.provenance, d.part.of.provenance];
+  return next;
 }
 
 function VerifyStrip({ p, classifier, timings }: { p: any; classifier: string; timings: Response["timings"] }) {

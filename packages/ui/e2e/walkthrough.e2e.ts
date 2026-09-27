@@ -167,3 +167,52 @@ test("reloading resumes the conversation rather than starting one", async ({ pag
   await expect(page.getByLabel("verify")).toContainText("findProducts");
   await expect(page.getByLabel("answer")).toBeVisible();
 });
+
+/**
+ * A composite that arrives in pieces.
+ *
+ * The scaffolded application does not compose anything, so this drives the engine's streaming path the
+ * only way a browser can see it: the spec is patched through the operator surface, the page reloads to
+ * pick it up, and the test watches the second part appear *after* the first answer is already on screen.
+ */
+test("a composite streams: the lead answers, then the part arrives over SSE", async ({ page, request }) => {
+  const core = process.env.FISHTEA_E2E_CORE_URL ?? "http://localhost:3111";
+  const token = process.env.FISHTEA_OPERATOR_TOKEN ?? "change-me";
+  const op = { "x-fishtea-operator": token, "content-type": "application/json" };
+  const read = await request.get(`${core}/op/spec`, { headers: op });
+  test.skip(!read.ok(), `operator surface unavailable (${read.status()})`);
+  const { spec } = await read.json();
+
+  // Edit the section the way the console does, and let the core's spec watcher reload it.
+  const patched = await request.post(`${core}/op/utter`, {
+    headers: op,
+    data: { shape: "op.editSection", args: { section: "shapes", patch: { findProducts: { ...spec.shapes.findProducts, compose: ["trending"] } } } },
+  });
+  test.skip(!patched.ok(), `section edit unavailable (${patched.status()})`);
+
+  // Wait for the effect, not for a guess at how long it takes. Writing spec.json also trips the core's
+  // file watcher, so there is a second reload in flight behind the one the edit awaited, and a fixed
+  // sleep raced it — this test passed alone and failed in a full run for exactly that reason.
+  await expect.poll(async () => {
+    const r = await request.get(`${core}/op/spec`, { headers: op });
+    if (!r.ok()) return null;
+    return (await r.json()).spec.shapes.findProducts.compose ?? null;
+  }, { timeout: 15_000, message: "the core never picked up the composing shape" }).toEqual(["trending"]);
+
+  await page.reload();
+  // Wait for the page to have *resumed*, not merely painted. The SSE subscription is created once the
+  // visitor is known, and uttering before that means the parts are published to nobody: the search box
+  // appears well before any of that has happened.
+  await expect(page.getByRole("banner").getByText("stranger", { exact: true })).toBeVisible();
+  await expect(page.getByRole("search")).toBeVisible();
+  await say(page, "something bold for a wedding under 60");
+
+  // The lead is on screen while the part is still being planned; then it lands without a reload.
+  const answers = page.getByLabel("answer").first();
+  await expect(answers).toBeVisible();
+  await expect(page.locator('section[aria-label="trending"]')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/still coming/)).toBeHidden();
+
+  // Both parts are attributed separately in the verify strip — a composite stays inspectable.
+  await expect(page.locator('[aria-label="verify"]')).toHaveCount(2);
+});

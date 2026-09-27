@@ -140,6 +140,20 @@ export class TrailService {
   }
 
   /** Turns from this visitor's *other* trails whose utterance resonates with the embedding (§7 familiarity). */
+  /**
+   * Replace a turn's pour once a streamed composite has finished arriving.
+   *
+   * Not a hole in "append-only": no turn is added, removed or reordered, and the trail's shape is
+   * untouched. A streamed turn is *one* turn whose content lands in pieces, and this is the moment it
+   * stops being partial — without it, resuming would show the lead and none of the parts that were
+   * actually on screen.
+   */
+  async settle(turnId: string, pour: Record<string, unknown>, provenance: Record<string, unknown>): Promise<void> {
+    await this.db`UPDATE conversation.turn
+      SET pour = ${this.db.json(pour as any)}, provenance = ${this.db.json(provenance as any)}
+      WHERE id = ${turnId}`;
+  }
+
   async recall(visitorId: string, embedding: number[], threshold: number, excludeTrailId?: string, limit = 3): Promise<(Turn & { similarity: number })[]> {
     if (!embedding?.length || embedding.length !== EMBED_DIM) return [];
     const vec = `[${embedding.join(",")}]`;
