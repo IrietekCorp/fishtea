@@ -11,7 +11,7 @@
  * caught both halves of the second bug in milliseconds.
  */
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { RUNTIME_FILES } from "./build-release.ts";
 
@@ -49,6 +49,22 @@ describe("a release contains what its Dockerfiles copy", () => {
     const { workspaces } = JSON.parse(readFileSync(join(HOME, "package.json"), "utf8")) as { workspaces: string[] };
     const roots = workspaces.map((w) => w.replace(/\/\*$/, ""));
     for (const root of roots) expect({ root, staged: RUNTIME_FILES.includes(root) }).toEqual({ root, staged: true });
+  });
+
+  test("no shipped package's scripts reach outside the packages tree", () => {
+    // The container runs `bun run dev` inside packages/ui with only what a release ships. When that
+    // script said `bun ../../scripts/ui-assets-base.ts`, every other service came up healthy and the UI
+    // died with `Module not found` — because scripts/ is not shipped and never was.
+    const offenders: string[] = [];
+    for (const pkg of readdirSync(join(HOME, "packages"))) {
+      const manifest = join(HOME, "packages", pkg, "package.json");
+      if (!existsSync(manifest)) continue;
+      const { scripts = {} } = JSON.parse(readFileSync(manifest, "utf8")) as { scripts?: Record<string, string> };
+      for (const [name, cmd] of Object.entries(scripts)) {
+        if (/(^|[\s"'])\.\.\/\.\./.test(cmd)) offenders.push(`packages/${pkg} ${name}: ${cmd}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   test("the files an install itself reads are staged", () => {

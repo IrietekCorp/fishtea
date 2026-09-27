@@ -75,8 +75,11 @@ bunx tsc -p tsconfig.json --noEmit
   something wants the behaviour (never when a manifest is read), and every way of getting it wrong names
   the plugin and the file. A plugin classifier is wrapped in `withBudget`: the budget rule holds whether
   or not its author remembered it.
-- `packages/ui/src/plugins.generated.{css,ts}` are derived and git-ignored. `scripts/ui-assets-base.ts`
-  writes the empty versions so a fresh clone builds; `fishtea ui-assets` writes the real ones.
+- `packages/ui/src/plugins.generated.{css,ts}` are derived and git-ignored.
+  `packages/ui/scripts/ensure-generated.ts` writes the empty versions so a fresh clone builds; `fishtea
+  ui-assets` writes the real ones. **A package's own scripts must not reach outside the package** — the
+  container runs `bun run dev` inside `packages/ui` with only what a release ships, and `scripts/` is not
+  shipped. `scripts/release.test.ts` fails on a `../..` in any packages/*/package.json script.
 - Three versions, kept apart: the framework build (semver, pinned by an application), the spec *format* (`spec.fishtea`, what migrations key off), and the business revision. See `docs/VERSIONING.md`.
 - `.fishtea/manifest.json` records two hashes per archetype file — the archetype's and the application's — because the scaffolder transforms files as it copies them. That is what makes `fishtea update` a three-way merge instead of a guess.
 - Tests run against a real Postgres (pgvector). Keep them that way.

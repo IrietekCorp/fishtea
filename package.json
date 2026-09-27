@@ -22,14 +22,14 @@
     "down": "docker compose down",
     "bench": "bun packages/cli/src/index.ts bench",
     "test": "bun test packages scripts",
-    "typecheck": "bun scripts/ui-assets-base.ts && bunx tsc -p tsconfig.json --noEmit && bunx tsc -p packages/ui/tsconfig.json --noEmit",
+    "typecheck": "bun packages/ui/scripts/ensure-generated.ts && bunx tsc -p tsconfig.json --noEmit && bunx tsc -p packages/ui/tsconfig.json --noEmit",
     "release": "bun scripts/release.ts",
     "update": "bun packages/cli/src/index.ts update",
     "build-release": "bun scripts/build-release.ts",
     "site": "bun site/build.ts",
     "e2e": "bun scripts/e2e.ts",
     "deploy": "bun run site && bunx firebase-tools deploy --only hosting --project fishtea-io",
-    "ui-assets-base": "bun scripts/ui-assets-base.ts"
+    "ui-assets-base": "bun packages/ui/scripts/ensure-generated.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",

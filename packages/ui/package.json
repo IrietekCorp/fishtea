@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ../../scripts/ui-assets-base.ts && vite",
-    "build": "bun ../../scripts/ui-assets-base.ts && vite build",
+    "dev": "bun scripts/ensure-generated.ts && vite",
+    "build": "bun scripts/ensure-generated.ts && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
