@@ -11,7 +11,15 @@ Validated in Phase 0 on 2026-09-21 against `cactus-needle 3.0.4` (engine 3.0.1, 
 | Classify budget 60 ms | 130–270 ms per `complete()` on this CPU (prefill ~800 tok/s, decode ~330 tok/s); +10 ms embed | Default `rules.classify.budgetMs` is **400**; the §11 budgets for classify are re-baselined in `packages/bench/budgets.json`. |
 | Stateless calls | **The model carries state across `complete()` calls**: "something bold for a wedding" after a bridgeStyles turn became `addToCart(productId="bold")` | Every request `reset()`s first; context is folded into the request text ("Earlier: … Now: …"). |
 | Tool-list size | With 18 tools a clear query misfired to an unrelated tool at 0.36 confidence; with 6 it was right at 0.94 | Persona filtering is an accuracy lever, not only a security one. |
-| Switching tool subsets | `needle_init` is global per process: switching a worker to another subset costs **0.7–1.2 s** with the samples' doc-rich tool JSON (`bind` in the pool's `timings`), vs 125–310 ms for `complete` | Workers hold one subset each; the dispatcher assigns unassigned workers first, then least-recently-used, and prefers the worker already on the subset. **Size `NEEDLE_WORKERS` ≥ the number of distinct persona subsets** (core logs it at start; 3 for both samples). Each worker holds ~160 MB. |
+| Switching tool subsets | `needle_init` is global per process: switching a worker to another subset costs **0.7–1.2 s** with the samples' doc-rich tool JSON (`bind` in the pool's `timings`), vs 125–310 ms for `complete` | Workers hold one subset each; the dispatcher assigns unassigned workers first, then least-recently-used, and prefers the worker already on the subset. **Size **A client that hangs up is normal, not an error.** The core aborts a classify the instant its budget
+expires — past the budget the pour is `ask` — so the pool routinely finishes work for a socket nobody is
+holding. The handler treats `ConnectionResetError`/`BrokenPipeError` as a closed connection rather than
+letting `socketserver` print a traceback, which previously made every ordinary timeout read like a crash.
+And `/classify` reserves a margin inside the budget it was handed (`budget − min(50 ms, 10%)`), because
+the core starts its abort timer before the request leaves: a pool given the *whole* budget is cut off
+mid-reply every time, and even its "timed out" answer is thrown away.
+
+`NEEDLE_WORKERS` ≥ the number of distinct persona subsets** (core logs it at start; 3 for both samples). Each worker holds ~160 MB. |
 | Compound requests | "quiet and polished, for the office" → two `findAccessories` calls (0.85) | Pour takes the top call and offers the rest as `next[]` (§8). |
 | Off-topic | "what's the weather in Lagos" → `function_calls: []`, confidence 0.94 | Empty list is a confident "no": pour `ask`, record `answered=false`. |
 | Confidence on bare verbs | "check out" → `checkout`, confidence 0.15 | Below the 0.35 floor → `form` for checkout with knowns (correct behaviour). |

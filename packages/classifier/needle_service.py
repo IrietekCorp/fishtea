@@ -313,11 +313,24 @@ class Handler(BaseHTTPRequestHandler):
 
     def _json(self, code: int, body: dict):
         data = json.dumps(body).encode()
-        self.send_response(code)
-        self.send_header("content-type", "application/json")
-        self.send_header("content-length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.send_response(code)
+            self.send_header("content-type", "application/json")
+            self.send_header("content-length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except (ConnectionResetError, BrokenPipeError):
+            # The caller gave up before we answered, which is normal rather than exceptional: the core
+            # aborts a classify the moment its budget expires, and past that budget the pour is `ask`.
+            # Without this, every ordinary timeout printed a socketserver traceback that read like a
+            # crash — the same noise for "working as designed" as for a real fault.
+            self.close_connection = True
+
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (ConnectionResetError, BrokenPipeError):
+            self.close_connection = True
 
     def do_GET(self):
         if self.path.startswith("/healthz"):
@@ -337,8 +350,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(400, {"error": "text required"})
             if not p.tools:
                 return self._json(503, {"error": "no tools loaded; POST /reload"})
-            budget = float(body.get("budgetMs") or 0) / 1000 or TIMEOUT
-            out = p.request("classify", {"text": str(body["text"])[:1000], "context": [str(c)[:200] for c in (body.get("context") or [])][:8], "tools": body.get("tools"), "embed": body.get("embed", True)}, timeout=max(0.2, budget))
+            # Answer *inside* the caller's budget, not at it. The core starts its abort timer before the
+            # request leaves, so a pool given the whole budget is always cut off mid-reply and its answer
+            # — including a useful "timed out" — is thrown away. Reserving a margin means a slow classify
+            # comes back as a result the core can log rather than as a dropped connection.
+            asked = float(body.get("budgetMs") or 0) / 1000 or TIMEOUT
+            budget = max(0.2, asked - min(0.05, asked * 0.1))
+            out = p.request("classify", {"text": str(body["text"])[:1000], "context": [str(c)[:200] for c in (body.get("context") or [])][:8], "tools": body.get("tools"), "embed": body.get("embed", True)}, timeout=budget)
             return self._json(503 if out.get("error") else 200, out)
         if self.path == "/embed":
             out = p.request("embed", {"texts": [str(t)[:1000] for t in (body.get("texts") or [])][:32]})
