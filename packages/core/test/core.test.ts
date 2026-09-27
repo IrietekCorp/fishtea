@@ -2,7 +2,7 @@ import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { loadApp } from "@fishtea/spec";
-import { connect, migrate, seed, reset, Engine, runScript, LexicalClassifier, type Response } from "../src/index.ts";
+import { connect, migrate, seed, reset, ensureConversationSchema, Engine, runScript, LexicalClassifier, type Response } from "../src/index.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const URL = process.env.FISHTEA_TEST_DATABASE_URL ?? "postgres://fishtea:fishtea@localhost:5434/fishtea";
@@ -249,6 +249,29 @@ describe("the gate", () => {
     // this can catch is the regression that matters: an id short enough to be a guessable bearer token.
     // v_ + ~8 chars of base36 time + 16 chars of base64url from 96 random bits.
     for (const id of ids) expect({ id, long: id.length >= 24 }).toEqual({ id, long: true });
+  });
+});
+
+describe("the framework's own schema reaches an existing database", () => {
+  test("a pour kind added after a database was created still widens its CHECK", async () => {
+    // The trap: conversation.sql is CREATE TABLE IF NOT EXISTS, and migrate() runs only when the
+    // *business* entities drifted. An application whose spec has not changed in months would never
+    // receive a change to the framework's own tables, and would fail on the first turn of the new kind.
+    await db.unsafe(`ALTER TABLE conversation.turn DROP CONSTRAINT turn_kind_check`);
+    await db.unsafe(`ALTER TABLE conversation.turn ADD CONSTRAINT turn_kind_check
+      CHECK (kind IN ('ask','form','confirm-write','answer','notification'))`);
+
+    const before = await db`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'turn_kind_check'`;
+    expect(before[0].def).not.toContain("composite");
+
+    await ensureConversationSchema(db);
+
+    const after = await db`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'turn_kind_check'`;
+    expect(after[0].def).toContain("composite");
+
+    await ensureConversationSchema(db);                        // and again: it has to be idempotent
+    const twice = await db`SELECT count(*)::int AS n FROM pg_constraint WHERE conname = 'turn_kind_check'`;
+    expect(twice[0].n).toBe(1);
   });
 });
 

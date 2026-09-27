@@ -5,7 +5,7 @@
 import { watch } from "node:fs";
 import pc from "picocolors";
 import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
-import { migrate, seed, entitiesDrift, createServer } from "@fishtea/core";
+import { migrate, seed, entitiesDrift, ensureConversationSchema, createServer } from "@fishtea/core";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
 import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, portWasChosen, publicUrl, reachableUrls, redact, resolvePort, selfHosts, type Flags } from "./env.ts";
@@ -21,6 +21,10 @@ export async function serve(app: App, flags: Flags, dir: string) {
   if (moved) log(pc.yellow(`port ${wanted} was busy — using ${port} (pass --port to pin one)`));
   await checkDatabase(databaseUrl(flags), { appDir: dir });
   const { engine, db } = await buildEngine(app, flags, { log });
+
+  // The framework's own tables move with the framework, independently of anything in the spec, so this
+  // runs every start rather than only when the business entities drifted.
+  await ensureConversationSchema(db);
 
   const drift = await entitiesDrift(db, app);
   if (drift.drifted) {

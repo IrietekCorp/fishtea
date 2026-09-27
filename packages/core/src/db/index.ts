@@ -18,12 +18,25 @@ export interface MigrationReport { created: string[]; added: string[]; dropped: 
  * Additive by default (new tables, new columns). Destructive changes (columns that vanished from the
  * spec) are refused unless allowDestructive; the report lists them either way.
  */
-export async function migrate(db: Db, app: App, opts: { allowDestructive?: boolean; log?: (s: string) => void } = {}): Promise<MigrationReport> {
-  const log = opts.log ?? (() => {});
-  const report: MigrationReport = { created: [], added: [], dropped: [], refused: [], conversation: true };
+/**
+ * The fixed conversation schema, applied on its own.
+ *
+ * Separate from `migrate` because `migrate` runs only when the *business* entities have drifted, and
+ * this has to run whatever the spec did. The framework's own tables change with the framework — a new
+ * pour kind widens a CHECK, say — and an application whose entities have not moved in months would
+ * otherwise never receive it, then fail on the first turn of the new kind. Idempotent and cheap, so it
+ * is safe in front of anything.
+ */
+export async function ensureConversationSchema(db: Db): Promise<void> {
   const conv = readFileSync(join(here, "conversation.sql"), "utf8").replace(/halfvec\(3072\)/g, `halfvec(${EMBED_DIM})`);
   await db.unsafe(conv);
   await db.unsafe("CREATE SCHEMA IF NOT EXISTS business;");
+}
+
+export async function migrate(db: Db, app: App, opts: { allowDestructive?: boolean; log?: (s: string) => void } = {}): Promise<MigrationReport> {
+  const log = opts.log ?? (() => {});
+  const report: MigrationReport = { created: [], added: [], dropped: [], refused: [], conversation: true };
+  await ensureConversationSchema(db);
 
   for (const table of deriveTables(app.spec)) {
     const exists = await db`SELECT 1 FROM information_schema.tables WHERE table_schema = 'business' AND table_name = ${table.name}`;
