@@ -88,7 +88,10 @@ id short enough to guess.
   really the credential and XSS can read it. That is a deliberate trade for a cross-origin SPA, but it
   should be a decision rather than an accident: same-site cookie plus a CSRF token is the alternative.
 - **Identifier and credential are the same string.** They should probably not be. A visitor id shows up
-  in operator views (`/op/visitors`) and in logs; a credential should appear in neither.
+  in operator views (`/op/visitors`), in logs, and — unavoidably — **in a URL**: EventSource cannot set
+  request headers, so `/events?visitor=…` is the browser's only way to identify itself on the stream.
+  That puts a bearer credential in access logs and browser history. Splitting the identifier from the
+  credential would fix it properly; a short-lived stream token would fix it cheaply.
 - **Operator auth is one shared token.** `FISHTEA_OPERATOR_TOKEN` — no accounts, no per-operator
   attribution, no revocation. Already on the work list.
 - **The rate limiter is in-memory per process**, so it does not survive a restart or bind across

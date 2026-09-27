@@ -166,3 +166,24 @@ describe("the action log", () => {
     expect((await fetch(`${base}/op/actions`)).status).toBe(403);   // 403 throughout /op, not 401
   });
 });
+
+describe("EventSource cannot set headers", () => {
+  test("/events identifies the visitor from the query string", async () => {
+    // The browser's only option. Without this the stream answered 400 to every connection that had no
+    // cookie — which is every cross-origin one — so notifications, streamed parts and reload all died
+    // silently, visible only as repeating 400s in the console.
+    const first = await (await fetch(`${base}/utter`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: "hello" }) })).json() as any;
+    const v = first.visitor.id;
+
+    const ctl = new AbortController();
+    const res = await fetch(`${base}/events?visitor=${v}`, { signal: ctl.signal });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    ctl.abort();
+  });
+
+  test("a stream with no visitor at all is still refused", async () => {
+    const res = await fetch(`${base}/events`);
+    expect(res.status).toBe(400);
+  });
+});

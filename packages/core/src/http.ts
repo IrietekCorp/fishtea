@@ -76,8 +76,21 @@ export function createServer(opts: ServerOptions) {
       cookie: getCookie(c, COOKIE), issuedUrl: q.t ?? q.issued, userAgent: c.req.header("user-agent"), locale: (c.req.header("accept-language") ?? "").split(",")[0],
     };
   };
+  /**
+   * Who is asking.
+   *
+   * Three places, and the third is not optional: **EventSource cannot set request headers**, so the
+   * browser's only way to identify itself on `/events` is the query string, which is exactly what the
+   * client has always sent. This read it from the header and the cookie alone, so every SSE connection
+   * without a cookie answered 400 — no notifications, no streamed parts, no reload, and a browser
+   * console full of retries. The operator surface already accepts `?token=` for the same reason.
+   *
+   * It does mean a credential in a URL, and so in access logs and browser history. That is a real cost
+   * and another argument for separating the identifier from the credential (docs/ACCESS.md); it is not
+   * a new exposure, because the client was already putting it there.
+   */
   const visitorOf = (c: any): { id: string | null; hadToken: boolean } => {
-    const id = c.req.header("x-fishtea-visitor") ?? getCookie(c, COOKIE) ?? null;
+    const id = c.req.header("x-fishtea-visitor") ?? getCookie(c, COOKIE) ?? c.req.query("visitor") ?? null;
     return { id, hadToken: !!id };
   };
   const remember = (c: any, id: string) => setCookie(c, COOKIE, id, { path: "/", httpOnly: true, sameSite: "Lax", maxAge: 60 * 60 * 24 * 365 });

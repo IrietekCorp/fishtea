@@ -101,6 +101,22 @@ export async function composePorts(): Promise<Record<string, string>> {
     console.log(pc.yellow(`⚠ ports in use, publishing elsewhere: ${moved.join(", ")}`));
     console.log(pc.dim(`  pin one instead: ${wanted[0][0]}=<n> bun run up`));
   }
+
+  /**
+   * Say where things actually are.
+   *
+   * Every service inside a container reports the port it bound *there*, so Vite announces 5173 and the
+   * core announces 3000 even when compose published them on 5175 and 3002. Both are true and neither is
+   * the address to type. Only this process knows the published ports, so only this process can say.
+   */
+  const at = (envVar: string, fallback: number) => out[envVar] ?? process.env[envVar] ?? String(fallback);
+  console.log(pc.green("\n  the stack is published at:"));
+  console.log(`    UI          ${pc.cyan(`http://localhost:${at("FISHTEA_UI_PORT", 5173)}`)}`);
+  console.log(pc.dim(`    core        http://localhost:${at("FISHTEA_CORE_PORT", 3000)}`));
+  console.log(pc.dim(`    classifier  http://localhost:${at("FISHTEA_CLASSIFIER_PORT", 8081)}`));
+  console.log(pc.dim(`    postgres    localhost:${at("FISHTEA_DB_PORT", 5432)}`));
+  console.log(pc.dim(`  the ports each container prints below are its own, inside the network.\n`));
+
   return out;
 }
 
