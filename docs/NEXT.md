@@ -319,8 +319,27 @@ composite rendered three verify strips.
   raised budget, because the test is about whether recall is *correct*, not whether the machine is fast;
   latency belongs to `packages/bench`. **The needle suite is 6/6 green.**
 
-  The threshold is the real problem. Measured against the live pool, needle3's embeddings for short
-  utterances sit crowded near 1.0:
+  **The mechanism is the real problem, not the number.** Measured across 18 same-topic and 135
+  different-topic pairs from real utterances, needle3's short-utterance embeddings barely discriminate
+  at all — the two distributions sit on top of each other:
+
+  | | median | p90 | max |
+  |---|---|---|---|
+  | same topic | 0.939 | 0.956 | 0.988 |
+  | **different topic** | **0.937** | 0.952 | 0.985 |
+
+  The best separating threshold is 0.928, which keeps 89% of same-topic pairs and admits **70%** of
+  unrelated ones. There is no good number. Mean-centring the vectors (the standard fix for embedding
+  anisotropy — everything shares one large common direction) helps materially, from 89%/75% to 72%/41%,
+  and is still not good enough to act on.
+
+  So the default moved from 0.82 — which admitted **100%** of unrelated utterances, meaning recall fired
+  on every weak turn and fed the classifier irrelevant prior turns as context — to **0.96**, where it
+  fires rarely rather than constantly. That is damage control, not a fix. Familiarity needs a different
+  signal: shape overlap, argument overlap, or an embedding produced for the purpose. Recorded here with
+  the measurements so the next person does not re-tune a dial that has nothing behind it.
+
+  A sample of pairs, for the flavour of it:
 
   | pair | cosine |
   |---|---|
@@ -329,11 +348,7 @@ composite rendered three verify strips.
   | "something bold for a wedding under 60" ~ **"what's the weather"** | 0.938 |
   | "show my cart" ~ "check out" | 0.907 |
 
-  At 0.82 everything resonates with everything, including an utterance about the weather, so recall is
-  effectively unconditional and its context is noise. The gap that matters is narrow — 0.988 against
-  0.942 — so the threshold wants to be somewhere near 0.97 and, more importantly, wants deriving from a
-  measured distribution rather than picked. `packages/bench` is the place; this is a tuning task with
-  evidence attached now rather than a guess.
+  An utterance about the weather resonates with one about a wedding at 0.938. That is the whole finding.
 
 ### 5. Bench honesty (half a day)
 `packages/bench/src/conventional.ts` measures server time for the multi-page baseline, not browser task

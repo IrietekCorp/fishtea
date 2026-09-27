@@ -11,7 +11,7 @@
     "items.search": { "kind": "query", "in": { "text": "string?", "tags": "string[]?", "limit": "int=12" }, "out": "item[]", "impl": { "sql": "items_search.sql" } },
     "customer.upsert": { "kind": "mutation", "in": { "email": "email", "visitorId": "id", "name": "string?" }, "out": "customer", "impl": { "sql": "customer_upsert.sql" } }
   },
-  "rules": { "version": "2026.09.21-1", "writes": { "confirmAlways": true, "minConfidence": 0.85 }, "classify": { "budgetMs": 1000, "floor": 0.35, "contextTurns": 6 }, "calls": { "timeoutMs": 250 }, "familiarity": { "threshold": 0.82 }, "trail": { "sessionGapHours": 4 } },
+  "rules": { "version": "2026.09.21-1", "writes": { "confirmAlways": true, "minConfidence": 0.85 }, "classify": { "budgetMs": 1000, "floor": 0.35, "contextTurns": 6 }, "calls": { "timeoutMs": 250 }, "familiarity": { "threshold": 0.96 }, "trail": { "sessionGapHours": 4 } },
   "shapes": {
     "version": "2026.09.21-1",
     "findItems": { "asks": "Find items by what they are or a tag", "input": { "text": { "type": "string?", "doc": "what the visitor is looking for" }, "tag": "string?" }, "answer": "item[]", "effect": "read", "allow": ["stranger", "known", "customer"], "plan": [ { "call": "items.search", "with": { "text": "$text", "tags": "[$tag]" } } ], "phrase": "Items {text? matching \"$text\"} {tag? tagged $tag}" },

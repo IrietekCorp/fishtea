@@ -173,3 +173,63 @@ describe("ports", () => {
     }
   });
 });
+
+/**
+ * A generated project is the application and nothing else.
+ *
+ * It gets committed to its own repository and opened by people — and agents — who have never seen the
+ * framework. Anything of this machine that leaks into it is wrong for everybody who clones it.
+ */
+describe("a generated project is clean", () => {
+  const generated = async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), "fishtea-clean-")), "app");
+    scratch.push(dir);
+    await scaffold({ id: "cleanapp", template: "portfolio", dir, fishteaHome: HOME, force: true });
+    return dir;
+  };
+
+  test("it carries no framework source, only the application", async () => {
+    const dir = await generated();
+    for (const leaked of ["packages", "plugins", "templates", "bun.lock", "tsconfig.json", "Dockerfile.core"]) {
+      expect({ leaked, present: existsSync(join(dir, leaked)) }).toEqual({ leaked, present: false });
+    }
+    for (const wanted of ["spec.json", "calls", "seed", "package.json", "fishtea.ts", "README.md", "CLAUDE.md", ".gitignore", ".env.example"]) {
+      expect({ wanted, present: existsSync(join(dir, wanted)) }).toEqual({ wanted, present: true });
+    }
+  });
+
+  test("nothing committable hard-codes this machine's home directory", async () => {
+    const dir = await generated();
+    const home = process.env.HOME!;
+    // .env is git-ignored, and .env.example and docker-compose.yml need a literal path because neither a
+    // dotenv file nor docker expands `~`. Everything else must be portable.
+    const committed = ["package.json", "README.md", "CLAUDE.md", "fishtea.ts", ".gitignore", "spec.json"];
+    for (const f of committed) {
+      const text = readFileSync(join(dir, f), "utf8");
+      expect({ file: f, leaks: text.includes(home) }).toEqual({ file: f, leaks: false });
+    }
+    // The framework's location is still recorded — as a path that survives being cloned.
+    const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    expect(pkg.fishtea.home.startsWith("~/") || !pkg.fishtea.home.startsWith(home)).toBe(true);
+  });
+
+  test("the README links somewhere a reader can go", async () => {
+    const readme = readFileSync(join(await generated(), "README.md"), "utf8");
+    expect(readme).toContain("(https://fishtea.io)");
+    expect(readme).not.toMatch(/\]\(\/[a-z]/);                 // a link to a local absolute path
+  });
+
+  test("CLAUDE.md describes this application, not the framework", async () => {
+    const dir = await generated();
+    const md = readFileSync(join(dir, "CLAUDE.md"), "utf8");
+    expect(md).not.toContain("${a.");                          // no unsubstituted template
+    expect(md).toContain("Cleanapp");                          // the business, by name
+    expect(md).toContain("portfolio");                         // and its archetype
+    expect(md).toContain("spec.json` is the source");          // the rule that matters most
+    // Every command it advertises has to exist, or an agent will follow it into an error.
+    const scripts = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).scripts as Record<string, string>;
+    for (const m of md.matchAll(/^\s{4}bun run ([a-z-]+)/gm)) {
+      expect({ command: m[1], defined: m[1] in scripts }).toEqual({ command: m[1], defined: true });
+    }
+  });
+});

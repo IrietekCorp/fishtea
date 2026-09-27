@@ -185,7 +185,21 @@ export async function buildEngine(app: App, flags: Flags, opts: { log?: (s: stri
   if (classifier instanceof LexicalClassifier) await engine.primeLexical();
   else if (classifier.reload) {
     const h = await classifier.health();
-    if (h.ok) { const t0 = performance.now(); await classifier.reload(engine.toolSpecs, engine.personaSubsets).catch((e) => console.error(pc.yellow(`classifier reload failed: ${e.message}`))); if (process.env.FISHTEA_DEBUG) console.error(pc.dim(`pool reloaded + warmed ${engine.personaSubsets.length} persona subsets in ${Math.round(performance.now() - t0)} ms`)); }
+    if (h.ok) {
+      const t0 = performance.now();
+      await classifier.reload(engine.toolSpecs, engine.personaSubsets).catch((e) => console.error(pc.yellow(`classifier reload failed: ${e.message}`)));
+      if (process.env.FISHTEA_DEBUG) console.error(pc.dim(`pool reloaded + warmed ${engine.personaSubsets.length} persona subsets in ${Math.round(performance.now() - t0)} ms`));
+
+      // Say so while it is still warming. `reload` returns as soon as the pool accepts the tools; the
+      // per-persona agents are built behind it, and binding one costs 0.7–1.2 s against a 400 ms budget.
+      // So the first turn for each persona can pour `ask` on a perfectly healthy stack — which reads as
+      // "it is broken" unless somebody said this would happen.
+      const after = await classifier.health().catch(() => null);
+      if ((after?.detail as any)?.warming) {
+        console.error(pc.yellow(`⚠ the classifier is still warming ${engine.personaSubsets.length} persona subsets`));
+        console.error(pc.dim(`  binding one costs ~1 s against a ${app.spec.rules.classify?.budgetMs ?? 400} ms budget, so the first turn for each persona may pour "ask" — ask again and it will answer`));
+      }
+    }
     else {
       console.error(pc.yellow(`⚠ no classifier pool at ${classifierUrl(flags)} — text utterances will pour "ask" until one answers`));
       console.error(pc.dim(`  start one: cd ${FISHTEA_HOME}/packages/classifier && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python needle_service.py`));

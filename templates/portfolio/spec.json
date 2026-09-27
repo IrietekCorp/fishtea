@@ -33,7 +33,7 @@
     "writes": { "confirmAlways": true, "minConfidence": 0.85 },
     "classify": { "budgetMs": 1000, "floor": 0.35, "contextTurns": 6 },
     "calls": { "timeoutMs": 250 },
-    "familiarity": { "threshold": 0.82 },
+    "familiarity": { "threshold": 0.96 },
     "trail": { "sessionGapHours": 4 }
   },
 

@@ -148,13 +148,95 @@ function applyFlags(spec: any, flags: Record<string, unknown>, dir: string) {
   }
 }
 
+/**
+ * What an agent opening the generated directory needs to know.
+ *
+ * It sees an application, not the framework: no packages/, no engine, and a spec.json that is the whole
+ * of the business. Without this it starts by guessing at a layout it has never seen.
+ *
+ * Built from an array rather than a template literal because almost every line contains backticks.
+ */
+const CLAUDE_MD = (a: { name: string; template: string }) => [
+    "# ${a.name} \u2014 working in this project",
+    "",
+    "A **FishTea** application generated from the `${a.template}` archetype. The framework itself is not",
+    "in this directory; it is installed separately and reached through `fishtea.ts`. See <https://fishtea.io>.",
+    "",
+    "## The one rule",
+    "",
+    "**`spec.json` is the source.** Entities, shapes, calls, rules and personas are declared there, and the",
+    "database schema, the classifier's tool list, the planner, the UI and the operator console are all",
+    "derived from it. Change the spec, not the derived thing. If something here is specific to this business",
+    "and is *not* in `spec.json` or `calls/`, that is a bug worth naming.",
+    "",
+    "## Layout",
+    "",
+    "| | |",
+    "|---|---|",
+    "| `spec.json` | the business: entities, shapes, calls, rules, personas, notifications |",
+    "| `calls/` | `.sql` files and compute modules that shapes name in their plans |",
+    "| `seed/` | starting rows, one file per entity |",
+    "| `scripts/` | scripted conversations for `bun run headless` |",
+    "| `.fishtea/manifest.json` | provenance: which files are still the archetype's and which are yours. **Commit it**, or `fishtea update` elsewhere cannot tell |",
+    "",
+    "## Commands",
+    "",
+    "    bun run up          # docker compose: Postgres (pgvector) + classifier pool + core + ui",
+    "    bun run down        # stop; the data volume is kept. -v deletes the data too",
+    "    bun run validate    # check spec.json without starting anything",
+    "    bun run doctor      # is the database reachable, the classifier up, the framework version right",
+    "    bun run migrate     # apply the schema derived from spec.entities (additive)",
+    "    bun run seed        # load seed/",
+    "    bun run dev         # the core alone, against DATABASE_URL",
+    "    bun run headless    # run scripts/ with no browser \u2014 the fastest way to see a change",
+    "    bun run tui         # operator console: edit the spec, watch turns, see what went unanswered",
+    "    bun run fishtea update   # take a newer framework's archetype changes, three-way merged",
+    "",
+    "## Conventions that will trip you up",
+    "",
+    "- **SQL uses `$1..$n` in the order the call declares its inputs.** Never build SQL by string",
+    "  concatenation; the loader rejects it. jsonb parameters are passed as JS values, not pre-stringified.",
+    "- **A write always pours `confirm-write` first.** Nothing is written without the visitor agreeing, and",
+    "  the model never evaluates a rule \u2014 rules live in `spec.rules` and compute modules.",
+    "- **A shape's `allow` is the permission boundary**, checked after classification. A shape this persona",
+    "  may not ask is refused even when it arrives as a direct request rather than from the classifier.",
+    "- **Row ownership is the SQL's job**: scope reads with `AND visitor_id = $n`. No amount of shape-level",
+    "  permission substitutes for it.",
+    "- Generated DDL quotes every identifier, so a field named `order` works \u2014 and your SQL must quote it too.",
+    "- `.env` is machine-specific and git-ignored; `.env.example` is the committed copy.",
+    "",
+    "## Checking your work",
+    "",
+    "`bun run validate` catches spec problems. `bun run headless` runs a whole conversation and prints each",
+    "turn with the shape it matched, the calls it made and what it read or wrote \u2014 read that before trusting",
+    "a change. The operator console's **unmet** channel lists questions nobody could answer, which is",
+    "usually the first thing worth fixing.",
+    "",
+  ].join("\n").replace(/\$\{a\.name\}/g, a.name).replace(/\$\{a\.template\}/g, a.template);
+
+/**
+ * A path fit to commit.
+ *
+ * The framework's location is a property of *this machine*, and it reaches files that go into the
+ * application's repository. Written raw it is `/home/someone/.fishtea/versions/1.1.0`: it leaks a
+ * username and is wrong for everyone who clones the project. `~` is right wherever the layout matches.
+ */
+export const portableHome = (home: string): string => {
+  const h = process.env.HOME;
+  return h && (home === h || home.startsWith(`${h}/`)) ? `~${home.slice(h.length)}` : home;
+};
+
 export function writeAppFiles(dir: string, a: { id: string; name: string; template: string; fishteaHome: string }) {
+  // `~` only where something expands it. fishtea.ts does; a dotenv file and docker compose do not, and a
+  // `~` in either of those is a path that silently does not exist.
   const home = a.fishteaHome;
+  const committable = portableHome(a.fishteaHome);
+  const claudeMd = CLAUDE_MD(a);
   const files: Record<string, string> = {
     "package.json": JSON.stringify({
       name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a FishTea application (${a.template} archetype)`,
       scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
-      fishtea: { template: a.template, version: caretRange(FISHTEA_VERSION), home },
+      fishtea: { template: a.template, version: caretRange(FISHTEA_VERSION), home: committable },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
 /**
@@ -176,7 +258,10 @@ const here = dirname(new URL(import.meta.url).pathname);
 const pkg = JSON.parse(readFileSync(join(here, "package.json"), "utf8"));
 const env = { ...process.env, FISHTEA_APP: process.env.FISHTEA_APP ?? here };
 const args = process.argv.slice(2);
-const fromCheckout = (home: string) => {
+/** \`~\` so the path is committable; expanded here so it still resolves. */
+const expand = (p: string) => (p.startsWith("~/") || p === "~" ? join(process.env.HOME ?? "", p.slice(1)) : p);
+const fromCheckout = (raw: string) => {
+  const home = expand(raw);
   const cli = join(home, "packages/cli/src/index.ts");
   return existsSync(cli) ? { cmd: ["bun", cli], home } : null;
 };
@@ -206,9 +291,10 @@ process.exit(await proc.exited);
     // .fishtea/ holds caches, but manifest.json is provenance: commit it, or `fishtea update` on another
     // machine cannot tell which files are still the archetype's and which are now yours.
     ".gitignore": "node_modules/\n.env\n.fishtea/*\n!.fishtea/manifest.json\n*.new\n",
+    "CLAUDE.md": claudeMd,
     "README.md": `# ${a.name}
 
-A [FishTea](${home}) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.
+A [FishTea](https://fishtea.io) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.
 
 \`\`\`
 bun run up        # docker compose: Postgres (pgvector) + needle3 classifier pool + core + ui
@@ -259,6 +345,7 @@ FISHTEA_STRICT=0
 FISHTEA_OPERATOR_TOKEN=change-me
 
 # --- the framework ----------------------------------------------------------
+# Where the framework lives on *this* machine. Absolute on purpose: nothing expands ~ here.
 FISHTEA_HOME=${home}
 ${template === "ecommerce" ? `
 # --- vendor credentials (read by calls/adapters/*; never put these in spec.json)

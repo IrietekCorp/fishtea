@@ -293,7 +293,12 @@ export class Engine {
         // first pass was weak and something resonates, classify once more with the recalled turns as context
         if (embedding && !result.timedOut) {
           try {
-            const recalled = await this.trails.recall(visitor.id, embedding, Number(this.app.spec.rules.familiarity?.threshold ?? 0.82), trail.id);
+            // 0.96, not the 0.82 this shipped with, and provisionally: measured against the live pool,
+            // needle3's short-utterance embeddings barely discriminate at all — same-topic pairs median
+            // 0.939 against 0.937 for unrelated ones — so 0.82 admitted everything and recall fired on
+            // every weak turn with irrelevant context. 0.96 makes it rare instead of constant. See
+            // docs/NEXT.md: the mechanism needs rethinking, not a better number.
+            const recalled = await this.trails.recall(visitor.id, embedding, Number(this.app.spec.rules.familiarity?.threshold ?? 0.96), trail.id);
             recalledCount = recalled.length;
             const weak = !result.calls.length || result.confidence < floor || this.missingRequired(result.calls[0]);
             if (recalled.length && weak) {
