@@ -54,6 +54,9 @@ const escapeContext = (s: string) => s.replace(/[\r\n]+/g, " ").replace(/[<>{}]/
 
 export interface EngineOptions { app: App; db: Db; classifier?: Classifier; strict?: boolean; log?: (s: string) => void; channels?: Channel[] }
 
+/** A turn as a history lists it: what was said, what it matched, what came back — not the whole pour. */
+const turnSummary = (t: Turn) => ({ id: t.id, parentId: t.parentId, seq: t.seq, author: t.author, at: t.at, shape: t.shape, kind: t.kind, confidence: t.confidence, answered: t.answered, latencyMs: t.latencyMs, utterance: t.utterance, phrase: (t.pour as any).phrase ?? (t.pour as any).text });
+
 export class Engine {
   app: App;
   db: Db;
@@ -579,7 +582,25 @@ export class Engine {
     const trail = await this.trails.latest(visitorId);
     if (!trail) return null;
     const turns = await this.trails.turns(trail.id);
-    return { trail, turns: turns.map((t) => ({ id: t.id, parentId: t.parentId, seq: t.seq, author: t.author, at: t.at, shape: t.shape, kind: t.kind, confidence: t.confidence, answered: t.answered, latencyMs: t.latencyMs, utterance: t.utterance, phrase: (t.pour as any).phrase ?? (t.pour as any).text })) };
+    return { trail, turns: turns.map(turnSummary) };
+  }
+
+  /**
+   * One visitor's history as they would describe it: who they are to us (first and last seen), then each
+   * visit — a session is a trail, opened when a visit starts (`acquireTrail`) — newest first, with the
+   * turns it holds. Only ever the asking visitor's own; the envelope's `cookie` is left out because it is
+   * the visitor id, a bearer credential, and has no business in a payload.
+   */
+  async sessions(visitorId: string, limit = 20) {
+    const visitor = await this.trails.visitorRecord(visitorId);
+    if (!visitor) return null;
+    const trails = await this.trails.byVisitor(visitorId, Math.max(1, Math.min(limit, 100)));
+    const sessions = await Promise.all(trails.map(async (t, i) => {
+      const turns = await this.trails.turns(t.id);
+      const { cookie: _, ...envelope } = t.envelope as Record<string, unknown>;
+      return { id: t.id, current: i === 0, openedAt: t.openedAt, lastAt: turns.length ? turns[turns.length - 1].at : t.openedAt, headTurnId: t.headTurnId, envelope, turns: turns.map(turnSummary) };
+    }));
+    return { visitor: { id: visitor.id, known: !!visitor.customerId, firstSeen: visitor.createdAt, lastSeen: visitor.lastSeen }, sessions };
   }
 
   // ── notifications ────────────────────────────────────────────────────────

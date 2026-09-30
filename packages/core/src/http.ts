@@ -124,6 +124,13 @@ export function createServer(opts: ServerOptions) {
     return c.json((await engine.trail(v.id)) ?? { trail: null, turns: [] });
   });
 
+  /** The asking visitor's own visits, newest first, each with its turns. */
+  app.get("/sessions", async (c) => {
+    const v = visitorOf(c);
+    if (!v.id) return c.json({ visitor: null, sessions: [] });
+    return c.json((await engine.sessions(v.id, Number(c.req.query("limit") ?? 20) || 20)) ?? { visitor: null, sessions: [] });
+  });
+
   app.post("/trail/rewind", async (c) => {
     const v = visitorOf(c);
     if (!v.id) return c.json({ error: "no visitor" }, 400);

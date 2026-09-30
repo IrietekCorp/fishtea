@@ -187,3 +187,25 @@ describe("EventSource cannot set headers", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("sessions", () => {
+  test("a returning visitor is the same visitor with a new session, newest first, and the cookie stays out", async () => {
+    const first = (await (await fetch(`${base}/utter`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ arrive: true }) })).json()) as any;
+    const v = first.visitor.id;
+    const h = { "content-type": "application/json", "x-fishtea-visitor": v };
+    await fetch(`${base}/utter`, { method: "POST", headers: h, body: JSON.stringify({ text: "something for a wedding" }) });
+    // the visit ends: everything in it slips past the session gap
+    await db`UPDATE conversation.turn SET at = at - interval '1 day' WHERE trail_id IN (SELECT id FROM conversation.trail WHERE visitor_id = ${v})`;
+    await db`UPDATE conversation.trail SET opened_at = opened_at - interval '1 day' WHERE visitor_id = ${v}`;
+    const back = (await (await fetch(`${base}/utter`, { method: "POST", headers: h, body: JSON.stringify({ arrive: true }) })).json()) as any;
+    expect(back.visitor.id).toBe(v);
+
+    const s = (await (await fetch(`${base}/sessions`, { headers: h })).json()) as any;
+    expect(s.visitor.id).toBe(v);
+    expect(s.sessions.map((x: any) => x.current)).toEqual([true, false]);
+    expect(new Date(s.sessions[0].openedAt).getTime()).toBeGreaterThan(new Date(s.sessions[1].openedAt).getTime());
+    expect(s.sessions[1].turns.length).toBeGreaterThanOrEqual(2);
+    expect(JSON.stringify(s)).not.toContain('"cookie"');
+    expect(((await (await fetch(`${base}/sessions`)).json()) as any).sessions).toEqual([]);
+  });
+});

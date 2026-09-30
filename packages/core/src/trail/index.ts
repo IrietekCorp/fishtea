@@ -59,6 +59,20 @@ export class TrailService {
     return rows.length ? { id: rows[0].id, customerId: rows[0].customer_id } : null;
   }
 
+  /** A visitor as a record: when they were first and last seen. */
+  async visitorRecord(id: string): Promise<{ id: string; customerId: string | null; createdAt: string; lastSeen: string } | null> {
+    const rows = await this.db`SELECT id, customer_id, created_at, last_seen FROM conversation.visitor WHERE id = ${id}`;
+    if (!rows.length) return null;
+    const iso = (d: unknown) => (d instanceof Date ? d.toISOString() : String(d));
+    return { id: rows[0].id, customerId: rows[0].customer_id, createdAt: iso(rows[0].created_at), lastSeen: iso(rows[0].last_seen) };
+  }
+
+  /** A visitor's trails — one per visit, see `acquireTrail` — newest first. */
+  async byVisitor(visitorId: string, limit = 20): Promise<Trail[]> {
+    const rows = await this.db`SELECT * FROM conversation.trail WHERE visitor_id = ${visitorId} ORDER BY opened_at DESC LIMIT ${limit}`;
+    return rows.map(rowTrail);
+  }
+
   async open(visitorId: string, envelope: Record<string, unknown>): Promise<Trail> {
     const id = newId("t");
     const rows = await this.db`INSERT INTO conversation.trail (id, visitor_id, envelope) VALUES (${id}, ${visitorId}, ${this.db.json(envelope as any)}) RETURNING *`;
