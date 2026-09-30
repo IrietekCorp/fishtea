@@ -73,6 +73,36 @@ export class TrailService {
     return rows.map(rowTrail);
   }
 
+  /**
+   * Visitors only tooling ever produced: every visit they made carries `envelope.tool` (or, from before
+   * there was one, the `headless` campaign). One visit from a person keeps the visitor.
+   */
+  async toolVisitors(): Promise<{ id: string; tools: string[]; visits: number; turns: number; lastSeen: string }[]> {
+    const rows = await this.db`
+      SELECT v.id, v.last_seen,
+             array_agg(DISTINCT coalesce(t.envelope->>'tool', 'headless')) AS tools,
+             count(DISTINCT t.id)::int AS visits,
+             (SELECT count(*)::int FROM conversation.turn u JOIN conversation.trail tt ON tt.id = u.trail_id WHERE tt.visitor_id = v.id) AS turns
+      FROM conversation.visitor v JOIN conversation.trail t ON t.visitor_id = v.id
+      GROUP BY v.id
+      -- coalesce: a person's visit has no campaign, and NULL would slip through bool_and
+      HAVING bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false))
+      ORDER BY v.last_seen DESC`;
+    return rows.map((r: any) => ({ id: r.id, tools: r.tools, visits: r.visits, turns: r.turns, lastSeen: r.last_seen instanceof Date ? r.last_seen.toISOString() : String(r.last_seen) }));
+  }
+
+  /** Delete visitors and everything they said, in one transaction. */
+  async deleteVisitors(ids: string[]): Promise<number> {
+    if (!ids.length) return 0;
+    return this.db.begin(async (tx: any) => {
+      await tx`DELETE FROM conversation.turn WHERE trail_id IN (SELECT id FROM conversation.trail WHERE visitor_id = ANY(${ids}))`;
+      await tx`DELETE FROM conversation.pending_notification WHERE visitor_id = ANY(${ids})`;
+      await tx`DELETE FROM conversation.trail WHERE visitor_id = ANY(${ids})`;
+      const gone = await tx`DELETE FROM conversation.visitor WHERE id = ANY(${ids}) RETURNING id`;
+      return gone.length;
+    });
+  }
+
   async open(visitorId: string, envelope: Record<string, unknown>): Promise<Trail> {
     const id = newId("t");
     const rows = await this.db`INSERT INTO conversation.trail (id, visitor_id, envelope) VALUES (${id}, ${visitorId}, ${this.db.json(envelope as any)}) RETURNING *`;

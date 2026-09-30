@@ -53,7 +53,7 @@ export async function present(app: App, appDir: string, o: PresentOptions): Prom
   let visitor = existsSync(visitorFile) ? readFileSync(visitorFile, "utf8").trim() : "";
 
   const ask = async (shape: string): Promise<Pour> => {
-    const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "fishtea-present" };
+    const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "fishtea-present", "x-fishtea-tool": "present" };
     if (visitor) headers["x-fishtea-visitor"] = visitor;
     const r = await fetch(`${o.core}/utter`, { method: "POST", headers, body: JSON.stringify({ shape, args: o.args, submit: true }) });
     const j = (await r.json()) as { pour: Pour; visitor?: { id: string } };

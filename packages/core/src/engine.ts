@@ -38,9 +38,16 @@ const ENVELOPE_RULES: Record<string, RegExp> = {
   cookie: /^[\w-]{0,64}$/, issuedUrl: /^[\w-]{0,64}$/, userAgent: /^.{0,256}$/, locale: /^[a-zA-Z-]{2,16}$/,
 };
 
-/** Allowlisted keys, length- and pattern-validated; stored as data, never interpolated (§7, §12.3). */
+/**
+ * Allowlisted keys, length- and pattern-validated; stored as data, never interpolated (§7, §12.3).
+ *
+ * `tool` is the framework's own and always kept, whatever the application accepts: a headless run, a
+ * layout check, a browser test — anything that is not a visitor says so (`x-fishtea-tool`), so its
+ * sessions can be told apart from people's and pruned (`fishtea visitors prune`).
+ */
 export function parseEnvelope(app: App, raw: Record<string, unknown>): Envelope {
   const out: Envelope = {};
+  if (typeof raw.tool === "string" && /^[\w.-]{1,32}$/.test(raw.tool)) out.tool = raw.tool;
   for (const key of app.spec.envelope.accept) {
     const v = raw[key];
     if (typeof v !== "string" || !v) continue;

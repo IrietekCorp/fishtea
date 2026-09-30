@@ -434,6 +434,21 @@ async function main() {
       process.exitCode = await present(app, dir, { shapes: positional.slice(1).map(String), live: flags.live === true, core, args });
       return;
     }
+    case "visitors": {
+      // fishtea visitors prune [--yes]: visitors only tooling produced. Previews unless told --yes.
+      if (positional[1] !== "prune") throw new Error("usage: fishtea visitors prune [--yes]");
+      const db = connect(databaseUrl(flags));
+      const { TrailService } = await import("@fishtea/core");
+      const trails = new TrailService(db);
+      const found = await trails.toolVisitors();
+      const tally = (k: "visits" | "turns") => found.reduce((n, v) => n + v[k], 0);
+      const by = [...new Set(found.flatMap((v) => v.tools))].join(", ");
+      console.log(found.length ? `${found.length} visitor(s) only tooling produced (${by}): ${tally("visits")} visits, ${tally("turns")} turns` : "no visitors made only by tooling");
+      if (found.length && flags.yes === true) console.log(pc.green(`✓ deleted ${await trails.deleteVisitors(found.map((v) => v.id))}`));
+      else if (found.length) console.log(pc.dim("  preview only: --yes deletes them"));
+      await db.end();
+      return;
+    }
     case "doctor": {
       const dir = resolveAppDir(flags);
       const rows: [string, boolean, string][] = [];
@@ -500,7 +515,9 @@ async function main() {
       const { engine, db } = await buildEngine(app, flags);
       const drift = await entitiesDrift(db, app);
       if (drift.drifted) console.error(pc.yellow(`entities changed since last migration (run: fishtea migrate)`));
-      await runScript(engine, script, { pretty: flags.json !== true, envelope: { utm_campaign: "headless" } });
+      // Marked as tooling, so its visitors can be pruned; a fresh visitor every run, because a script is
+      // written for a stranger and a remembered one would already be known after "remember me".
+      await runScript(engine, script, { pretty: flags.json !== true, envelope: { utm_campaign: "headless", tool: "headless" } });
       await db.end();
       return;
     }
@@ -573,6 +590,7 @@ async function main() {
                               everything outside the conversation: integrations, design systems, auth
   fishtea ui-assets           regenerate the ui bundle's assets from ui/shell plugins (--typecheck: check their code)
   fishtea validate            validate spec.json and print section hashes
+  fishtea visitors prune      visitors only tooling produced (headless, present, tests); --yes deletes them
   fishtea present [shape…]    how each answer is laid out (rules.present, or derived); --live asks a running core
   fishtea doctor              check the spec, the database, the classifier and the binding
   fishtea derive [--ddl|--tools|--forms]

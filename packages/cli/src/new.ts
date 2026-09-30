@@ -190,7 +190,17 @@ const CLAUDE_MD = (a: { name: string; template: string }) => [
     "    bun run dev         # the core alone, against DATABASE_URL",
     "    bun run headless    # run scripts/ with no browser \u2014 the fastest way to see a change",
     "    bun run tui         # operator console: edit the spec, watch turns, see what went unanswered",
+    "    bun run present     # how every answer is laid out (rules.present, or derived); --live asks the core",
+    "    bun run release     # stamp today's version (YYYY.MM.DD-N), validate, commit, tag",
     "    bun run fishtea update   # take a newer framework's archetype changes, three-way merged",
+    "    bun run fishtea visitors prune   # visitors only tooling made (headless, present, tests); --yes deletes",
+    "",
+    "## Versioning",
+    "",
+    "This application's version is `business.version` in spec.json \u2014 dated, `YYYY.MM.DD-N` \u2014 and it is the",
+    "only one: package.json has none. It moves independently of FishTea, which the application pins",
+    "(`package.json` \u2192 `fishtea.version`) and moves with `fishtea update`. `bun run release` stamps today's",
+    "next version, validates, commits and tags `v<version>`; nothing is pushed.",
     "",
     "## Conventions that will trip you up",
     "",
@@ -215,6 +225,52 @@ const CLAUDE_MD = (a: { name: string; template: string }) => [
   ].join("\n").replace(/\$\{a\.name\}/g, a.name).replace(/\$\{a\.template\}/g, a.template);
 
 /**
+ * `release.ts` for a new application: its version is `business.version`, dated, and a release stamps
+ * today's next one, validates, commits and tags. Independent of the framework's own version by design.
+ */
+const RELEASE_TS = [
+  "/**",
+  " * `bun run release [--dry-run]` \u2014 release this application under a dated version.",
+  " *",
+  " * The version is `business.version` in spec.json, `YYYY.MM.DD-N`: the date of the release and its number",
+  " * that day. It is this business's own, and moves independently of the FishTea framework it runs on",
+  " * (`package.json` \u2192 `fishtea.version` pins that). A release stamps today's next version into spec.json,",
+  " * validates the spec, commits everything and tags the commit `v<version>`. Nothing is pushed.",
+  " */",
+  'import { $ } from "bun";',
+  'import { readFileSync, writeFileSync } from "node:fs";',
+  "",
+  'const dry = process.argv.includes("--dry-run");',
+  'const SPEC = new URL("./spec.json", import.meta.url).pathname;',
+  'const text = readFileSync(SPEC, "utf8");',
+  "const current: string = JSON.parse(text).business.version;",
+  "",
+  "const d = new Date();",
+  'const today = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;',
+  'const tags = (await $`git tag --list ${`v${today}-*`}`.quiet().nothrow().text()).split("\\n").filter(Boolean);',
+  'const taken = [current, ...tags.map((t) => t.slice(1))].filter((v) => v.startsWith(`${today}-`)).map((v) => Number(v.split("-")[1]) || 0);',
+  "const next = `${today}-${taken.length ? Math.max(...taken) + 1 : 1}`;",
+  "// An unreleased spec already stamped today (edits since the last tag) keeps its number rather than skipping one.",
+  "const version = current.startsWith(`${today}-`) && !tags.includes(`v${current}`) ? current : next;",
+  "",
+  'console.log(`${current} \u2192 ${version}${dry ? "  (dry run: nothing written)" : ""}`);',
+  "if (dry) process.exit(0);",
+  "",
+  "// Only business.version is rewritten, in place, so the rest of spec.json keeps its formatting.",
+  "const at = text.indexOf('\"business\"');",
+  'const updated = text.slice(0, at) + text.slice(at).replace(/("version":\\s*")[^"]*(")/, `$1${version}$2`);',
+  'if (JSON.parse(updated).business.version !== version) throw new Error("could not find business.version in spec.json");',
+  "writeFileSync(SPEC, updated);",
+  "",
+  "await $`bun fishtea.ts validate`;",
+  "await $`git add -A`;",
+  "await $`git commit -q -m ${`Release ${version}`}`;",
+  "await $`git tag ${`v${version}`}`;",
+  "console.log(`\u2713 tagged v${version}`);",
+  "",
+].join("\n");
+
+/**
  * A path fit to commit.
  *
  * The framework's location is a property of *this machine*, and it reaches files that go into the
@@ -234,8 +290,8 @@ export function writeAppFiles(dir: string, a: { id: string; name: string; templa
   const claudeMd = CLAUDE_MD(a);
   const files: Record<string, string> = {
     "package.json": JSON.stringify({
-      name: a.id, version: "0.1.0", private: true, type: "module", description: `${a.name} — a FishTea application (${a.template} archetype)`,
-      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench" },
+      name: a.id, private: true, type: "module", description: `${a.name} — a FishTea application (${a.template} archetype)`,
+      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench", present: "bun fishtea.ts present", release: "bun release.ts" },
       fishtea: { template: a.template, version: caretRange(FISHTEA_VERSION), home: committable },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
@@ -292,6 +348,7 @@ process.exit(await proc.exited);
     // machine cannot tell which files are still the archetype's and which are now yours.
     ".gitignore": "node_modules/\n.env\n.fishtea/*\n!.fishtea/manifest.json\n*.new\n",
     "CLAUDE.md": claudeMd,
+    "release.ts": RELEASE_TS,
     "README.md": `# ${a.name}
 
 A [FishTea](https://fishtea.io) application from the \`${a.template}\` archetype. Everything derives from \`spec.json\`.

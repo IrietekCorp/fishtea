@@ -64,7 +64,7 @@ export function createServer(opts: ServerOptions) {
   app.use("*", cors({
     origin: allowOrigin(opts.cors),
     credentials: true,
-    allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator"],
+    allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator", "x-fishtea-tool"],
     allowMethods: ["GET", "POST", "OPTIONS"],
     maxAge: 600,
   }));
@@ -74,6 +74,7 @@ export function createServer(opts: ServerOptions) {
     return {
       referrer: c.req.header("referer") ?? q.ref, utm_source: q.utm_source, utm_campaign: q.utm_campaign, coupon: q.coupon ?? getCookie(c, "coupon"),
       cookie: getCookie(c, COOKIE), issuedUrl: q.t ?? q.issued, userAgent: c.req.header("user-agent"), locale: (c.req.header("accept-language") ?? "").split(",")[0],
+      tool: c.req.header("x-fishtea-tool"),
     };
   };
   /**

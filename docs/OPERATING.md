@@ -10,7 +10,8 @@ dial.
 |---|---|---|
 | `FISHTEA_HOST` | `--host` | what the core binds. `0.0.0.0` (default) accepts any address; `127.0.0.1` keeps it local |
 | `PORT` | `--port` | the core's port |
-| `FISHTEA_PUBLIC_HOST` | `--public-host` | the address others dial. Detected from the LAN when unset; used for printed URLs and the UI's `VITE_CORE_URL` |
+| `FISHTEA_PUBLIC_HOST` | `--public-host` | the address others dial. Detected from the LAN when unset; used for printed URLs |
+| `FISHTEA_CORE_URL` | | where the ui server proxies `/core` (compose sets `http://core:3000`). The browser then dials the page's own origin, so the visitor's cookie is first-party wherever the page was opened |
 | `FISHTEA_CORS_ORIGINS` | `--cors` | browser origins allowed to call the core. Unset means any port on an address the core answers on, which covers the UI. Comma separated, or `*` |
 | `DATABASE_URL` | `--db` | Postgres, wherever it lives |
 | `CLASSIFIER_URL` | `--classifier` | the needle pool, wherever it lives |
@@ -79,6 +80,14 @@ fishtea bench -- --conventional
 `packages/bench/budgets.json` holds the budgets; `baseline.json` holds the last recorded run. The
 conventional multi-page baseline currently measures **server time only** — no browser parse or render —
 so it is not yet the task-completion comparison the blueprint asks for.
+
+## Visitors that are not people
+
+A headless run, a layout check, a browser test: each is a visitor to the core, and a new one each time.
+Tooling says what it is with `x-fishtea-tool` (headless and `fishtea present` do), which is kept on the
+visit's envelope whatever `envelope.accept` says. `fishtea visitors prune` lists the visitors only
+tooling ever produced and, with `--yes`, deletes them and everything they said. A visitor with one visit
+from a person is kept.
 
 ## Things that will bite you
 

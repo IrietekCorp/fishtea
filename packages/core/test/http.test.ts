@@ -209,3 +209,28 @@ describe("sessions", () => {
     expect(((await (await fetch(`${base}/sessions`)).json()) as any).sessions).toEqual([]);
   });
 });
+
+describe("tooling visitors", () => {
+  test("a visitor only tooling produced is found and pruned; one with a person's visit is kept", async () => {
+    const tool = { "content-type": "application/json", "x-fishtea-tool": "present" };
+    const bot = (await (await fetch(`${base}/utter`, { method: "POST", headers: tool, body: JSON.stringify({ arrive: true }) })).json()) as any;
+    // a visitor who arrived by a tool once and by a browser later is a person
+    const mixed = (await (await fetch(`${base}/utter`, { method: "POST", headers: tool, body: JSON.stringify({ arrive: true }) })).json()) as any;
+    await db`UPDATE conversation.turn SET at = at - interval '1 day' WHERE trail_id IN (SELECT id FROM conversation.trail WHERE visitor_id = ${mixed.visitor.id})`;
+    await db`UPDATE conversation.trail SET opened_at = opened_at - interval '1 day' WHERE visitor_id = ${mixed.visitor.id}`;
+    await fetch(`${base}/utter`, { method: "POST", headers: { "content-type": "application/json", "x-fishtea-visitor": mixed.visitor.id }, body: JSON.stringify({ arrive: true }) });
+
+    const [envelope] = await db`SELECT envelope FROM conversation.trail WHERE visitor_id = ${bot.visitor.id}`;
+    expect(envelope.envelope.tool).toBe("present");
+    const found = await engine.trails.toolVisitors();
+    const ids = found.map((v) => v.id);
+    expect(ids).toContain(bot.visitor.id);
+    expect(ids).not.toContain(mixed.visitor.id);
+    expect(found.find((v) => v.id === bot.visitor.id)!.tools).toEqual(["present"]);
+
+    expect(await engine.trails.deleteVisitors([bot.visitor.id])).toBe(1);
+    expect((await db`SELECT 1 FROM conversation.visitor WHERE id = ${bot.visitor.id}`).length).toBe(0);
+    expect((await db`SELECT 1 FROM conversation.trail WHERE visitor_id = ${bot.visitor.id}`).length).toBe(0);
+    expect((await db`SELECT 1 FROM conversation.visitor WHERE id = ${mixed.visitor.id}`).length).toBe(1);
+  });
+});
