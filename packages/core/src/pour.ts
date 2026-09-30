@@ -33,6 +33,8 @@ export interface AnswerPour {
    * model — so a headless caller, an API client and every front end get the same page.
    */
   present?: PresentTree;
+  /** the arguments the shape was asked with, so a front end can refine the page rather than replace it */
+  args?: Record<string, unknown>;
 }
 export interface NotificationPour { kind: "notification"; author: "system" | "operator"; name?: string | null; text: string; next: Chip[] }
 
@@ -166,7 +168,7 @@ export function confirmPour(shapeName: string, shape: ShapeDef, known: Record<st
   return { kind: "confirm-write", shape: shapeName, phrase: phraseFor(shape, known), summary, fields: deriveForm(shape), known, ...extra };
 }
 export function answerPour(spec: Spec, shapeName: string, shape: ShapeDef, args: Record<string, unknown>, answer: unknown, provenance: Provenance, persona: string, extra: Partial<AnswerPour> = {}): AnswerPour {
-  return { kind: "answer", shape: shapeName, phrase: phraseFor(shape, args), vessel: vesselFor(shape, spec), answer, next: nextChips(spec, shape, answer, args, persona), provenance, present: resolvePresent(spec as never, shapeName, answer), ...extra };
+  return { kind: "answer", shape: shapeName, phrase: phraseFor(shape, args), vessel: vesselFor(shape, spec), answer, next: nextChips(spec, shape, answer, args, persona), provenance, present: resolvePresent(spec as never, shapeName, answer), args, ...extra };
 }
 
 export { vesselFor };

@@ -6,7 +6,8 @@
  * A plugin is that, given a manifest and a resolver:
  *
  *   integration   calls, entities, shapes: Stripe, an AI API, a shipping quote
- *   ui            a design system — tokens, and optionally its own vessels
+ *   ui            a design system — tokens, and optionally its own vessels and per-shape views
+ *   shell         the whole front end a visitor sees, in place of the framework's container
  *   auth          how a visitor becomes known
  *   classifier    an alternative to the needle pool
  *   channel       where a notification is delivered
@@ -27,7 +28,7 @@
 import { satisfies } from "./release.ts";
 import type { VesselName } from "./spec.ts";
 
-export const PLUGIN_KINDS = ["integration", "ui", "auth", "classifier", "channel", "archetype"] as const;
+export const PLUGIN_KINDS = ["integration", "ui", "auth", "classifier", "channel", "archetype", "shell"] as const;
 export type PluginKind = (typeof PLUGIN_KINDS)[number];
 
 /** Sections of the spec a plugin may contribute to. `business` and `envelope` are the application's alone. */
@@ -64,6 +65,12 @@ export interface PluginManifest {
   /** ui plugins: vessel name → component file, relative to the plugin directory */
   vessels?: Record<string, string>;
   /**
+   * ui plugins: shape name → component file exporting `View`, for a shell to draw that shape with. A view
+   * is the application's page for one shape (its home, its contact overlay); anything unclaimed is drawn
+   * from `pour.present` or the shape's vessel. Shape names are checked against the spec by `ui-assets`.
+   */
+  views?: Record<string, string>;
+  /**
    * classifier and channel plugins: the module that implements the seam, relative to the plugin
    * directory. What it must export depends on the kind — see SEAM_EXPORT — and is checked when it is
    * loaded, not here, because reading a manifest must never run anybody's code.
@@ -90,6 +97,14 @@ export const SEAM_EXPORT: Partial<Record<PluginKind, string>> = {
   classifier: "createClassifier",
   channel: "createChannel",
 };
+
+/**
+ * What a shell plugin's `module` exports. Deliberately not a seam: a shell is browser code the UI bundle
+ * imports, and the core — which loads seam modules server-side — must never import it.
+ */
+export const SHELL_EXPORT = "Shell";
+/** What a ui plugin's per-shape view file exports. */
+export const VIEW_EXPORT = "View";
 
 /** Kinds whose whole purpose is the module they carry, so a manifest without one cannot work. */
 export const SEAM_KINDS = Object.keys(SEAM_EXPORT) as PluginKind[];
@@ -138,6 +153,7 @@ export function validateManifest(m: unknown, where: string): string[] {
   if (SEAM_KINDS.includes(p.kind) && !p.module) {
     problems.push(`${where}: a ${p.kind} plugin needs "module", the file exporting ${SEAM_EXPORT[p.kind]}()`);
   }
+  if (p.kind === "shell" && !p.module) problems.push(`${where}: a shell plugin needs "module", the file exporting ${SHELL_EXPORT}`);
   if (p.module && (p.module.startsWith("/") || p.module.includes(".."))) {
     problems.push(`${where}: "module" must be a path inside the plugin, not ${p.module}`);
   }
@@ -150,6 +166,10 @@ export function validateManifest(m: unknown, where: string): string[] {
     }
   }
   if (p.vessels && p.kind !== "ui") problems.push(`${where}: only a ui plugin may override vessels`);
+  for (const [shape, file] of Object.entries(p.views ?? {})) {
+    if (typeof file !== "string" || file.startsWith("/") || file.includes("..")) problems.push(`${where}: view "${shape}" must name a file inside the plugin, not ${String(file)}`);
+  }
+  if (p.views && p.kind !== "ui") problems.push(`${where}: only a ui plugin may carry views`);
   return problems;
 }
 

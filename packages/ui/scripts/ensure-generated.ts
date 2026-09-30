@@ -1,49 +1,24 @@
 #!/usr/bin/env bun
 /**
- * Make sure this package's generated files exist.
+ * Make sure this package can build before any application has generated its UI assets.
  *
- * `src/index.css` imports `plugins.generated.css` and `src/container.tsx` imports
- * `plugins.generated.ts`. Both are written by `fishtea ui-assets` from an *application's* ui plugins,
- * and both are git-ignored — so a fresh clone had neither, and `vite build` failed on a missing import
- * before anyone had run a command that would create them.
+ * It used to write empty `src/plugins.generated.{css,ts}` into a fresh clone, because both were
+ * git-ignored and `vite build` failed on a missing import. The empty versions are committed now, in
+ * src/generated, and an application's real ones are written into *its* `.fishtea/ui/` (vite.config.ts
+ * points `#generated` there) — so this only checks the base is present, and says so if it is not.
  *
- * **It lives inside packages/ui on purpose.** It used to sit in the repo's top-level `scripts/`, which a
- * release does not ship — so the container built from a release ran `bun ../../scripts/…`, found
- * nothing, and the UI died at startup with `Module not found` while every other service came up healthy.
- * A package's build must not reach outside the package.
- *
- * This writes the empty versions when they are absent and leaves a real one alone, so it is safe in
- * front of anything. It is not a substitute for `fishtea ui-assets`: it only makes "no ui plugins" the
- * state of a checkout that has never been told about any.
+ * **It lives inside packages/ui on purpose.** A release does not ship the repo's top-level scripts/, and
+ * a package's build must not reach outside the package.
  */
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-const SRC = resolve(dirname(new URL(import.meta.url).pathname), "../src");
-
-const BASE: Record<string, string> = {
-  "plugins.generated.css":
-    "/* Written by packages/ui/scripts/ensure-generated.ts because no application has generated one yet.\n" +
-    "   `fishtea ui-assets --app <dir>` replaces this with that application's design systems. */\n",
-  "plugins.generated.ts":
-    "/* Written by packages/ui/scripts/ensure-generated.ts because no application has generated one yet.\n" +
-    "   `fishtea ui-assets --app <dir>` replaces this with that application's vessel overrides. */\n" +
-    'import type { ComponentType } from "react";\n\n' +
-    "export const vesselOverrides: Partial<Record<string, ComponentType<any>>> = {};\n",
-};
+const BASE = resolve(dirname(new URL(import.meta.url).pathname), "../src/generated");
 
 export function ensureUiAssets(): string[] {
-  const wrote: string[] = [];
-  for (const [name, content] of Object.entries(BASE)) {
-    const file = join(SRC, name);
-    if (existsSync(file)) continue;
-    writeFileSync(file, content);
-    wrote.push(name);
-  }
-  return wrote;
+  const missing = ["plugins.generated.css", "plugins.generated.ts"].filter((f) => !existsSync(join(BASE, f)));
+  if (missing.length) throw new Error(`packages/ui/src/generated is missing ${missing.join(", ")}; restore them from git`);
+  return [];
 }
 
-if (import.meta.main) {
-  const wrote = ensureUiAssets();
-  if (wrote.length) console.log(`✓ wrote base ${wrote.join(", ")}`);
-}
+if (import.meta.main) ensureUiAssets();

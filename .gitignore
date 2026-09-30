@@ -8,8 +8,6 @@ templates/*/.fishtea/
 packages/classifier/.venv/
 __pycache__/
 models/
-packages/ui/src/plugins.generated.css
-packages/ui/src/plugins.generated.ts
 site/dist/
 packages/ui/test-results/
 packages/ui/playwright-report/

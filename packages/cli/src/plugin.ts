@@ -13,11 +13,12 @@
  * application keeps working, and nothing about the plugin has to change.
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
+import { isInside } from "./env.ts";
 import pc from "picocolors";
 import {
   FISHTEA_VERSION, PLUGIN_KINDS, bumpVersion, defaultsOf, discoverPlugins, missingEnv, readManifestAt,
-  resolvePlugins, type PluginKind, type PluginManifest, type ResolvedPlugin,
+  resolvePlugins, SHELL_EXPORT, VIEW_EXPORT, type PluginKind, type PluginManifest, type ResolvedPlugin,
 } from "@fishtea/spec";
 
 const specPath = (appDir: string) => join(appDir, "spec.json");
@@ -205,6 +206,26 @@ function skeleton(name: string, kind: PluginKind): Record<string, string> {
       "}",
       "",
     ].join("\n");
+  } else if (kind === "shell") {
+    manifest.module = "Shell.tsx";
+    files["Shell.tsx"] = [
+      "/**",
+      " * The whole front end a visitor sees, in place of the framework's container. The UI bundle imports it",
+      " * through `fishtea ui-assets`; it is browser code, and the core never loads it.",
+      " *",
+      " * `@fishtea/ui/*` is packages/ui/src: its client (utter, resume, sessions…), the Present renderer for",
+      " * `pour.present`, and the vessels. `views` is the application's per-shape views from its ui plugins.",
+      " * Start from the container and change what you need.",
+      " */",
+      'import type { ComponentType } from "react";',
+      'import { Container } from "@fishtea/ui/container";',
+      "",
+      "export function Shell({ views }: { views: Partial<Record<string, ComponentType<any>>> }) {",
+      "  void views;",
+      "  return <Container />;",
+      "}",
+      "",
+    ].join("\n");
   } else {
     manifest.provides = {};
     files["README.md"] = `# ${name}\n\nA \`${kind}\` plugin. Declare what it contributes under \`provides\` in fishtea.plugin.json.\n`;
@@ -240,20 +261,48 @@ export function promote(name: string, appDir: string, home: string, opts: { copy
 }
 
 /**
- * Generate what the browser bundle needs from the application's ui plugins: one stylesheet importing each
- * design system's tokens in order, with its configured values substituted.
+ * Generate what the browser bundle needs from the application's ui and shell plugins: one stylesheet of
+ * each design system's tokens with its configured values substituted, and one registry of the components
+ * plugins contribute — vessel overrides, per-shape views, and at most one shell.
  *
- * Generated rather than dynamic because the UI is a Vite build — a stylesheet has to exist at build time.
- * The file is written into packages/ui/src and is git-ignored; it is derived, like everything else here.
+ * Generated rather than dynamic because the UI is a Vite build and has to know its modules at build time.
+ * Both files are written into the *application* (`.fishtea/ui/`, git-ignored — derived like everything
+ * else), never into the framework install, which several applications share. packages/ui reads them
+ * through the `#generated` alias, pointed at `FISHTEA_APP_DIR/.fishtea/ui` when that exists.
+ *
+ * Imports have to resolve on the host and in the ui container, where the paths differ. A file in the
+ * application is imported relative to the registry (the application's own layout is the same in both);
+ * a builtin plugin's file through the `@fishtea/plugins` alias, which each side points at its own
+ * framework. Anything else — a plugin outside both — keeps an absolute path and a warning, because a
+ * container will not see it.
  */
 export const VESSEL_EXPORT = "Vessel";
 
-export function generateUiAssets(appDir: string, home: string): { plugins: string[]; css: string; path: string; warnings: string[]; vessels: string[]; registryPath: string } {
-  const ui = installed(appDir, home).filter((p) => p.manifest.kind === "ui" && p.use.enabled !== false);
+export interface UiAssets { plugins: string[]; css: string; path: string; warnings: string[]; vessels: string[]; views: string[]; shell: string | null; registryPath: string }
+
+export function generateUiAssets(appDir: string, home: string): UiAssets {
+  const all = installed(appDir, home).filter((p) => p.use.enabled !== false);
+  const ui = all.filter((p) => p.manifest.kind === "ui");
+  const shells = all.filter((p) => p.manifest.kind === "shell");
   const warnings: string[] = [];
+  const out = join(appDir, ".fishtea", "ui");
+  mkdirSync(out, { recursive: true });
+  const builtin = join(home, "plugins");
+
+  /** How the registry (in `out`) imports a plugin's file, and how the stylesheet points Tailwind at a directory. */
+  const importPath = (file: string, plugin: string): string => {
+    if (isInside(file, appDir)) { const r = relative(out, file); return r.startsWith(".") ? r : `./${r}`; }
+    if (isInside(file, builtin)) return `@fishtea/plugins/${relative(builtin, file)}`;
+    warnings.push(`${plugin}: ${file} is outside the application and the framework, so a ui container cannot see it`);
+    return file;
+  };
+
   const parts: string[] = [
-    "/* Generated by `fishtea ui-assets` from this application's ui plugins. Do not edit; it is derived. */",
+    "/* Generated by `fishtea ui-assets` from this application's ui and shell plugins. Do not edit; it is derived. */",
   ];
+  // Tailwind only makes the classes it sees. The UI package scans its own sources and the builtin
+  // plugins; a plugin in the application is scanned from here, relative to this file.
+  for (const p of [...ui, ...shells]) if (isInside(p.dir, appDir)) parts.push(`@source "${relative(out, p.dir)}";`);
   for (const p of ui) {
     if (!p.manifest.tokens) continue;
     const file = join(p.dir, p.manifest.tokens);
@@ -279,50 +328,74 @@ export function generateUiAssets(appDir: string, home: string): { plugins: strin
     parts.push(`\n/* ---- ${p.manifest.name} ${p.manifest.version} (${p.as}) ---- */\n${css}`);
   }
   const css = parts.join("\n");
-  const path = join(home, "packages/ui/src/plugins.generated.css");
+  const path = join(out, "plugins.generated.css");
   writeFileSync(path, css);
 
-  // ---- vessel overrides ------------------------------------------------------------------------
+  // ---- components ------------------------------------------------------------------------------
   //
-  // A design system that only restyles is a stylesheet, which is the common case and why tokens came
-  // first. Replacing a vessel outright — a shop that wants its own product card — needs a component,
-  // and the browser bundle is a Vite build, so the set of components has to be known at build time.
-  // Hence a generated registry rather than a dynamic import: `container.tsx` consults it and falls
-  // back to the built-in for every vessel nobody claimed.
-  //
-  // Later plugins win, matching the stylesheet order above: the last one to speak decides how it looks.
-  const claims = new Map<string, { plugin: string; file: string }>();
+  // Vessel overrides replace one of the seven vessels (a shop's own product card); views are an
+  // application's page for one *shape* (its home, its contact overlay), drawn by a shell; the shell is
+  // the whole front end. Later plugins win a vessel or a view, matching the stylesheet order: the last
+  // to speak decides how it looks. Two shells is an error — there is no sensible way to wear both.
   const imports: string[] = [];
+  const claim = (kind: "vessel" | "view", map: Map<string, { plugin: string; file: string }>, name: string, p: (typeof ui)[number], rel: string) => {
+    const file = join(p.dir, rel);
+    if (!existsSync(file)) throw new Error(`${p.as}: ${kind} "${name}" names ${rel}, which is not in the plugin`);
+    const prior = map.get(name);
+    if (prior) warnings.push(`${name}: "${p.as}" overrides "${prior.plugin}", which also claims it`);
+    map.set(name, { plugin: p.as, file });
+  };
+  const vessels = new Map<string, { plugin: string; file: string }>();
+  const views = new Map<string, { plugin: string; file: string }>();
+  const shapes = appShapes(appDir);
   for (const p of ui) {
-    for (const [vessel, rel] of Object.entries(p.manifest.vessels ?? {})) {
-      const file = join(p.dir, rel);
-      if (!existsSync(file)) throw new Error(`${p.as}: vessel "${vessel}" names ${rel}, which is not in the plugin`);
-      const prior = claims.get(vessel);
-      if (prior) warnings.push(`${vessel}: "${p.as}" overrides "${prior.plugin}", which also claims it`);
-      claims.set(vessel, { plugin: p.as, file });
+    for (const [vessel, rel] of Object.entries(p.manifest.vessels ?? {})) claim("vessel", vessels, vessel, p, rel);
+    for (const [shape, rel] of Object.entries(p.manifest.views ?? {})) {
+      if (shapes && !shapes.includes(shape)) throw new Error(`${p.as}: view "${shape}" is not a shape of this application (it has ${shapes.join(", ")})`);
+      claim("view", views, shape, p, rel);
     }
   }
-  const entries: string[] = [];
-  [...claims.entries()].forEach(([vessel, { plugin, file }], i) => {
-    const id = `V${i}`;
-    imports.push(`import { ${VESSEL_EXPORT} as ${id} } from ${JSON.stringify(file)};   // ${plugin}`);
-    entries.push(`  ${JSON.stringify(vessel)}: ${id},`);
-  });
+  if (shells.length > 1) throw new Error(`two shell plugins (${shells.map((p) => p.as).join(", ")}); an application wears one`);
+  const shell = shells[0] ?? null;
+  if (shell && !shell.manifest.module) throw new Error(`${shell.as}: a shell plugin needs "module"`);
+
+  const entries = (map: Map<string, { plugin: string; file: string }>, prefix: string, exported: string) =>
+    [...map.entries()].map(([name, { plugin, file }], i) => {
+      imports.push(`import { ${exported} as ${prefix}${i} } from ${JSON.stringify(importPath(file, plugin))};   // ${plugin}`);
+      return `  ${JSON.stringify(name)}: ${prefix}${i},`;
+    });
+  const vesselEntries = entries(vessels, "V", VESSEL_EXPORT);
+  const viewEntries = entries(views, "W", VIEW_EXPORT);
+  if (shell) imports.push(`import { ${SHELL_EXPORT} as S } from ${JSON.stringify(importPath(join(shell.dir, shell.manifest.module!), shell.as))};   // ${shell.as}`);
   const registry = [
-    "/* Generated by `fishtea ui-assets` from this application's ui plugins. Do not edit; it is derived. */",
+    "/* Generated by `fishtea ui-assets` from this application's ui and shell plugins. Do not edit; it is derived. */",
     'import type { ComponentType } from "react";',
     ...imports,
     "",
     "/** vessel name → the component that replaces the built-in. Empty is the normal case. */",
     "export const vesselOverrides: Partial<Record<string, ComponentType<any>>> = {",
-    ...entries,
+    ...vesselEntries,
     "};",
     "",
+    "/** shape → the application's own view of it, for a shell to draw. */",
+    "export const views: Partial<Record<string, ComponentType<any>>> = {",
+    ...viewEntries,
+    "};",
+    "",
+    "/** the application's shell, or null for the framework's container. */",
+    `export const shell: ComponentType<any> | null = ${shell ? "S" : "null"};`,
+    "",
   ].join("\n");
-  const registryPath = join(home, "packages/ui/src/plugins.generated.ts");
+  const registryPath = join(out, "plugins.generated.ts");
   writeFileSync(registryPath, registry);
 
-  return { plugins: ui.map((p) => p.as), css, path, warnings, vessels: [...claims.keys()], registryPath };
+  return { plugins: [...ui, ...shells].map((p) => p.as), css, path, warnings, vessels: [...vessels.keys()], views: [...views.keys()], shell: shell?.as ?? null, registryPath };
+}
+
+/** The application's shape names, to check views against; null when its spec cannot be read. */
+function appShapes(appDir: string): string[] | null {
+  try { return Object.keys(JSON.parse(readFileSync(join(appDir, "spec.json"), "utf8")).shapes ?? {}).filter((k) => k !== "version"); }
+  catch { return null; }
 }
 
 /** Every plugin directory the framework ships, for `fishtea plugin list` outside an application. */

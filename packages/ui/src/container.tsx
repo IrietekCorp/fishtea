@@ -19,8 +19,9 @@ import { TimelineVessel } from "./vessels/timeline";
 import { ConfirmVessel } from "./vessels/confirm";
 import { FormVessel } from "./vessels/form";
 import { AskVessel, Chips } from "./vessels/ask";
-import { vesselOverrides } from "./plugins.generated";
+import { vesselOverrides } from "#generated/plugins.generated";
 import { Notice } from "./vessels/notice";
+import { PresentAnswer, declaredLayout } from "./present/Present";
 
 export function Container() {
   const [res, setRes] = useState<Response | null>(null);
@@ -164,7 +165,7 @@ export function Container() {
 /**
  * A ui plugin may replace a vessel outright, not just restyle it.
  *
- * `plugins.generated.ts` is written by `fishtea ui-assets` and is an empty object for almost every
+ * The registry (`#generated`) is written by `fishtea ui-assets` and is an empty object for almost every
  * application; a design system that only moves tokens needs no component at all. An override is handed
  * the same props the built-in would have received plus the whole pour, so it can be as thin as a
  * different card or as thick as it likes — and anything it does not claim stays the built-in, which is
@@ -175,6 +176,9 @@ function overrideFor(name: string) {
 }
 
 function Vessel({ pour, pick, submitForm }: { pour: Pour; pick: (c: Chip) => void; submitForm: (shape: string) => (args: Record<string, unknown>, confirm: boolean) => void }) {
+  // An answer whose shape the application laid out in rules.present is drawn from that layout; the chips
+  // are the container's (Next, below), so the layout draws no threads of its own.
+  if (declaredLayout(pour)) return <PresentAnswer pour={pour} host={{ go: (shape, args) => pick({ label: "", shape, args }), args: pour.args, threads: false }} />;
   const Override = overrideFor(pour.kind === "answer" ? pour.vessel : pour.kind);
   if (Override) return <Override pour={pour} onPick={pick} submitForm={submitForm} />;
   switch (pour.kind) {

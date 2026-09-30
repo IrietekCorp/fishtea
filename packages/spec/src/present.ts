@@ -127,6 +127,11 @@ export interface OrganismDef {
 
 export interface PresentRules {
   doc?: string;
+  /**
+   * The words a molecule's `icon` binding may produce, mapped onto a renderer's icon vocabulary: a press
+   * item's kind "podcast" → "mic". A word the map does not name is looked up as itself.
+   */
+  icons?: Record<string, string>;
   molecules?: Record<string, MoleculeDef>;
   shapes?: Record<string, OrganismDef[]>;
 }
@@ -378,7 +383,7 @@ export interface ResolvedOrganism extends OrganismDef {
   /** tags: what clicking one asks */
   tagGo?: Go;
 }
-export interface PresentTree { shape: string; source: Source; organisms: ResolvedOrganism[] }
+export interface PresentTree { shape: string; source: Source; organisms: ResolvedOrganism[]; icons?: Record<string, string> }
 
 /**
  * A shape's organisms with each one's molecule chosen (declared, inline, or derived from the entity and
@@ -409,7 +414,8 @@ export function resolve(spec: SpecLike, shape: string, answer?: unknown): Presen
     });
     return { ...o, molecule: { ...m, tags: tags.length ? tags : undefined, tagGo: undefined }, moleculeSource: inline ? "inline" : ms };
   });
-  return { shape, source, organisms };
+  const icons = spec.rules.present?.icons;
+  return { shape, source, organisms, ...(icons ? { icons } : {}) };
 }
 
 // ── checking ──────────────────────────────────────────────────────────────────────────────────────

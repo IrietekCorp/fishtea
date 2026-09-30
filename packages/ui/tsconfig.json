@@ -17,7 +17,22 @@
     "types": [
       "vite/client",
       "bun"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "#generated/*": [
+        "src/generated/*"
+      ],
+      "@fishtea/ui/*": [
+        "src/*"
+      ],
+      "@fishtea/plugins/*": [
+        "../../plugins/*"
+      ],
+      "@fishtea/present": [
+        "../spec/src/present.ts"
+      ]
+    }
   },
   "include": [
     "src"

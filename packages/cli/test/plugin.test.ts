@@ -385,6 +385,58 @@ describe("vessel overrides", () => {
   });
 });
 
+/**
+ * Views and shells: an application's page for one shape, and its whole front end. Both land in the
+ * registry the UI bundle imports, which is written into the application — never the framework install.
+ */
+describe("views and shells", () => {
+  function plugin(app: string, name: string, manifest: Record<string, unknown>, files: Record<string, string>) {
+    const dir = join(app, "plugins", name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "fishtea.plugin.json"), JSON.stringify({ name, version: "1.0.0", ...manifest }));
+    for (const [f, c] of Object.entries(files)) writeFileSync(join(dir, f), c);
+    const spec = JSON.parse(readFileSync(join(app, "spec.json"), "utf8"));
+    spec.plugins = { ...(spec.plugins ?? {}), [name]: { use: name } };
+    writeFileSync(join(app, "spec.json"), JSON.stringify(spec, null, 2));
+  }
+  const view = (label: string) => `export function View() { return ${JSON.stringify(label)}; }\n`;
+
+  test("views are keyed by shape, a shell is exported, and it is all written into the application", async () => {
+    const w = await world();
+    plugin(w.app, "brand", { kind: "ui", views: { findProducts: "Find.tsx" } }, { "Find.tsx": view("find") });
+    plugin(w.app, "frontdoor", { kind: "shell", module: "Shell.tsx" }, { "Shell.tsx": "export function Shell() { return \"shell\"; }\n" });
+    const r = generateUiAssets(w.app, w.home);
+    expect(r.registryPath.startsWith(join(w.app, ".fishtea", "ui"))).toBe(true);
+    expect(r.path.startsWith(join(w.app, ".fishtea", "ui"))).toBe(true);
+    expect(r.views).toEqual(["findProducts"]);
+    expect(r.shell).toBe("frontdoor");
+    // an application's own plugin is scanned for classes from the generated stylesheet
+    expect(r.css).toContain('@source "../../plugins/brand";');
+    const mod = await import(r.registryPath);
+    expect(mod.views.findProducts()).toBe("find");
+    expect(mod.shell()).toBe("shell");
+  });
+
+  test("a view for a shape the application does not have is refused", async () => {
+    const w = await world();
+    plugin(w.app, "brand", { kind: "ui", views: { nosuchShape: "X.tsx" } }, { "X.tsx": view("x") });
+    expect(() => generateUiAssets(w.app, w.home)).toThrow(/view "nosuchShape" is not a shape/);
+  });
+
+  test("two shells is an error, and none is the framework's container", async () => {
+    const w = await world();
+    expect((await import(generateUiAssets(w.app, w.home).registryPath)).shell).toBeNull();
+    plugin(w.app, "one", { kind: "shell", module: "S.tsx" }, { "S.tsx": "export function Shell() {}\n" });
+    plugin(w.app, "two", { kind: "shell", module: "S.tsx" }, { "S.tsx": "export function Shell() {}\n" });
+    expect(() => generateUiAssets(w.app, w.home)).toThrow(/two shell plugins/);
+  });
+
+  test("a shell without a module, or views on a plugin that is not ui, is refused at validation", () => {
+    expect(validateManifest({ name: "x", version: "1.0.0", kind: "shell" }, "x").join()).toContain('needs "module"');
+    expect(validateManifest({ name: "x", version: "1.0.0", kind: "shell", module: "S.tsx", views: { a: "A.tsx" } }, "x").join()).toContain("only a ui plugin may carry views");
+  });
+});
+
 describe("reporting", () => {
   test("missing environment variables are found per plugin", async () => {
     const w = await world();

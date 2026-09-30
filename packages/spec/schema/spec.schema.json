@@ -162,6 +162,13 @@
                   ]
                 }
               }
+            },
+            "icons": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Words an icon binding produces, mapped onto the renderer's icon vocabulary."
             }
           },
           "additionalProperties": false
