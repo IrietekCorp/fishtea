@@ -1,0 +1,8 @@
+{
+  "name": "sections",
+  "version": "1.0.0",
+  "kind": "shell",
+  "doc": "A site navigated by rules.site: sections in a header, a command bar, each shape drawn by the application's view or from its layout (pour.present), actions that open over a page, history as the conversation, and /debug with the visitor's visits",
+  "fishtea": "^1.3.0",
+  "module": "Shell.tsx"
+}

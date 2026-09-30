@@ -45,6 +45,23 @@ export async function resume(): Promise<Response> {
 export async function trail() { const res = await fetch(`${CORE}/trail`, { headers: headers(), credentials: "include" }); return res.json() as Promise<{ trail: any; turns: any[] }>; }
 export async function rewind(turnId: string) { const res = await fetch(`${CORE}/trail/rewind`, { method: "POST", headers: headers(), credentials: "include", body: JSON.stringify({ turnId }) }); return res.json(); }
 
+/** A visit: a trail, opened when a visit starts, with the turns it holds (GET /sessions). */
+export interface SessionTurn {
+  id: string; parentId: string | null; seq: number; author: string; at: string; shape: string | null; kind: string;
+  confidence: number | null; answered: boolean; latencyMs: number | null; utterance: any; phrase?: string;
+}
+export interface Session { id: string; current: boolean; openedAt: string; lastAt: string; headTurnId: string | null; envelope: Record<string, unknown>; turns: SessionTurn[] }
+export interface History { visitor: { id: string; known: boolean; firstSeen: string; lastSeen: string } | null; sessions: Session[] }
+
+/** This visitor's own visits, newest first, each with its turns. */
+export async function sessions(limit = 20): Promise<History> {
+  const res = await fetch(`${CORE}/sessions?limit=${limit}`, { headers: headers(), credentials: "include" });
+  if (!res.ok) throw new Error(`core ${res.status}`);
+  return res.json() as Promise<History>;
+}
+
+export async function health(): Promise<any> { return (await fetch(`${CORE}/healthz`)).json(); }
+
 const EVENTS = ["notification", "turn", "reload", "ping", "part", "settled"] as const;
 
 /**

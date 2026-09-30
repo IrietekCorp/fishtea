@@ -435,8 +435,13 @@ services:
       dockerfile: Dockerfile.core
       target: ui
     environment:
-      # the address a browser dials, which is not "localhost" when you are on another machine
-      VITE_CORE_URL: "http://\${FISHTEA_PUBLIC_HOST:-localhost}:\${FISHTEA_CORE_PORT:-3000}"
+      # the browser reaches the core through this server's /core, so the visitor's cookie is first-party
+      # on whatever address the page was opened at
+      FISHTEA_CORE_URL: http://core:3000
+      VITE_CORE_URL: /core
+      FISHTEA_APP_DIR: /app
+    volumes:
+      - ./:/app               # the application's generated ui assets (.fishtea/ui), its plugins and spec
     ports:
       - "\${FISHTEA_UI_PORT:-5173}:5173"
     depends_on:

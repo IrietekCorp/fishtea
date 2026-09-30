@@ -37,7 +37,10 @@ body { background: var(--background); color: var(--foreground); font-family: var
 .pour-enter { animation: pour 220ms ease-out; }
 @keyframes pour { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pour-enter { animation: none; } }
-/* The layout renderer's entry: rows rise in, a few at a time. */
+/* A page fading in, and the layout renderer's entry: rows rise in, a few at a time. */
+.fade { animation: fade 240ms ease-out both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
 .rise { animation: rise 420ms cubic-bezier(.2,.7,.2,1) both; }
 .rise-1 { animation-delay: 60ms; } .rise-2 { animation-delay: 120ms; } .rise-3 { animation-delay: 180ms; } .rise-4 { animation-delay: 240ms; }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }

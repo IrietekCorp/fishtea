@@ -54,7 +54,14 @@ describe("the generated docker-compose.yml", () => {
     expect(app.services.ui.build.target).toBe("ui");
     expect(app.services.core.environment.FISHTEA_HOST).toBe("0.0.0.0");
     expect(app.services.core.env_file[0].required).toBe(false);
-    expect(app.services.ui.environment.VITE_CORE_URL).toContain("FISHTEA_PUBLIC_HOST");
+    // The browser dials the page's own origin (/core, proxied to the core by the ui server), which is
+    // right on any machine and keeps the visitor's cookie first-party; it once dialled the core's public
+    // address, which was right only as long as nobody opened the page under another name.
+    expect(app.services.ui.environment.VITE_CORE_URL).toBe("/core");
+    expect(app.services.ui.environment.FISHTEA_CORE_URL).toBe("http://core:3000");
+    // and it sees the application: its generated ui assets, its plugins, its spec
+    expect(app.services.ui.environment.FISHTEA_APP_DIR).toBe("/app");
+    expect(app.services.ui.volumes).toContain("./:/app");
     expect(parse(readFileSync(join(HOME, "docker-compose.yml"), "utf8")).services.core.environment.FISHTEA_HOST).toBe("0.0.0.0");
   });
 });

@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,8 +22,33 @@ const APP = process.env.FISHTEA_APP_DIR ? resolve(process.env.FISHTEA_APP_DIR) :
 const own = APP ? join(APP, ".fishtea", "ui") : null;
 const generated = own && existsSync(join(own, "plugins.generated.ts")) ? own : join(HERE, "src/generated");
 
+/**
+ * The page's <head> from the application's spec: its title and description (`rules.site.copy`, else the
+ * business's name and doc), and a favicon when its public/ has one. Without an application, as it was.
+ */
+function head() {
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  return {
+    name: "fishtea-head",
+    transformIndexHtml(html: string) {
+      if (!APP || !existsSync(join(APP, "spec.json"))) return html;
+      const spec = JSON.parse(readFileSync(join(APP, "spec.json"), "utf8"));
+      const copy = spec.rules?.site?.copy ?? {};
+      const title = copy.title ?? spec.business?.name;
+      const description = copy.description ?? spec.business?.doc;
+      const tags = [
+        description ? `<meta name="description" content="${esc(description)}" />` : "",
+        existsSync(join(APP, "public/favicon.svg")) ? `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` : "",
+      ].filter(Boolean).join("\n    ");
+      return html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title ?? "FishTea")}</title>${tags ? `\n    ${tags}` : ""}`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), head()],
+  // an application's static files (images, a favicon) are served from its public/, when it has one
+  ...(APP && existsSync(join(APP, "public")) ? { publicDir: join(APP, "public") } : {}),
   resolve: {
     alias: {
       "#generated": generated,
@@ -37,6 +62,13 @@ export default defineConfig({
     // node_modules beside it that is not there. They share this package's copies instead.
     dedupe: ["react", "react-dom", "lucide-react"],
   },
-  server: { port: 5173, host: true, fs: { allow: [resolve(HERE, "../.."), ...(APP ? [APP] : [])] } },
+  server: {
+    port: 5173, host: true,
+    fs: { allow: [resolve(HERE, "../.."), ...(APP ? [APP] : [])] },
+    // With FISHTEA_CORE_URL (the compose file sets http://core:3000, and VITE_CORE_URL=/core) the browser
+    // talks to the core through this server: one origin, so the visitor's cookie is first-party wherever
+    // the page was opened, and there is no CORS to get wrong.
+    ...(process.env.FISHTEA_CORE_URL ? { proxy: { "/core": { target: process.env.FISHTEA_CORE_URL, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/core/, "") } } } : {}),
+  },
   build: { outDir: "dist" },
 });

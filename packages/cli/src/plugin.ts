@@ -325,6 +325,9 @@ export function generateUiAssets(appDir: string, home: string): UiAssets {
       }
       css = css.replace(declaration, `$1${v};`);
     }
+    // A stylesheet's relative url() — a font, an image — is relative to the plugin, and this sheet is not
+    // where the plugin is: point each at the plugin's file from here.
+    css = css.replace(/url\((['"]?)(?![a-z]+:|\/|#|@)([^'")]+)\1\)/gi, (_, q: string, u: string) => `url(${q}${importPath(join(p.dir, u), p.as)}${q})`);
     parts.push(`\n/* ---- ${p.manifest.name} ${p.manifest.version} (${p.as}) ---- */\n${css}`);
   }
   const css = parts.join("\n");
@@ -389,7 +392,39 @@ export function generateUiAssets(appDir: string, home: string): UiAssets {
   const registryPath = join(out, "plugins.generated.ts");
   writeFileSync(registryPath, registry);
 
+  // A tsconfig for the application's own plugin code: the same aliases the bundle resolves, pointed at
+  // this machine's framework, so `fishtea ui-assets --typecheck` can check views and shells as the UI
+  // package checks itself. Machine-specific, like the rest of .fishtea/ui — never committed.
+  const uiPkg = join(home, "packages/ui");
+  const mods = join(uiPkg, "node_modules");
+  writeFileSync(join(out, "tsconfig.json"), JSON.stringify({
+    compilerOptions: {
+      target: "ES2022", lib: ["ES2022", "DOM", "DOM.Iterable"], module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx",
+      strict: true, skipLibCheck: true, noEmit: true, allowImportingTsExtensions: true, resolveJsonModule: true,
+      types: [join(mods, "vite/client")],
+      paths: {
+        "@app/*": [join(appDir, "*")], "@fishtea/ui/*": [join(uiPkg, "src/*")], "@fishtea/plugins/*": [join(builtin, "*")],
+        "@fishtea/present": [join(home, "packages/spec/src/present.ts")], "#generated/*": [join(out, "*")],
+        react: [join(mods, "@types/react")], "react/*": [join(mods, "@types/react/*")], "react-dom/*": [join(mods, "@types/react-dom/*")], "lucide-react": [join(mods, "lucide-react")],
+      },
+    },
+    include: codeDirs([...ui, ...shells].filter((p) => isInside(p.dir, appDir)).map((p) => p.dir)),
+  }, null, 2) + "\n");
+
   return { plugins: [...ui, ...shells].map((p) => p.as), css, path, warnings, vessels: [...vessels.keys()], views: [...views.keys()], shell: shell?.as ?? null, registryPath };
+}
+
+/** The application's plugin directories that hold code, for its generated tsconfig to include. */
+const codeDirs = (dirs: string[]) => dirs.filter((d) => readdirSync(d, { recursive: true }).some((f) => /\.tsx?$/.test(String(f))));
+
+/**
+ * `fishtea ui-assets --typecheck`: check the application's own views and shells with the framework's
+ * TypeScript, against the tsconfig ui-assets just wrote.
+ */
+export function typecheckUi(appDir: string, home: string): { ok: boolean; output: string } {
+  const tsc = join(home, "node_modules", "typescript", "bin", "tsc");
+  const r = Bun.spawnSync(["bun", tsc, "-p", join(appDir, ".fishtea", "ui", "tsconfig.json")], { stdout: "pipe", stderr: "pipe" });
+  return { ok: r.exitCode === 0, output: (r.stdout.toString() + r.stderr.toString()).trim() };
 }
 
 /** The application's shape names, to check views against; null when its spec cannot be read. */

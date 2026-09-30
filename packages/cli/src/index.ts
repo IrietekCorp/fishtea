@@ -362,9 +362,16 @@ async function main() {
       }
     }
     case "ui-assets": {
-      const r = (await import("./plugin.ts")).generateUiAssets(resolveAppDir(flags), FISHTEA_HOME);
+      const P = await import("./plugin.ts");
+      const r = P.generateUiAssets(resolveAppDir(flags), FISHTEA_HOME);
       console.log(pc.green(`✓ ${r.path}${r.plugins.length ? ` from ${r.plugins.join(", ")}` : " (no ui plugins; base tokens only)"}`));
+      if (r.shell || r.views.length) console.log(pc.dim(`  ${r.shell ? `shell ${r.shell}` : "the framework's container"}${r.views.length ? ` · views for ${r.views.join(", ")}` : ""}`));
       for (const w of r.warnings) console.log(pc.yellow(`  ⚠ ${w}`));
+      if (flags.typecheck === true) {
+        const t = P.typecheckUi(resolveAppDir(flags), FISHTEA_HOME);
+        console.log(t.ok ? pc.green("✓ the application's views and shells typecheck") : `${pc.red("✗ typecheck")}\n${t.output}`);
+        if (!t.ok) process.exitCode = 1;
+      }
       return;
     }
     case "update": {
@@ -525,6 +532,12 @@ async function main() {
       // already in use" after the healthy containers have started. Pick free ones up front, for the
       // ports nobody named — an explicitly set FISHTEA_*_PORT is left exactly as given.
       const composeEnv = cmd === "up" ? await composePorts() : {};
+      // The ui container reads the application's generated assets (.fishtea/ui); make sure they match its
+      // plugins now, rather than after someone notices the brand is missing.
+      if (cmd === "up") {
+        const r = (await import("./plugin.ts")).generateUiAssets(dir, FISHTEA_HOME);
+        for (const w of r.warnings) console.log(pc.yellow(`  ⚠ ${w}`));
+      }
       const proc = Bun.spawn(["docker", ...args], { cwd: dir, stdio: ["inherit", "inherit", "inherit"], env: { ...process.env, FISHTEA_HOME, ...composeEnv } });
       const code = await proc.exited;
       if (cmd === "down" && code === 0) console.log(pc.green(`✓ stopped${dropData ? " and deleted the data" : "; data kept, bun run up brings it back"}`));
@@ -558,7 +571,7 @@ async function main() {
                               [--adopt] start tracking an application made before provenance existed
   fishtea plugin list|info|add|remove|create|promote
                               everything outside the conversation: integrations, design systems, auth
-  fishtea ui-assets           regenerate the browser bundle's design-system stylesheet
+  fishtea ui-assets           regenerate the ui bundle's assets from ui/shell plugins (--typecheck: check their code)
   fishtea validate            validate spec.json and print section hashes
   fishtea present [shape…]    how each answer is laid out (rules.present, or derived); --live asks a running core
   fishtea doctor              check the spec, the database, the classifier and the binding

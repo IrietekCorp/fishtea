@@ -5,6 +5,8 @@ FROM oven/bun:1 AS base
 WORKDIR /fishtea
 COPY package.json bun.lock* tsconfig.json ./
 COPY packages ./packages
+# builtin plugins: the ui bundle imports a builtin shell or view through @fishtea/plugins
+COPY plugins ./plugins
 RUN bun install --frozen-lockfile || bun install
 
 # The application directory is mounted at /app at runtime, so one image serves any spec.

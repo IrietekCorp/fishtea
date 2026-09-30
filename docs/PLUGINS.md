@@ -4,12 +4,13 @@ Everything outside the conversation itself is a plugin: payments, auth, a design
 where a notification goes. The conversational core — shapes, personas, the planner, the vessels, the
 confirm-write rule — is the framework and stays the framework.
 
-## Six seams, one mechanism
+## Seven seams, one mechanism
 
 | kind | contributes | examples |
 |---|---|---|
 | `integration` | calls, entities, shapes | Stripe, a frontier model, a shipping quote |
-| `ui` | design tokens, optionally vessels | a design system for shops |
+| `ui` | design tokens, optionally vessels and per-shape views | a design system for shops |
+| `shell` | the whole front end, in place of the container | a site navigated by sections |
 | `auth` | how a visitor becomes known | OAuth, magic links, roles |
 | `classifier` | an alternative to the needle pool | a fine-tuned model, a hosted one |
 | `channel` | notification delivery | email, SMS, Slack |
@@ -168,10 +169,44 @@ fishtea ui-assets    # regenerate the browser bundle's stylesheet
 A knob that matches no declaration is **reported**, not ignored — an answered question that changes
 nothing is otherwise invisible and maddening.
 
+## Shells and views
+
+The container — one input, the understood line, the vessel, the verify strip — is the framework's answer
+to "show me the conversation". Some applications are a *site*: a menu of sections, pages you can link
+to, a contact form that opens over whatever you were reading. That is a shell.
+
+```json
+{ "name": "sections", "kind": "shell", "module": "Shell.tsx" }
+```
+
+A shell exports `Shell`, and is handed the application's **views**: a `ui` plugin maps shape names to
+files that export `View` — the application's own page for that shape.
+
+```json
+{ "name": "piscopour", "kind": "ui", "tokens": "tokens.css",
+  "views": { "home": "views/home.view.tsx", "getInTouch": "views/getInTouch.view.tsx" } }
+```
+
+A shape with no view is drawn from the layout its answer carries (`pour.present` — see
+[generative UI](generative-ui.html)), so most shapes need none. `fishtea ui-assets` writes the registry
+into the application's `.fishtea/ui/`, never into the framework install; `--typecheck` checks the
+application's views and shells with the framework's TypeScript. Inside them, `@fishtea/ui/*` is the UI
+package (its client, the layout renderer, the vessels), `@fishtea/plugins/*` the builtin plugins and
+`@app/*` the application — `@app/spec.json` is how a view reads its business's own rules. An
+application's `public/` is served as is, and the page's title and description come from
+`rules.site.copy`.
+
+**`sections`** ships as the builtin shell. It navigates by `rules.site` — sections in a header, a
+command bar, "up" from a child to its section, actions that open over a page — and makes browser
+history the conversation: Back and Forward rewind the trail rather than asking again. Its `/debug` shows
+the visitor, their visits and each visit's turns (`GET /sessions`).
+
 ## What ships
 
 - **`boutique`** — a design system for shops: warm paper, one decisive accent, a distinct colour reserved
   for writes.
+- **`sections`** — a shell for a site: sections from `rules.site`, views from the application, every
+  other shape from its layout.
 - **`anthropic`** — put a question to a frontier Claude model. Explicitly **not** a classifier: routing
   stays with the on-device needle pool under its millisecond budget, and past that budget the pour is
   still `ask`, never a slower brain. This is for composing an answer that needs more capability than a
