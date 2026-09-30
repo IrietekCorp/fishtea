@@ -749,7 +749,8 @@
             "auth",
             "classifier",
             "channel",
-            "archetype"
+            "archetype",
+            "shell"
           ]
         },
         "config": {

@@ -35,3 +35,19 @@ describe("rules.site", () => {
     expect(problems({ home: "askAbout", sections: [{ shape: "askAbout", label: "Ask" }], sectoins: [] }).join("\n")).toContain("must NOT have additional properties");
   });
 });
+
+describe("a shell plugin in the spec", () => {
+  test("an application may name a shell plugin", () => {
+    const s = JSON.parse(readFileSync(resolve(DIR, "spec.json"), "utf8"));
+    s.plugins = { version: "2026.09.30-1", ...(s.plugins ?? {}), sections: { use: "sections", version: "^1.0.0", kind: "shell" } };
+    expect(() => validateSpec(s, { dir: DIR })).not.toThrow();
+  });
+});
+
+describe("the schema and the code agree", () => {
+  test("every plugin kind the code knows, the schema accepts — and no other", async () => {
+    const { PLUGIN_KINDS } = await import("../src/index.ts");
+    const schema = JSON.parse(readFileSync(resolve(import.meta.dir, "../schema/spec.schema.json"), "utf8"));
+    expect([...schema.$defs.pluginUse.properties.kind.enum].sort()).toEqual([...PLUGIN_KINDS].sort());
+  });
+});
