@@ -14,7 +14,7 @@
  */
 
 /** The framework build. `fishtea release <version>` is the only thing that should edit this line. */
-export const FISHTEA_VERSION = "1.1.0";
+export const FISHTEA_VERSION = "1.2.0";
 
 /** The spec document format this build writes. Specs at an older format are migrated on `fishtea update`. */
 export const SPEC_FORMAT = "1.1";
