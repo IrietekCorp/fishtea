@@ -80,6 +80,8 @@ export interface Spec {
     classify?: { budgetMs?: number; floor?: number; contextTurns?: number };
     calls?: { timeoutMs?: number };
     familiarity?: { threshold?: number };
+    /** how answers are laid out: molecules per entity, organisms per shape (see present.ts) */
+    present?: import("./present.ts").PresentRules;
     [k: string]: unknown;
   };
   shapes: { version: string; doc?: string } & Record<string, ShapeDef | string | undefined>;

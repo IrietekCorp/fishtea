@@ -31,7 +31,7 @@ bunx tsc -p tsconfig.json --noEmit
 
 ## Layout
 
-- `packages/spec` — type vocabulary, JSON Schema, loader (structural checks: plan cycles, unknown calls, SQL interpolation markers), derivations (DDL, tools, forms, vessels, zod, phrases), section hashes.
+- `packages/spec` — type vocabulary, JSON Schema, loader (structural checks: plan cycles, unknown calls, SQL interpolation markers), derivations (DDL, tools, forms, vessels, zod, phrases), section hashes. `present.ts` is the answer's layout language (`rules.present`, derived when undeclared; resolved into `pour.present`); it is kept byte-identical with the copy in an application's site shell, so edit both or neither.
 - `packages/core` — engine (`engine.ts`: utter/resume/persona/gate/write-confirm), trail service, planner, call executors, classifier clients (needle pool, lexical dev), Hono transport, headless runner.
 - `packages/classifier` — Python needle3 pool (`needle_service.py`), `contract.md` with the Phase 0 findings.
 - `packages/cli` — `fishtea` binary: new/validate/derive/migrate/seed/serve/headless/tui/up/bench/notify, plus version/versions/use/upgrade/update/plugin/ui-assets. `new.ts` scaffolds apps (and writes `.fishtea/manifest.json`); `serve.ts` hot-reloads; `update.ts` is the three-way reconcile; `plugin.ts` is the plugin lifecycle; `runtime.ts` is the installed-version layout.

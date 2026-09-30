@@ -48,7 +48,7 @@ export function pretty(step: Utterance, res: Response): string {
   const head = `#${res.turn.seq} ${res.persona.padEnd(12)} ${u}`;
   let body = "";
   switch (p.kind) {
-    case "answer": body = `→ answer ${p.shape} · ${p.vessel} · ${p.provenance.records} records · calls ${p.provenance.calls.map((c: any) => c.call).join(" → ")}${p.provenance.wrote.length ? ` · wrote ${p.provenance.wrote.join(",")}` : ""}`; break;
+    case "answer": body = `→ answer ${p.shape} · ${p.vessel} · ${p.provenance.records} records · calls ${p.provenance.calls.map((c: any) => c.call).join(" → ")}${p.provenance.wrote.length ? ` · wrote ${p.provenance.wrote.join(",")}` : ""}${p.present ? `\n    laid out (${p.present.source}): ${p.present.organisms.map((o: any) => o.from && o.from !== "$" ? `${o.organism}(${o.from})` : o.organism).join(" · ")}` : ""}`; break;
     case "form": body = `→ form ${p.shape}${p.error ? ` ✗ ${p.error}` : ""}${p.errors ? ` missing ${Object.keys(p.errors).join(",")}` : ""}${p.hint ? ` · ${p.hint}` : ""}`; break;
     case "confirm-write": body = `→ confirm-write ${p.shape} · ${p.summary}`; break;
     case "ask": body = `→ ask (${p.reason}) ${p.phrase} · options ${p.options.map((o: any) => o.shape).join(",")}`; break;

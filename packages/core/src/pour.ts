@@ -2,7 +2,7 @@
  * The pour (BLUEPRINT §3 step 4, §10): exactly one of ask | form | confirm-write | answer, plus the
  * notification turn kind. Builders here; the decision lives in engine.ts.
  */
-import { type ShapeDef, type Spec, type FormField, type VesselName, deriveForm, renderPhrase, vesselFor, getShape } from "@fishtea/spec";
+import { type ShapeDef, type Spec, type FormField, type VesselName, type PresentTree, deriveForm, renderPhrase, vesselFor, getShape, resolvePresent } from "@fishtea/spec";
 import type { Provenance } from "./plan/index.ts";
 import { lookup, resolve } from "./plan/index.ts";
 
@@ -25,7 +25,15 @@ export type AskReason = "greeting" | "no-match" | "low-confidence" | "budget" | 
 export interface AskPour { kind: "ask"; phrase: string; hint?: string; shape?: string; fields?: FormField[]; options: Chip[]; reason: AskReason; classifier?: ClassMeta }
 export interface FormPour { kind: "form"; shape: string; phrase: string; hint?: string; fields: FormField[]; known: Record<string, unknown>; errors?: Record<string, string>; error?: string; options?: Chip[]; classifier?: ClassMeta }
 export interface ConfirmWritePour { kind: "confirm-write"; shape: string; phrase: string; summary: string; fields: FormField[]; known: Record<string, unknown>; classifier?: ClassMeta }
-export interface AnswerPour { kind: "answer"; shape: string; phrase: string; vessel: VesselName; answer: unknown; next: Chip[]; provenance: Provenance; classifier?: ClassMeta; stale?: boolean }
+export interface AnswerPour {
+  kind: "answer"; shape: string; phrase: string; vessel: VesselName; answer: unknown; next: Chip[]; provenance: Provenance; classifier?: ClassMeta; stale?: boolean;
+  /**
+   * How to lay the answer out: the shape's organisms from `rules.present`, or derived from the spec, with
+   * each one's molecule and clicks resolved. A function of the spec and the answer — never chosen by a
+   * model — so a headless caller, an API client and every front end get the same page.
+   */
+  present?: PresentTree;
+}
 export interface NotificationPour { kind: "notification"; author: "system" | "operator"; name?: string | null; text: string; next: Chip[] }
 
 /**
@@ -158,7 +166,7 @@ export function confirmPour(shapeName: string, shape: ShapeDef, known: Record<st
   return { kind: "confirm-write", shape: shapeName, phrase: phraseFor(shape, known), summary, fields: deriveForm(shape), known, ...extra };
 }
 export function answerPour(spec: Spec, shapeName: string, shape: ShapeDef, args: Record<string, unknown>, answer: unknown, provenance: Provenance, persona: string, extra: Partial<AnswerPour> = {}): AnswerPour {
-  return { kind: "answer", shape: shapeName, phrase: phraseFor(shape, args), vessel: vesselFor(shape, spec), answer, next: nextChips(spec, shape, answer, args, persona), provenance, ...extra };
+  return { kind: "answer", shape: shapeName, phrase: phraseFor(shape, args), vessel: vesselFor(shape, spec), answer, next: nextChips(spec, shape, answer, args, persona), provenance, present: resolvePresent(spec as never, shapeName, answer), ...extra };
 }
 
 export { vesselFor };

@@ -8,3 +8,7 @@ export * from "./migrate.ts";
 export * from "./plugin.ts";
 export * from "./plugin-resolve.ts";
 export * from "./edit.ts";
+export {
+  resolve as resolvePresent, check as checkPresent, bind as bindPresent, text as textPresent, rowsOf as presentRows,
+  type PresentRules, type PresentTree, type ResolvedOrganism, type OrganismDef, type MoleculeDef, type Bind as PresentBind,
+} from "./present.ts";

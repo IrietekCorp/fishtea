@@ -220,6 +220,37 @@ Every turn: persona, shape, confidence, the calls with their timings, what was r
 outcome — including the refusals, which is what makes it interesting. The trail already holds all of
 it and `Provenance` is already the right record. This is a query and a screen, not a system.
 
+### 5. The answer's layout, declared — and derived when it is not
+
+*Added with `rules.present` (`packages/spec/src/present.ts`), first tried in the shawnstewart site.*
+
+Seven vessels say what *kind* of answer something is; they cannot say that a résumé leads with a
+timeline, or that a press item's podcast-ness picks its icon and its "Listen". Every application that
+cared wrote a hand-made vessel per shape, and every shape without one fell back to a readable dump.
+`rules.present` is the spec saying how an answer looks, the way triggers say what a question means:
+
+- **molecules** — per entity, which field is the title, eyebrow, body, link, tags, meter;
+- **organisms** — per shape, the ordered sections its answer is laid out as (hero, stats, facets, grid,
+  timeline, chips, steps, quotes, faq, prompts, panel, callout, actions…).
+
+Undeclared, both are **derived**: field names and types give a molecule (an enum named `level` becomes a
+meter), a shape's answer type gives its organisms, and a shape's `next[]` with `each: "answer.x"` gives
+what clicking a row of `x` asks. The core resolves the tree and sends it with every answer as
+`pour.present`, so a headless caller, an API client and every front end get the same page; `validate`
+checks the declarations against the spec.
+
+**How it holds the line above.** No model composes anything: the layout is a pure function of a spec a
+human wrote and the answer the plan produced, and the same inputs give the same tree (there is a test).
+A click is still an utterance — it asks a shape, gated and planned and appended to the trail — never a
+client-side state mutation. `vessel` stays on the pour, so nothing that reads it changes.
+
+**Where it leans on the line, said plainly.** Bindings are a small expression language, which is the
+thing this document warns only ever grows: templates (`"{pillar} · {year}"`), a closed set of filters
+(`date`, `year`, `upper`, `count`, `count:k=v`, `before`, `after`, `or`, `pad`), and one conditional
+form (`{ "by": "$kind", "map": {…} }`). The guard is that the set is closed *in code* — a spec cannot
+define a filter — and that every filter formats or counts; none decides what the business does. If
+someone reaches for `$cond`, that is the moment to write a compute module instead.
+
 ## What not to borrow, and one more
 
 The three from above stand: the model composing layout, a frozen spec with accumulating client state,

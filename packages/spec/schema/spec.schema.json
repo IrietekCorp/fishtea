@@ -137,6 +137,34 @@
               "type": "number"
             }
           }
+        },
+        "present": {
+          "type": "object",
+          "description": "How answers are laid out. molecules: per entity, which field is the title, eyebrow, body, link. shapes: per shape, the ordered organisms its answer is laid out as. Anything undeclared is derived from the spec. Checked in detail by present.ts.",
+          "properties": {
+            "doc": {
+              "type": "string"
+            },
+            "molecules": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            },
+            "shapes": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "organism"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
