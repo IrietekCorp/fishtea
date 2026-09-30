@@ -82,6 +82,8 @@ export interface Spec {
     familiarity?: { threshold?: number };
     /** how answers are laid out: molecules per entity, organisms per shape (see present.ts) */
     present?: import("./present.ts").PresentRules;
+    /** the site map a shell navigates by (see site.ts) */
+    site?: import("./site.ts").SiteRules;
     [k: string]: unknown;
   };
   shapes: { version: string; doc?: string } & Record<string, ShapeDef | string | undefined>;

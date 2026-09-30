@@ -6,6 +6,7 @@ import schema from "../schema/spec.schema.json" with { type: "json" };
 import { type Spec, entities, calls, shapes, personas, notifications, operatorShapes, getShape, getCall, getEntity, type ShapeDef } from "./spec.ts";
 import { parseType, SCALARS, type TypeSpec, isInlineObject } from "./types.ts";
 import { check as checkPresent, type SpecLike } from "./present.ts";
+import { checkSite } from "./site.ts";
 import { sectionHashes } from "./version.ts";
 import { mergePlugins, type ResolvedPlugin } from "./plugin.ts";
 import { frameworkHome, resolvePlugins } from "./plugin-resolve.ts";
@@ -92,7 +93,7 @@ export function validateSpec(raw: unknown, opts: { dir?: string } = {}): Spec {
   }
   const spec = raw as Spec;
   structural(spec, opts.dir, problems);
-  problems.push(...checkPresent(spec as unknown as SpecLike));
+  problems.push(...checkPresent(spec as unknown as SpecLike), ...checkSite(spec as unknown as SpecLike));
   if (problems.length) throw new SpecError(problems);
   return deepFreeze(spec);
 }
