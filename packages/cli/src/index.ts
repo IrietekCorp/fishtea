@@ -82,17 +82,45 @@ const SCAFFOLDER: Scaffolder = { listTemplates, scaffold };
  * somewhere else would be worse than failing. The container-side ports never change — these are the
  * left-hand sides of compose's `"${FISHTEA_CORE_PORT:-3000}:3000"`.
  */
-export async function composePorts(): Promise<Record<string, string>> {
-  const wanted: [string, number, string][] = [
-    ["FISHTEA_CORE_PORT", 3000, "the core"],
-    ["FISHTEA_UI_PORT", 5173, "the UI"],
-    ["FISHTEA_DB_PORT", 5432, "postgres"],
-    ["FISHTEA_CLASSIFIER_PORT", 8081, "the classifier"],
+/**
+ * The host ports this compose project's own containers publish now, by service. `up` on a running stack
+ * found its own postgres on 5432, took that for somebody else's, published on 5435 and recreated the
+ * container there — while `.env` and every host tool went on dialling 5432. A port held by the service
+ * that wants it is not in use by anyone else.
+ */
+export function ownPorts(dir: string): Record<string, number[]> {
+  const r = Bun.spawnSync(["docker", "compose", "ps", "--format", "json"], { cwd: dir, stdout: "pipe", stderr: "ignore" });
+  if (r.exitCode !== 0) return {};
+  return publishedPorts(r.stdout.toString());
+}
+
+/** `docker compose ps --format json` (an array, or one object a line, depending on the version) → ports by service. */
+export function publishedPorts(text: string): Record<string, number[]> {
+  const t = text.trim();
+  if (!t) return {};
+  let rows: any[];
+  try { rows = t.startsWith("[") ? JSON.parse(t) : t.split("\n").filter(Boolean).map((l) => JSON.parse(l)); } catch { return {}; }
+  const out: Record<string, number[]> = {};
+  for (const row of rows) for (const p of row.Publishers ?? []) {
+    const port = Number(p.PublishedPort);
+    if (port && !(out[row.Service] ??= []).includes(port)) out[row.Service].push(port);
+  }
+  return out;
+}
+
+export async function composePorts(dir?: string): Promise<Record<string, string>> {
+  const wanted: [string, number, string, string][] = [
+    ["FISHTEA_CORE_PORT", 3000, "the core", "core"],
+    ["FISHTEA_UI_PORT", 5173, "the UI", "ui"],
+    ["FISHTEA_DB_PORT", 5432, "postgres", "db"],
+    ["FISHTEA_CLASSIFIER_PORT", 8081, "the classifier", "classifier"],
   ];
+  const own = dir ? ownPorts(dir) : {};
   const out: Record<string, string> = {};
   const moved: string[] = [];
-  for (const [envVar, fallback, label] of wanted) {
+  for (const [envVar, fallback, label, service] of wanted) {
     if (process.env[envVar]) continue;                       // chosen: leave it, and let docker complain
+    if (own[service]?.includes(fallback)) continue;          // held by the very service that wants it
     const free = await nextFreePort(fallback);
     if (free === undefined || free === fallback) continue;    // free already, or nothing nearby is
     out[envVar] = String(free);
@@ -369,7 +397,7 @@ async function main() {
       for (const w of r.warnings) console.log(pc.yellow(`  ⚠ ${w}`));
       if (flags.typecheck === true) {
         const t = P.typecheckUi(resolveAppDir(flags), FISHTEA_HOME);
-        console.log(t.ok ? pc.green("✓ the application's views and shells typecheck") : `${pc.red("✗ typecheck")}\n${t.output}`);
+        console.log(t.ok ? pc.green(`✓ the application's views and shells typecheck${t.where ? pc.dim(` (in ${t.where})`) : ""}`) : `${pc.red("✗ typecheck")}\n${t.output}`);
         if (!t.ok) process.exitCode = 1;
       }
       return;
@@ -548,7 +576,7 @@ async function main() {
       // something on 3000 already, and docker's answer to that is a wall of text ending in "address
       // already in use" after the healthy containers have started. Pick free ones up front, for the
       // ports nobody named — an explicitly set FISHTEA_*_PORT is left exactly as given.
-      const composeEnv = cmd === "up" ? await composePorts() : {};
+      const composeEnv = cmd === "up" ? await composePorts(dir) : {};
       // The ui container reads the application's generated assets (.fishtea/ui); make sure they match its
       // plugins now, rather than after someone notices the brand is missing.
       if (cmd === "up") {

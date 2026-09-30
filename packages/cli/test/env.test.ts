@@ -240,3 +240,17 @@ describe("a generated project is clean", () => {
     }
   });
 });
+
+describe("the ports a running stack already holds", () => {
+  test("docker compose ps output, either shape, becomes ports by service (IPv4 and IPv6 listed once)", async () => {
+    const { publishedPorts } = await import("../src/index.ts");
+    const db = { Service: "db", Publishers: [{ PublishedPort: 5432, TargetPort: 5432 }, { URL: "::", PublishedPort: 5432, TargetPort: 5432 }] };
+    const core = { Service: "core", Publishers: [{ PublishedPort: 3002, TargetPort: 3000 }] };
+    const idle = { Service: "classifier", Publishers: [{ PublishedPort: 0, TargetPort: 8081 }] };
+    const want = { db: [5432], core: [3002] };
+    expect(publishedPorts(JSON.stringify([db, core, idle]))).toEqual(want);
+    expect(publishedPorts([db, core, idle].map((r) => JSON.stringify(r)).join("\n"))).toEqual(want);
+    expect(publishedPorts("")).toEqual({});
+    expect(publishedPorts("not json")).toEqual({});
+  });
+});

@@ -392,24 +392,14 @@ export function generateUiAssets(appDir: string, home: string): UiAssets {
   const registryPath = join(out, "plugins.generated.ts");
   writeFileSync(registryPath, registry);
 
-  // A tsconfig for the application's own plugin code: the same aliases the bundle resolves, pointed at
-  // this machine's framework, so `fishtea ui-assets --typecheck` can check views and shells as the UI
-  // package checks itself. Machine-specific, like the rest of .fishtea/ui — never committed.
-  const uiPkg = join(home, "packages/ui");
-  const mods = join(uiPkg, "node_modules");
-  writeFileSync(join(out, "tsconfig.json"), JSON.stringify({
-    compilerOptions: {
-      target: "ES2022", lib: ["ES2022", "DOM", "DOM.Iterable"], module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx",
-      strict: true, skipLibCheck: true, noEmit: true, allowImportingTsExtensions: true, resolveJsonModule: true,
-      types: [join(mods, "vite/client")],
-      paths: {
-        "@app/*": [join(appDir, "*")], "@fishtea/ui/*": [join(uiPkg, "src/*")], "@fishtea/plugins/*": [join(builtin, "*")],
-        "@fishtea/present": [join(home, "packages/spec/src/present.ts")], "#generated/*": [join(out, "*")],
-        react: [join(mods, "@types/react")], "react/*": [join(mods, "@types/react/*")], "react-dom/*": [join(mods, "@types/react-dom/*")], "lucide-react": [join(mods, "lucide-react")],
-      },
-    },
-    include: codeDirs([...ui, ...shells].filter((p) => isInside(p.dir, appDir)).map((p) => p.dir)),
-  }, null, 2) + "\n");
+  // A tsconfig for the application's own plugin code: the same aliases the bundle resolves, so
+  // `fishtea ui-assets --typecheck` can check views and shells as the UI package checks itself. Two of
+  // them: this machine's paths, for a framework checkout that has its node_modules; and the ui
+  // container's (/fishtea, /app), because an installed framework ships no TypeScript — the image does.
+  // Machine-specific, like the rest of .fishtea/ui — never committed.
+  const code = codeDirs([...ui, ...shells].filter((p) => isInside(p.dir, appDir)).map((p) => p.dir));
+  writeFileSync(join(out, "tsconfig.json"), tsconfigFor(home, appDir, out, code));
+  writeFileSync(join(out, "tsconfig.container.json"), tsconfigFor("/fishtea", "/app", "/app/.fishtea/ui", code.map((d) => join("/app", relative(appDir, d)))));
 
   return { plugins: [...ui, ...shells].map((p) => p.as), css, path, warnings, vessels: [...vessels.keys()], views: [...views.keys()], shell: shell?.as ?? null, registryPath };
 }
@@ -421,10 +411,39 @@ const codeDirs = (dirs: string[]) => dirs.filter((d) => readdirSync(d, { recursi
  * `fishtea ui-assets --typecheck`: check the application's own views and shells with the framework's
  * TypeScript, against the tsconfig ui-assets just wrote.
  */
-export function typecheckUi(appDir: string, home: string): { ok: boolean; output: string } {
+export function typecheckUi(appDir: string, home: string): { ok: boolean; output: string; where: string } {
+  const run = (cmd: string[], cwd?: string) => {
+    const r = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
+    return { ok: r.exitCode === 0, output: (r.stdout.toString() + r.stderr.toString()).trim() };
+  };
+  // a framework checkout: its own TypeScript and type packages
   const tsc = join(home, "node_modules", "typescript", "bin", "tsc");
-  const r = Bun.spawnSync(["bun", tsc, "-p", join(appDir, ".fishtea", "ui", "tsconfig.json")], { stdout: "pipe", stderr: "pipe" });
-  return { ok: r.exitCode === 0, output: (r.stdout.toString() + r.stderr.toString()).trim() };
+  if (existsSync(tsc) && existsSync(join(home, "packages/ui/node_modules"))) return { ...run(["bun", tsc, "-p", join(appDir, ".fishtea", "ui", "tsconfig.json")]), where: home };
+  // an installed framework has neither; the ui container's image has both, and sees the application at /app
+  const up = run(["docker", "compose", "ps", "--status", "running", "--services"], appDir);
+  if (up.ok && up.output.split("\n").includes("ui")) {
+    return { ...run(["docker", "compose", "exec", "-T", "ui", "bun", "/fishtea/node_modules/typescript/bin/tsc", "-p", "/app/.fishtea/ui/tsconfig.container.json"], appDir), where: "the ui container" };
+  }
+  return { ok: false, where: "", output: "this framework is installed without TypeScript: start the stack (bun run up) and the check runs in the ui container, or run it from a framework checkout" };
+}
+
+/** The tsconfig for an application's plugin code, for a framework at `home` and the application at `app`. */
+function tsconfigFor(home: string, app: string, out: string, include: string[]): string {
+  const uiPkg = join(home, "packages/ui");
+  const mods = join(uiPkg, "node_modules");
+  return JSON.stringify({
+    compilerOptions: {
+      target: "ES2022", lib: ["ES2022", "DOM", "DOM.Iterable"], module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx",
+      strict: true, skipLibCheck: true, noEmit: true, allowImportingTsExtensions: true, resolveJsonModule: true,
+      types: [join(mods, "vite/client")],
+      paths: {
+        "@app/*": [join(app, "*")], "@fishtea/ui/*": [join(uiPkg, "src/*")], "@fishtea/plugins/*": [join(home, "plugins", "*")],
+        "@fishtea/present": [join(home, "packages/spec/src/present.ts")], "#generated/*": [join(out, "*")],
+        react: [join(mods, "@types/react")], "react/*": [join(mods, "@types/react/*")], "react-dom/*": [join(mods, "@types/react-dom/*")], "lucide-react": [join(mods, "lucide-react")],
+      },
+    },
+    include,
+  }, null, 2) + "\n";
 }
 
 /** The application's shape names, to check views against; null when its spec cannot be read. */
