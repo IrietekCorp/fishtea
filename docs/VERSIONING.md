@@ -67,6 +67,14 @@ Three things get reconciled, and you are told about each before anything is writ
 
 Moved forward to accept the running framework and its future minors.
 
+### The install it builds from
+
+`package.json`'s `fishtea.home`, `.env`'s `FISHTEA_HOME`, `.env.example` and the compose defaults all name
+the framework install the core image is built from. Where they point into `~/.fishtea/versions/<older>`,
+they move to this version too — otherwise the pin says 1.2 while the core is still built from 1.1. Only
+installed-version paths move, and only when this version is installed: a checkout you pointed
+`FISHTEA_HOME` at is yours, and an update run from a checkout never points at a directory that is not there.
+
 ### The spec
 
 If `spec.json` is at an older format, the migration chain runs against it. An *additive* format change —

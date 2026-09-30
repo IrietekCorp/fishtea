@@ -289,3 +289,30 @@ describe("update as a whole", () => {
     }
   });
 });
+
+describe("the install an application builds from", () => {
+  test("paths into an older installed version move with the pin; a checkout path and other text do not", async () => {
+    const { homeMoves, applyUpdate: apply, planUpdate: plan } = await import("../src/update.ts");
+    const app = scratch();
+    const old = "0.9.0";
+    writeFileSync(join(app, "package.json"), JSON.stringify({ name: "x", fishtea: { template: "ecommerce", version: "^0.9.0", home: `~/.fishtea/versions/${old}` } }, null, 2));
+    writeFileSync(join(app, ".env"), `FISHTEA_HOME=/home/me/.fishtea/versions/${old}\nOTHER=versions/${old}\n`);
+    writeFileSync(join(app, "docker-compose.yml"), `context: "\${FISHTEA_HOME:-/home/me/.fishtea/versions/${old}}"\n`);
+    writeFileSync(join(app, ".env.example"), `FISHTEA_HOME=/home/me/src/fishtea\n`);
+
+    expect(homeMoves(app, false)).toEqual([]); // this version is not installed: leave everything alone
+    const moves = homeMoves(app, true);
+    expect(moves.map((m) => m.file)).toEqual(["package.json", ".env", "docker-compose.yml"]);
+    expect(moves[0].from).toEqual([old]);
+
+    // apply only what a plan names, so fake the plan's other halves as clean
+    const w = await world();
+    const p = { ...plan(w.app, w.home), appDir: app, homes: moves, verdicts: [], specFrom: SPEC_FORMAT, specTo: SPEC_FORMAT };
+    const r = apply(p);
+    expect(r.wrote).toEqual(["package.json", ".env", "docker-compose.yml"]);
+    expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).fishtea.home).toBe(`~/.fishtea/versions/${FISHTEA_VERSION}`);
+    expect(readFileSync(join(app, ".env"), "utf8")).toBe(`FISHTEA_HOME=/home/me/.fishtea/versions/${FISHTEA_VERSION}\nOTHER=versions/${old}\n`);
+    expect(readFileSync(join(app, "docker-compose.yml"), "utf8")).toContain(`.fishtea/versions/${FISHTEA_VERSION}}`);
+    expect(readFileSync(join(app, ".env.example"), "utf8")).toBe("FISHTEA_HOME=/home/me/src/fishtea\n");
+  });
+});

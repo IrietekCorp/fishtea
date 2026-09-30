@@ -16,6 +16,7 @@ import { join } from "node:path";
 import pc from "picocolors";
 import { FISHTEA_VERSION, SPEC_FORMAT, bumpVersion, caretRange, checkCompatibility, migrateSpec, sectionHashes, validateSpec, SpecError } from "@fishtea/spec";
 import { COUNTS, hashFile, readManifest, reconcile, sha256, templateFiles, writeManifest, type AppManifest, type FileProvenance, type FileVerdict } from "./manifest.ts";
+import { versionsDir } from "./runtime.ts";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
@@ -32,8 +33,35 @@ export interface UpdatePlan {
   specNotes: string[];
   verdicts: FileVerdict[];
   manifest: AppManifest | null;
+  /** files that name an installed framework other than this one, and the versions they name */
+  homes: HomeMove[];
   /** nothing to do */
   clean: boolean;
+}
+
+/**
+ * Where an application says which framework install it builds from. The scaffolder writes the install
+ * path into all four (`new.ts`); the pin alone moving would leave the core building from the old install.
+ */
+export const HOME_FILES = ["package.json", ".env", ".env.example", "docker-compose.yml"] as const;
+const INSTALLED = /(\.fishtea\/versions\/)(\d+\.\d+\.\d+[\w.+-]*)/g;
+export interface HomeMove { file: string; from: string[] }
+
+/**
+ * Files naming an installed version other than this one. Only paths into `~/.fishtea/versions/` move —
+ * a checkout somebody pointed FISHTEA_HOME at is theirs — and only when this version is installed there,
+ * so an update run from a checkout never points an application at a directory that does not exist.
+ */
+export function homeMoves(appDir: string, installed = existsSync(join(versionsDir(), FISHTEA_VERSION))): HomeMove[] {
+  if (!installed) return [];
+  const out: HomeMove[] = [];
+  for (const file of HOME_FILES) {
+    const p = join(appDir, file);
+    if (!existsSync(p)) continue;
+    const from = [...new Set([...readFileSync(p, "utf8").matchAll(INSTALLED)].map((m) => m[2]))].filter((v) => v !== FISHTEA_VERSION);
+    if (from.length) out.push({ file, from });
+  }
+  return out;
 }
 
 function appPackage(appDir: string): any {
@@ -64,8 +92,8 @@ export function planUpdate(appDir: string, fishteaHome: string): UpdatePlan {
     specFrom, specTo: SPEC_FORMAT,
     specSteps: migration.steps.map((s) => ({ from: s.from, to: s.to, doc: s.doc })),
     specNotes: migration.notes,
-    verdicts, manifest,
-    clean: specFrom === SPEC_FORMAT && c.update === 0 && c.conflict === 0 && c.new === 0 && (manifest?.fishtea === FISHTEA_VERSION),
+    verdicts, manifest, homes: homeMoves(appDir),
+    clean: homeMoves(appDir).length === 0 && specFrom === SPEC_FORMAT && c.update === 0 && c.conflict === 0 && c.new === 0 && (manifest?.fishtea === FISHTEA_VERSION),
   };
 }
 
@@ -86,6 +114,10 @@ export function renderPlan(plan: UpdatePlan): string {
     if (v.status === "update") L.push(`   ${pc.green("↑")} ${v.rel}`);
     else if (v.status === "new") L.push(`   ${pc.green("+")} ${v.rel}`);
     else if (v.status === "conflict") L.push(`   ${pc.yellow("!")} ${v.rel} ${pc.dim("— you changed it and so did the archetype; the new one lands as .new")}`);
+  }
+  if (plan.homes.length) {
+    const from = [...new Set(plan.homes.flatMap((h) => h.from))].join(", ");
+    L.push(`${pc.bold("install")}    ${from} → ${FISHTEA_VERSION} in ${plan.homes.map((h) => h.file).join(", ")} ${pc.dim("(where the core is built from)")}`);
   }
   if (!plan.manifest) L.push(pc.yellow(`\n  no manifest: this application predates provenance tracking.`));
   return L.join("\n");
@@ -150,6 +182,13 @@ export function applyUpdate(plan: UpdatePlan, opts: { specOnly?: boolean; filesO
     created: plan.manifest?.created ?? now,
     updated: now,
   });
+
+  // Point the application at this install, where it named an older one (see homeMoves).
+  for (const h of plan.homes) {
+    const p = join(plan.appDir, h.file);
+    writeFileSync(p, readFileSync(p, "utf8").replace(INSTALLED, (m, dir: string, v: string) => (h.from.includes(v) ? `${dir}${FISHTEA_VERSION}` : m)));
+    wrote.push(h.file);
+  }
 
   // Move the pin forward so the application accepts this build and its future minors.
   const pkgPath = join(plan.appDir, "package.json");
