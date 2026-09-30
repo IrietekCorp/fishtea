@@ -667,7 +667,7 @@ model that now runs on an ordinary machine.</p>
     <p class="post-meta">The AI-Native Architect</p>
     <p>Technical executive and venture builder with 25+ years scaling global engineering organizations,
     working in AI infrastructure, distributed systems and engineering leadership.</p>
-    <p><a href="https://piscopour.com" rel="me">piscopour.com</a></p>
+    <p><a href="https://shawnstewart.me" rel="me">shawnstewart.me</a></p>
   </div>
 </div>
 

@@ -183,7 +183,7 @@ A shell exports `Shell`, and is handed the application's **views**: a `ui` plugi
 files that export `View` — the application's own page for that shape.
 
 ```json
-{ "name": "piscopour", "kind": "ui", "tokens": "tokens.css",
+{ "name": "shawnstewart", "kind": "ui", "tokens": "tokens.css",
   "views": { "home": "views/home.view.tsx", "getInTouch": "views/getInTouch.view.tsx" } }
 ```
 

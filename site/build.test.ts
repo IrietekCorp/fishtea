@@ -197,9 +197,9 @@ describe("welcome, glossary, blog and about", () => {
   test("the about page profiles the creator, with the portrait shipped not hotlinked", () => {
     const html = read("about.html");
     expect(html).toContain("Shawn J. Stewart");
-    expect(html).toContain("piscopour.com");
+    expect(html).toContain("shawnstewart.me");
     expect(html).toContain("static/img/shawn-stewart.jpg");
-    expect(html).not.toContain("piscopour.com/assets");      // served from here, not from another host
+    expect(html).not.toContain("shawnstewart.me/assets");    // served from here, not from another host
     expect(existsSync(join(OUT, "static/img/shawn-stewart.jpg"))).toBe(true);
     expect(existsSync(join(OUT, "static/img/shawn-stewart@2x.jpg"))).toBe(true);
   });
