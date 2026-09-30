@@ -468,6 +468,8 @@ services:
       DATABASE_URL: postgres://fishtea:fishtea@db:5432/fishtea
       CLASSIFIER_URL: http://classifier:8081
       FISHTEA_APP: /app
+      # where the framework is inside the image — .env's FISHTEA_HOME is the host's install, not here
+      FISHTEA_HOME: /fishtea
       FISHTEA_HOST: "0.0.0.0"
       PORT: "3000"
       # what a browser outside the container dials, so the banner and the UI agree

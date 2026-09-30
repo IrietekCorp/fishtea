@@ -32,8 +32,13 @@ export const PLUGIN_MANIFEST = "fishtea.plugin.json";
  * later as "unknown template" rather than as a path problem.
  */
 export function frameworkHome(): string {
-  const looksRight = (d: string) => !!d && existsSync(join(d, "templates"));
-  if (process.env.FISHTEA_HOME) return resolve(process.env.FISHTEA_HOME);
+  // A framework directory has its builtin plugins or its templates; a container's image has the former only.
+  const looksRight = (d: string) => !!d && (existsSync(join(d, "plugins")) || existsSync(join(d, "templates")));
+  // FISHTEA_HOME wins when it is there. It can name a directory that is not: an application's .env holds
+  // the host's install path, and a container that reads that .env has the framework somewhere else — so
+  // a FISHTEA_HOME that does not exist falls through to where this code is actually running.
+  const env = process.env.FISHTEA_HOME;
+  if (env && existsSync(resolve(env))) return resolve(env);
 
   let fromSource = "";
   try { fromSource = resolve(dirname(new URL(import.meta.url).pathname), "../../.."); } catch { /* bunfs */ }

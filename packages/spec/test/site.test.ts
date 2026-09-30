@@ -51,3 +51,18 @@ describe("the schema and the code agree", () => {
     expect([...schema.$defs.pluginUse.properties.kind.enum].sort()).toEqual([...PLUGIN_KINDS].sort());
   });
 });
+
+describe("where the framework is", () => {
+  test("a FISHTEA_HOME that is not there — a host path read inside a container — falls back to where this runs", async () => {
+    const { frameworkHome } = await import("../src/index.ts");
+    const before = process.env.FISHTEA_HOME;
+    try {
+      process.env.FISHTEA_HOME = "/home/nobody/.fishtea/versions/9.9.9";
+      expect(frameworkHome()).toBe(ROOT);
+      process.env.FISHTEA_HOME = ROOT;
+      expect(frameworkHome()).toBe(ROOT);
+    } finally {
+      if (before === undefined) delete process.env.FISHTEA_HOME; else process.env.FISHTEA_HOME = before;
+    }
+  });
+});
