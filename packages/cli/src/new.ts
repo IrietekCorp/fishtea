@@ -3,6 +3,7 @@
  * directory (spec.json, calls/, seed/, scripts/) plus `onboard.json`, the interview that turns the archetype
  * into *this* business. Answers come from the TUI, from `--answers file.json`, or from defaults.
  */
+import { randomBytes } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { bumpVersion, validateSpec, FISHTEA_VERSION, SPEC_FORMAT, caretRange } from "@fishtea/spec";
@@ -341,7 +342,9 @@ if (resolved.home) env.FISHTEA_HOME = resolved.home;
 const proc = Bun.spawn([...resolved.cmd, ...args], { stdio: ["inherit", "inherit", "inherit"], env });
 process.exit(await proc.exited);
 `,
-    ".env": envFile(home, a.template),
+    // .env is this machine's and never committed, so it gets a real operator token; the example keeps the
+    // placeholder, which the core warns about if anyone runs with it
+    ".env": envFile(home, a.template, randomBytes(24).toString("base64url")),
     ".env.example": envFile(home, a.template),
     "docker-compose.yml": composeFile(home),
     // .fishtea/ holds caches, but manifest.json is provenance: commit it, or `fishtea update` on another
@@ -376,7 +379,7 @@ Layout: \`spec.json\` (the business), \`calls/\` (SQL with $1..$n parameters, co
  * Written as both .env and .env.example, so `bun run dev` works immediately and there is still a pristine
  * copy to diff against. Every host is a variable: nothing here assumes the services are on this machine.
  */
-export function envFile(home: string, template: string): string {
+export function envFile(home: string, template: string, operatorToken = "change-me"): string {
   const lan = lanAddress();
   return `# FishTea application settings. Bun loads this file automatically.
 # Each of these can also be passed as a flag: --db, --classifier, --host, --port.
@@ -399,7 +402,10 @@ FISHTEA_PUBLIC_HOST=${lan ?? "localhost"}
 
 FISHTEA_INTENT=needle          # lexical is a development harness, never production (D5)
 FISHTEA_STRICT=0
-FISHTEA_OPERATOR_TOKEN=change-me
+# what a script (the TUI, fishtea notify) sends to use /op; people sign in at /admin instead
+FISHTEA_OPERATOR_TOKEN=${operatorToken}
+# the first /admin password, changed at the first sign-in (unset: fishtea-admin)
+# FISHTEA_ADMIN_PASSWORD=
 
 # --- the framework ----------------------------------------------------------
 # Where the framework lives on *this* machine. Absolute on purpose: nothing expands ~ here.

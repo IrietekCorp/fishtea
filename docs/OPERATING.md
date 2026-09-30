@@ -81,6 +81,33 @@ fishtea bench -- --conventional
 conventional multi-page baseline currently measures **server time only** — no browser parse or render —
 so it is not yet the task-completion comparison the blueprint asks for.
 
+## Admin
+
+`/admin` on the ui server is where the people who run an application sign in. It shows every visitor,
+their visits and each turn in full (what was said, what it matched, what the plan read and wrote, the
+layout the answer carried), the questions nobody could answer, the spec — edited whole, validated on
+save, refused if someone saved since, the replaced version kept in `.fishtea/spec-history/` — and the
+lighter settings: the scalar values in `rules` and each plugin's configuration. What guards visitors
+(`rules.writes`) and what is structure (the layout, the menu) stays in the spec editor.
+
+The first start creates one operator, **`admin`**, with the password **`fishtea-admin`** (or
+`FISHTEA_ADMIN_PASSWORD`, if set when the operator is created). Signing in on it opens one thing only: a
+form to replace it. Until then the core says so at every start. A new password is at least 12
+characters, not the one given and not containing the username; changing it signs out every other
+session of that operator.
+
+| | |
+|---|---|
+| passwords | argon2id; the answer to a wrong username and a wrong password is the same |
+| sessions | 32 random bytes in an httpOnly, SameSite=Strict cookie (`fishtea_operator`), stored as a hash, 8 hours |
+| lockout | five wrong passwords lock the account for fifteen minutes; ten attempts a minute per address |
+| changes | a cookie'd change also needs the `x-fishtea-admin` header, which a page on another site cannot send |
+
+`/op` has two doors: a person's session, or `FISHTEA_OPERATOR_TOKEN` for scripts (the TUI,
+`fishtea notify`). New applications get a random token in `.env`; the core warns while it is
+`change-me`. There is no TLS here either — behind anything public, put the ui server behind HTTPS, and
+the session cookie is marked Secure when the request says it came over it.
+
 ## Visitors that are not people
 
 A headless run, a layout check, a browser test: each is a visitor to the core, and a new one each time.

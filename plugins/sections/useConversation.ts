@@ -18,7 +18,6 @@ export interface Conversation {
   current: View | null;
   section: View | null;
   resumed: boolean;
-  debug: boolean;
   busy: boolean;
   error: string | null;
   notices: { id: number; text: string }[];
@@ -32,7 +31,6 @@ export interface Conversation {
   back(): void;
   up(): void;
   home(): void;
-  openDebug(): void;
   dismissResumed(): void;
 }
 
@@ -42,7 +40,6 @@ export function useConversation(): Conversation {
   const [current, setCurrent] = useState<View | null>(null);
   const [section, setSection] = useState<View | null>(null);
   const [resumed, setResumed] = useState(false);
-  const [debug, setDebug] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<{ id: number; text: string }[]>([]);
@@ -62,7 +59,6 @@ export function useConversation(): Conversation {
       url = urlFor(view.route);
     }
     setCurrent(view);
-    setDebug(false);
     setError(null);
     if (how !== "none") history[how === "push" ? "pushState" : "replaceState"]({ turnId: view.res.turn.id }, "", url);
     if (how === "push") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -107,7 +103,6 @@ export function useConversation(): Conversation {
       try { res = await arrive(); } catch (e) { setError((e as Error).message); setBusy(false); return; }
       setBusy(false);
       off = subscribe((type, data) => { if (type === "notification") notice(data.text); });
-      if (route.debug) { log.current.set(res.turn.id, res); history.replaceState({ debug: true }, "", "/debug"); setDebug(true); return; }
 
       const greeting = res.pour.kind === "ask" && (res.pour as any).reason === "greeting";
       if (route.text) return send({ text: route.text }, "replace");
@@ -129,7 +124,6 @@ export function useConversation(): Conversation {
   /** Browser Back/Forward: rewind the trail to the turn that history entry recorded. */
   useEffect(() => {
     const onPop = async (e: PopStateEvent) => {
-      if (e.state?.debug) { setDebug(true); return; }
       const turnId = e.state?.turnId as string | undefined;
       const route = parseLocation();
       if (!turnId) { if (route.shape) send({ shape: route.shape, args: route.args, submit: true }, "replace"); return; }
@@ -155,7 +149,7 @@ export function useConversation(): Conversation {
   const cur = shapeOf(current?.res.pour);
 
   return {
-    current, section, resumed, debug, busy, error, notices, log: log.current,
+    current, section, resumed, busy, error, notices, log: log.current,
     go,
     ask: (text) => { setResumed(false); send({ text }); },
     submit: (shape, args, confirm) => send({ shape, args, submit: true, confirm }),
@@ -173,7 +167,6 @@ export function useConversation(): Conversation {
       if (p) go(p);
     },
     home: () => go(home),
-    openDebug: () => { history.pushState({ debug: true }, "", "/debug"); setDebug(true); window.scrollTo({ top: 0 }); },
     dismissResumed: () => setResumed(false),
   };
 }

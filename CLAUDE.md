@@ -57,6 +57,11 @@ bunx tsc -p tsconfig.json --noEmit
   `!allowed.includes(shapeName)`) — never by filtering needle's tools, which is for accuracy and
   latency. Row ownership is the call's own SQL (`AND visitor_id = $n`) and nothing else substitutes.
   A visitor id is a bearer credential: mint it with `newId`, which uses the CSPRNG, never `Math.random`.
+- **Operators sign in; nothing about running the application is public.** `/admin` (the ui package)
+  over `/op` (the core): argon2id passwords, hashed session tokens in an httpOnly SameSite=Strict
+  cookie, a first password that must be changed before anything else opens, lockout, and
+  `x-fishtea-admin` on any cookie'd change. Scripts use `FISHTEA_OPERATOR_TOKEN`. A shell never shows
+  operator data; `/debug` moved into `/admin` for that reason.
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - A port nobody chose may move: `serve` and `up` probe first and step to the next free one, saying so. A

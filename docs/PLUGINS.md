@@ -198,8 +198,9 @@ application's `public/` is served as is, and the page's title and description co
 
 **`sections`** ships as the builtin shell. It navigates by `rules.site` — sections in a header, a
 command bar, "up" from a child to its section, actions that open over a page — and makes browser
-history the conversation: Back and Forward rewind the trail rather than asking again. Its `/debug` shows
-the visitor, their visits and each visit's turns (`GET /sessions`).
+history the conversation: Back and Forward rewind the trail rather than asking again. What it used to
+show on `/debug` — visits, turns, layouts — is in `/admin`, behind a sign-in; an old `/debug` link goes
+there.
 
 ## What ships
 

@@ -75,3 +75,23 @@ CREATE OR REPLACE VIEW conversation.unmet AS
 ALTER TABLE conversation.turn DROP CONSTRAINT IF EXISTS turn_kind_check;
 ALTER TABLE conversation.turn ADD CONSTRAINT turn_kind_check
   CHECK (kind IN ('ask','form','confirm-write','answer','notification','composite'));
+
+-- Operators: the people who run this application, signing in to /admin. A password is stored only as an
+-- argon2id hash; a session only as the sha256 of its token, so a database read hands out no way in.
+CREATE TABLE IF NOT EXISTS fishtea.operator (
+  id            text PRIMARY KEY,
+  username      text NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  must_change   boolean NOT NULL DEFAULT false,
+  failed        integer NOT NULL DEFAULT 0,
+  locked_until  timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  changed_at    timestamptz
+);
+CREATE TABLE IF NOT EXISTS fishtea.operator_session (
+  token_hash   text PRIMARY KEY,
+  operator_id  text NOT NULL REFERENCES fishtea.operator(id) ON DELETE CASCADE,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  expires_at   timestamptz NOT NULL
+);
+CREATE INDEX IF NOT EXISTS operator_session_operator_idx ON fishtea.operator_session (operator_id);

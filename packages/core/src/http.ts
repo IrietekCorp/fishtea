@@ -1,15 +1,24 @@
 /**
- * Hono transport (BLUEPRINT D7, §13): /, /utter, /events, /trail/*, /healthz, and the operator
- * surface under /op/* gated by FISHTEA_OPERATOR_TOKEN. The intelligence is the engine; this is a thin skin.
+ * Hono transport (BLUEPRINT D7, §13): /, /utter, /events, /trail/*, /sessions, /healthz, and the operator
+ * surface under /op/* — open to a script holding FISHTEA_OPERATOR_TOKEN, or to an operator signed in at
+ * /admin (/op/auth/*). The intelligence is the engine; this is a thin skin.
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { getCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { createHash, timingSafeEqual } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { SpecError, validateSpec } from "@fishtea/spec";
+import { OperatorAuth, SESSION_HOURS, type Operator } from "./admin/auth.ts";
+import { applySettings, settingsOf } from "./admin/settings.ts";
 import { streamSSE } from "hono/streaming";
 import type { Engine, Utterance } from "./engine.ts";
 import type { App } from "@fishtea/spec";
 
 const COOKIE = "fishtea_visitor";
+/** An operator's session. Not the visitor's cookie: the two never stand in for each other. */
+const OP_COOKIE = "fishtea_operator";
 
 /**
  * The browser refuses a wildcard `Access-Control-Allow-Origin` on a credentialed request, so the origin has
@@ -29,16 +38,19 @@ export function allowOrigin(policy: CorsPolicy = {}): (origin: string) => string
 }
 
 interface Bucket { tokens: number; at: number }
-const buckets = new Map<string, Bucket>();
-function rateLimit(key: string, perMinute = 120): boolean {
-  const now = Date.now();
-  const b = buckets.get(key) ?? { tokens: perMinute, at: now };
-  b.tokens = Math.min(perMinute, b.tokens + ((now - b.at) / 60000) * perMinute);
-  b.at = now;
-  if (b.tokens < 1) { buckets.set(key, b); return false; }
-  b.tokens -= 1;
-  buckets.set(key, b);
-  return true;
+/** A token bucket per key. One per server, so two servers in one process do not spend each other's. */
+function limiter() {
+  const buckets = new Map<string, Bucket>();
+  return (key: string, perMinute = 120): boolean => {
+    const now = Date.now();
+    const b = buckets.get(key) ?? { tokens: perMinute, at: now };
+    b.tokens = Math.min(perMinute, b.tokens + ((now - b.at) / 60000) * perMinute);
+    b.at = now;
+    if (b.tokens < 1) { buckets.set(key, b); return false; }
+    b.tokens -= 1;
+    buckets.set(key, b);
+    return true;
+  };
 }
 
 export interface CorsPolicy {
@@ -55,16 +67,21 @@ export interface ServerOptions {
   onReload?: () => Promise<App>;
   onRestart?: () => Promise<void>;
   onEditSection?: (section: string, patch: unknown) => Promise<{ ok: boolean; version: string; migrationNeeded?: boolean }>;
+  /** a plugin's configuration changed: regenerate what the ui bundle derives from it */
+  onPluginsChanged?: () => Promise<void>;
+  /** sign-in attempts allowed per address per minute (10) */
+  loginPerMinute?: number;
   cors?: CorsPolicy;
 }
 
 export function createServer(opts: ServerOptions) {
   const { engine } = opts;
+  const rateLimit = limiter();
   const app = new Hono();
   app.use("*", cors({
     origin: allowOrigin(opts.cors),
     credentials: true,
-    allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator", "x-fishtea-tool"],
+    allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator", "x-fishtea-tool", "x-fishtea-admin"],
     allowMethods: ["GET", "POST", "OPTIONS"],
     maxAge: 600,
   }));
@@ -162,12 +179,58 @@ export function createServer(opts: ServerOptions) {
   });
 
   // ── operator surface ─────────────────────────────────────────────────────
-  const op = new Hono();
+  //
+  // Two ways in. A script — the TUI, `fishtea notify`, a test — holds FISHTEA_OPERATOR_TOKEN and sends it
+  // as x-fishtea-operator. A person signs in at /admin and holds a session cookie; while their password is
+  // still the one they were given, the session can only change it. A cookie is sent by the browser on its
+  // own, so anything that changes state from one also needs x-fishtea-admin — a header a page on another
+  // site cannot set without a preflight this core's CORS policy refuses — on top of SameSite=Strict.
+  const auth = new OperatorAuth(engine.db);
+  const sameToken = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
+  const secure = (c: any) => c.req.header("x-forwarded-proto") === "https" || new URL(c.req.url).protocol === "https:";
+  const ipOf = (c: any) => c.req.header("x-forwarded-for")?.split(",")[0].trim() ?? "local";
+
+  const opAuth = new Hono();
+  opAuth.post("/login", async (c) => {
+    if (!rateLimit(`login:${ipOf(c)}`, opts.loginPerMinute ?? 10)) return c.json({ error: "too many attempts; wait a minute" }, 429);
+    const { username, password } = await c.req.json().catch(() => ({}));
+    const r = await auth.signIn(username, password);
+    if (!r.ok) return c.json(r.reason === "locked" ? { error: `locked; try again in ${Math.ceil((r.retryAfter ?? 60) / 60)} minutes` } : { error: "wrong username or password" }, r.reason === "locked" ? 423 : 401);
+    setCookie(c, OP_COOKIE, r.token, { path: "/", httpOnly: true, sameSite: "Strict", secure: secure(c), maxAge: SESSION_HOURS * 3600 });
+    return c.json({ operator: { username: r.operator.username }, mustChange: r.operator.mustChange });
+  });
+  opAuth.post("/logout", async (c) => {
+    await auth.signOut(getCookie(c, OP_COOKIE));
+    deleteCookie(c, OP_COOKIE, { path: "/" });
+    return c.json({ ok: true });
+  });
+  opAuth.get("/me", async (c) => {
+    const who = await auth.session(getCookie(c, OP_COOKIE));
+    return who ? c.json({ operator: { username: who.username }, mustChange: who.mustChange }) : c.json({ operator: null }, 401);
+  });
+  opAuth.post("/password", async (c) => {
+    if (c.req.header("x-fishtea-admin") !== "1") return c.json({ error: "missing x-fishtea-admin" }, 403);
+    const token = getCookie(c, OP_COOKIE);
+    const who = await auth.session(token);
+    if (!who) return c.json({ error: "sign in" }, 401);
+    if (!rateLimit(`password:${who.id}`, 10)) return c.json({ error: "too many attempts; wait a minute" }, 429);
+    const { current, next } = await c.req.json().catch(() => ({}));
+    const r = await auth.changePassword(who, current, next, token!);
+    return r.ok ? c.json({ ok: true }) : c.json({ error: r.problem }, 400);
+  });
+  app.route("/op/auth", opAuth);
+
+  const op = new Hono<{ Variables: { operator: Operator | null } }>();
   op.use("*", async (c, next) => {
     const token = opts.operatorToken ?? process.env.FISHTEA_OPERATOR_TOKEN;
-    if (!token) return c.json({ error: "operator surface disabled: set FISHTEA_OPERATOR_TOKEN" }, 403);
     const given = c.req.header("x-fishtea-operator") ?? c.req.query("token");
-    if (given !== token) return c.json({ error: "forbidden" }, 403);
+    if (token && given && sameToken(given, token)) { c.set("operator", null); return next(); }
+    const who = await auth.session(getCookie(c, OP_COOKIE));
+    // 403 throughout /op, as it always was: the surface refuses, whatever the reason
+    if (!who) return c.json({ error: "sign in at /admin" }, 403);
+    if (who.mustChange) return c.json({ error: "change your password first", mustChange: true }, 403);
+    if (c.req.method !== "GET" && c.req.header("x-fishtea-admin") !== "1") return c.json({ error: "missing x-fishtea-admin" }, 403);
+    c.set("operator", who);
     await next();
   });
   op.get("/spec", (c) => c.json({ spec: engine.spec, hashes: engine.app.hashes, path: engine.app.specPath }));
@@ -196,8 +259,79 @@ export function createServer(opts: ServerOptions) {
     }),
   }));
   op.get("/visitors", async (c) => {
-    const rows = await engine.db`SELECT v.id, v.customer_id, v.last_seen, (SELECT count(*) FROM conversation.trail t WHERE t.visitor_id = v.id) AS trails FROM conversation.visitor v ORDER BY v.last_seen DESC LIMIT 50`;
+    const limit = Math.max(1, Math.min(200, Number(c.req.query("limit") ?? 50) || 50));
+    const offset = Math.max(0, Number(c.req.query("offset") ?? 0) || 0);
+    const people = c.req.query("tools") !== "include";
+    const rows = await engine.db`
+      SELECT v.id, v.customer_id, v.created_at, v.last_seen,
+             count(t.id)::int AS trails,
+             bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false)) AS tool,
+             (array_agg(t.envelope->>'userAgent' ORDER BY t.opened_at DESC))[1] AS user_agent,
+             (SELECT count(*)::int FROM conversation.turn u JOIN conversation.trail tt ON tt.id = u.trail_id WHERE tt.visitor_id = v.id) AS turns
+      FROM conversation.visitor v LEFT JOIN conversation.trail t ON t.visitor_id = v.id
+      GROUP BY v.id
+      HAVING ${people} = false OR NOT coalesce(bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false)), false)
+      ORDER BY v.last_seen DESC LIMIT ${limit} OFFSET ${offset}`;
     return c.json({ visitors: rows });
+  });
+  op.get("/visitors/:id", async (c) => {
+    const h = await engine.sessions(c.req.param("id"), 50);
+    return h ? c.json(h) : c.json({ error: "no such visitor" }, 404);
+  });
+  op.get("/turns/:id", async (c) => {
+    const t = await engine.trails.turn(c.req.param("id"));
+    return t ? c.json({ turn: t }) : c.json({ error: "no such turn" }, 404);
+  });
+
+  // ── the spec, whole ──────────────────────────────────────────────────────
+  //
+  // The file as written, and a hash of it. A save carries the hash it started from; if the file moved on
+  // since (the TUI, another tab, an editor) the save is refused with the newer text, rather than one
+  // operator silently overwriting another. A save is valid JSON and a valid spec, or nothing is written;
+  // the file it replaces is kept in .fishtea/spec-history/, named for when and by whom.
+  const specText = () => readFileSync(engine.app.specPath, "utf8");
+  const hashOf = (t: string) => createHash("sha256").update(t).digest("hex");
+  const historyDir = () => join(engine.app.dir, ".fishtea", "spec-history");
+  op.get("/spec/source", (c) => { const text = specText(); return c.json({ text, hash: hashOf(text), path: engine.app.specPath }); });
+  op.put("/spec/source", async (c) => {
+    const { text, base } = await c.req.json().catch(() => ({}));
+    if (typeof text !== "string" || text.length > 5_000_000) return c.json({ error: "text: the spec, as JSON" }, 400);
+    const current = specText();
+    if (base !== hashOf(current)) return c.json({ error: "the spec changed since you opened it", text: current, hash: hashOf(current) }, 409);
+    let parsed: unknown;
+    try { parsed = JSON.parse(text); } catch (e) { return c.json({ error: `not JSON: ${(e as Error).message}` }, 400); }
+    try { validateSpec(parsed, { dir: engine.app.dir }); }
+    catch (e) { return c.json({ error: "the spec is not valid", problems: e instanceof SpecError ? e.problems : [(e as Error).message] }, 400); }
+    const who = c.get("operator")?.username ?? "token";
+    mkdirSync(historyDir(), { recursive: true });
+    writeFileSync(join(historyDir(), `${new Date().toISOString().replace(/[:.]/g, "-")}-${who.replace(/[^\w-]/g, "")}.json`), current);
+    for (const old of readdirSync(historyDir()).sort().slice(0, -50)) try { unlinkSync(join(historyDir(), old)); } catch { /* best effort */ }
+    const tmp = `${engine.app.specPath}.saving`;
+    writeFileSync(tmp, text.endsWith("\n") ? text : text + "\n");
+    renameSync(tmp, engine.app.specPath);
+    const entitiesBefore = engine.app.hashes.entities;
+    const next = opts.onReload ? await opts.onReload() : null;
+    const saved = specText();
+    return c.json({ ok: true, hash: hashOf(saved), version: next?.spec.business.version, migrationNeeded: !!next && next.hashes.entities !== entitiesBefore });
+  });
+  op.get("/spec/history", (c) => c.json({ history: existsSync(historyDir()) ? readdirSync(historyDir()).filter((f) => f.endsWith(".json")).sort().reverse() : [] }));
+  op.get("/spec/history/:name", (c) => {
+    const name = c.req.param("name");
+    if (!/^[\w.-]+\.json$/.test(name) || !existsSync(join(historyDir(), name))) return c.json({ error: "no such version" }, 404);
+    return c.json({ name, text: readFileSync(join(historyDir(), name), "utf8") });
+  });
+
+  // ── settings ─────────────────────────────────────────────────────────────
+  op.get("/settings", (c) => c.json({ settings: settingsOf(engine.app) }));
+  op.patch("/settings", async (c) => {
+    const { changes } = await c.req.json().catch(() => ({}));
+    if (!Array.isArray(changes) || !changes.length) return c.json({ error: "changes: [{ id, value }]" }, 400);
+    let r: { sections: string[] };
+    try { r = applySettings(engine.app, changes); }
+    catch (e) { return c.json({ error: e instanceof SpecError ? "the spec would not be valid" : (e as Error).message, problems: e instanceof SpecError ? e.problems : undefined }, 400); }
+    if (opts.onReload) await opts.onReload();
+    if (r.sections.includes("plugins") && opts.onPluginsChanged) await opts.onPluginsChanged();
+    return c.json({ ok: true, sections: r.sections, settings: settingsOf(engine.app) });
   });
   app.route("/op", op);
 

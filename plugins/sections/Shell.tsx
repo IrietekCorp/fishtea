@@ -2,7 +2,7 @@
  * The sections shell: a site you navigate by the spec's `rules.site` — a header with its sections and its
  * primary action, a command bar (back, up, home and the conversation input), the section's page, any
  * action open over it, the threads the answer offers, and a footer with the sitemap. Diagnostics live on
- * /debug, linked from the sitemap.
+ * /admin (the framework's, behind a sign-in), not on this site.
  *
  * Each shape is drawn by the application's view for it (a ui plugin's `views`), or else from the layout
  * the answer carries (`pour.present`, declared in rules.present or derived from the spec) — so a new shape
@@ -16,7 +16,6 @@ import { useConversation, shapeOf, type Conversation } from "./useConversation";
 import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, needsInput, parentOf, sectionOf, sections } from "./site";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
-import { Debug } from "./Debug";
 import type { View } from "./types";
 
 type Views = Partial<Record<string, View>>;
@@ -44,7 +43,7 @@ export function Shell({ views = {} }: { views?: Views }) {
       {c.error && <div role="alert" className="border-b border-write/40 bg-write/10 px-4 py-3 text-center text-sm text-write">{c.error}</div>}
 
       <main className="flex-1">
-        {c.debug ? <Debug c={c} vessels={views} /> : shown ? (
+        {shown ? (
           <div key={c.section!.res.turn.id} className="fade">
             <PourView pour={shown} res={c.section!.res} c={c} views={views} />
             {/* the UI language lays out its own threads; a vessel does unless it says otherwise */}
@@ -53,7 +52,7 @@ export function Shell({ views = {} }: { views?: Views }) {
         ) : <Booting />}
       </main>
 
-      {overlay && !c.debug && <ActionOverlay pour={overlay} res={c.current!.res} c={c} views={views} key={c.current!.res.turn.id} />}
+      {overlay && <ActionOverlay pour={overlay} res={c.current!.res} c={c} views={views} key={c.current!.res.turn.id} />}
       <Footer c={c} />
       <Toasts c={c} />
     </div>
@@ -209,7 +208,6 @@ function Footer({ c }: { c: Conversation }) {
               <li>
                 <span className="text-sm font-bold uppercase tracking-tighter text-muted-foreground">Utilities</span>
                 <ul className="mt-1 space-y-1">
-                  <li><button onClick={c.openDebug} className="text-xs text-muted-foreground/60 hover:text-foreground">Debug</button></li>
                   {actions.remember && <li><button onClick={() => c.act("remember")} className="text-xs text-muted-foreground/60 hover:text-foreground">{actions.remember.label}</button></li>}
                 </ul>
               </li>

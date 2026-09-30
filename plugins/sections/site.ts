@@ -59,7 +59,7 @@ export const needsInput = (shape: string) => Object.values(shapes[shape]?.input 
 //   /resume?q=fintech+leaders  something typed, re-asked on a fresh load
 //   …#getInTouch               an action open over that page
 
-export interface Route { shape?: string; args: Record<string, string>; text?: string; action?: string; debug?: boolean }
+export interface Route { shape?: string; args: Record<string, string>; text?: string; action?: string }
 
 export function urlFor(r: Route): string {
   const base = r.shape && r.shape !== home ? (isSection(r.shape) ? `/${r.shape}` : `/${sectionOf(r.shape)}/${r.shape}`).replace(`/${home}/`, "/") : "/";
@@ -71,7 +71,8 @@ export function urlFor(r: Route): string {
 
 export function parseLocation(loc: Location = location): Route {
   const parts = loc.pathname.split("/").filter(Boolean);
-  if (parts[0] === "debug") return { debug: true, args: {} };
+  // /debug lived here once; it is part of /admin now, behind a sign-in
+  if (parts[0] === "debug") { location.replace("/admin/visitors"); return { args: {} }; }
   const last = parts[parts.length - 1];
   const shape = last && knownShape(last) ? last : parts.length ? undefined : home;
   const args: Record<string, string> = {};

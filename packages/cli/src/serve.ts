@@ -4,8 +4,9 @@
  */
 import { watch } from "node:fs";
 import pc from "picocolors";
-import { loadApp, SpecError, type App, deriveTables } from "@fishtea/spec";
-import { migrate, seed, entitiesDrift, ensureConversationSchema, createServer } from "@fishtea/core";
+import { loadApp, SpecError, type App, deriveTables, frameworkHome } from "@fishtea/spec";
+import { migrate, seed, entitiesDrift, ensureConversationSchema, createServer, OperatorAuth, DEFAULT_OPERATOR, DEFAULT_PASSWORD } from "@fishtea/core";
+import { generateUiAssets } from "./plugin.ts";
 import { buildEngine } from "./index.ts";
 import { applySectionPatch } from "./edit.ts";
 import { bindHost, bindPort, checkDatabase, classifierUrl, corsOrigins, databaseUrl, portWasChosen, publicUrl, reachableUrls, redact, resolvePort, selfHosts, type Flags } from "./env.ts";
@@ -25,6 +26,10 @@ export async function serve(app: App, flags: Flags, dir: string) {
   // The framework's own tables move with the framework, independently of anything in the spec, so this
   // runs every start rather than only when the business entities drifted.
   await ensureConversationSchema(db);
+  // The first operator, so /admin can be signed into without a setup step — on a password that has to
+  // be changed at the first sign-in.
+  const operators = new OperatorAuth(db);
+  if (await operators.ensureDefault()) log(`created the first operator, ${pc.bold(DEFAULT_OPERATOR)}, for /admin`);
 
   const drift = await entitiesDrift(db, app);
   if (drift.drifted) {
@@ -65,6 +70,11 @@ export async function serve(app: App, flags: Flags, dir: string) {
     operatorToken: process.env.FISHTEA_OPERATOR_TOKEN,
     onReload: reload,
     onRestart: async () => { log("restart requested by operator"); setTimeout(() => process.exit(0), 50); },
+    // a design system's knob moved: the ui bundle's stylesheet is derived from it
+    onPluginsChanged: async () => {
+      const r = generateUiAssets(current.dir, frameworkHome());
+      for (const w of r.warnings) log(pc.yellow(`ui assets: ${w}`));
+    },
     onEditSection: async (section, patch) => {
       const r = applySectionPatch(current.specPath, section, patch);
       const next = await reload();
@@ -82,6 +92,9 @@ export async function serve(app: App, flags: Flags, dir: string) {
   log(pc.dim(`  spec       ${app.specPath}`));
   if (host === "0.0.0.0") log(pc.dim(`  reachable from other machines; set FISHTEA_HOST=127.0.0.1 to keep it local`));
   log(pc.dim(`  the UI needs VITE_CORE_URL=${publicUrl(publicFlags)}`));
+  // Say so, every start, while a door is still locked with a key everybody has.
+  if (await operators.defaultStillSet()) log(pc.yellow(`  /admin: ${DEFAULT_OPERATOR} is still on the password it was given (${process.env.FISHTEA_ADMIN_PASSWORD ? "FISHTEA_ADMIN_PASSWORD" : DEFAULT_PASSWORD}) — sign in and change it`));
+  if ((process.env.FISHTEA_OPERATOR_TOKEN ?? "") === "change-me") log(pc.yellow(`  FISHTEA_OPERATOR_TOKEN is "change-me": anyone who knows that can use /op — set a random one in .env`));
   log(pc.dim(`  browser origins ${cors.origins === "*" ? pc.yellow("any (FISHTEA_CORS_ORIGINS=*)") : cors.origins?.length ? cors.origins.join(", ") : `any port on ${cors.hosts.join(", ")}`}`));
   await new Promise(() => {});
 }
