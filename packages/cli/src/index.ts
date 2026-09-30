@@ -17,6 +17,7 @@ import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassi
 import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
+import { present } from "./present.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
 /**
@@ -418,6 +419,14 @@ async function main() {
       console.log(`  ${Object.keys(app.hashes).map((s) => `${s}:${app.hashes[s].slice(0, 8)}`).join("  ")}`);
       return;
     }
+    case "present": {
+      const dir = resolveAppDir(flags);
+      const app = loadOrDie(dir);
+      const core = typeof flags.core === "string" ? flags.core : process.env.FISHTEA_CORE_URL ?? `http://localhost:${process.env.FISHTEA_CORE_PORT ?? bindPort(flags)}`;
+      const args = typeof flags.args === "string" ? JSON.parse(flags.args) : {};
+      process.exitCode = await present(app, dir, { shapes: positional.slice(1).map(String), live: flags.live === true, core, args });
+      return;
+    }
     case "doctor": {
       const dir = resolveAppDir(flags);
       const rows: [string, boolean, string][] = [];
@@ -551,6 +560,7 @@ async function main() {
                               everything outside the conversation: integrations, design systems, auth
   fishtea ui-assets           regenerate the browser bundle's design-system stylesheet
   fishtea validate            validate spec.json and print section hashes
+  fishtea present [shape…]    how each answer is laid out (rules.present, or derived); --live asks a running core
   fishtea doctor              check the spec, the database, the classifier and the binding
   fishtea derive [--ddl|--tools|--forms]
   fishtea migrate [--allow-destructive]
