@@ -65,4 +65,10 @@ describe("where the framework is", () => {
       if (before === undefined) delete process.env.FISHTEA_HOME; else process.env.FISHTEA_HOME = before;
     }
   });
+  test("analytics names a GA4 measurement id, nothing else", () => {
+    const base = { home: "askAbout", sections: [{ shape: "askAbout", label: "Ask" }] };
+    expect(problems({ ...base, analytics: { google: "G-76492E02E7" } })).toEqual([]);
+    expect(problems({ ...base, analytics: { google: "UA-123" } }).join("\n")).toMatch(/analytics.google/);
+    expect(problems({ ...base, analytics: { google: 'G-1"></script><script>alert(1)' } }).length).toBeGreaterThan(0);
+  });
 });

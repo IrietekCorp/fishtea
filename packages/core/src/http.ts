@@ -111,7 +111,11 @@ export function createServer(opts: ServerOptions) {
     const id = c.req.header("x-fishtea-visitor") ?? getCookie(c, COOKIE) ?? c.req.query("visitor") ?? null;
     return { id, hadToken: !!id };
   };
-  const remember = (c: any, id: string) => setCookie(c, COOKIE, id, { path: "/", httpOnly: true, sameSite: "Lax", maxAge: 60 * 60 * 24 * 365 });
+  /** Whether the browser reached us over HTTPS: directly, or through a proxy that says so (Traefik, Caddy). */
+  const secure = (c: any) => c.req.header("x-forwarded-proto") === "https" || new URL(c.req.url).protocol === "https:";
+  // Secure whenever the visit is HTTPS, so the visitor's id is never sent in clear; plain-HTTP development
+  // keeps working because the flag follows the request rather than being always on.
+  const remember = (c: any, id: string) => setCookie(c, COOKIE, id, { path: "/", httpOnly: true, sameSite: "Lax", secure: secure(c), maxAge: 60 * 60 * 24 * 365 });
 
   app.get("/healthz", async (c) => c.json(await engine.health()));
 
@@ -187,7 +191,6 @@ export function createServer(opts: ServerOptions) {
   // site cannot set without a preflight this core's CORS policy refuses — on top of SameSite=Strict.
   const auth = new OperatorAuth(engine.db);
   const sameToken = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
-  const secure = (c: any) => c.req.header("x-forwarded-proto") === "https" || new URL(c.req.url).protocol === "https:";
   const ipOf = (c: any) => c.req.header("x-forwarded-for")?.split(",")[0].trim() ?? "local";
 
   const opAuth = new Hono();

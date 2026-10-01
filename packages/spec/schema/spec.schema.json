@@ -260,6 +260,17 @@
                 }
               },
               "additionalProperties": false
+            },
+            "analytics": {
+              "type": "object",
+              "description": "Page analytics a shell loads on the site's pages (not /admin). google: a Google Analytics 4 measurement id, G-…",
+              "properties": {
+                "google": {
+                  "type": "string",
+                  "pattern": "^G-[A-Z0-9]{4,}$"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

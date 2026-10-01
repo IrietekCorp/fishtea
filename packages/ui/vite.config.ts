@@ -24,7 +24,8 @@ const generated = own && existsSync(join(own, "plugins.generated.ts")) ? own : j
 
 /**
  * The page's <head> from the application's spec: its title and description (`rules.site.copy`, else the
- * business's name and doc), and a favicon when its public/ has one. Without an application, as it was.
+ * business's name and doc), a favicon when its public/ has one, and the analytics tag when
+ * `rules.site.analytics` names one. Without an application, as it was.
  */
 function head() {
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -36,9 +37,18 @@ function head() {
       const copy = spec.rules?.site?.copy ?? {};
       const title = copy.title ?? spec.business?.name;
       const description = copy.description ?? spec.business?.doc;
+      // rules.site.analytics.google: the GA4 tag, on the site's pages only — /admin is the operators', not
+      // the audience's, and is never counted. The id is checked by the spec (G- and letters/digits), so it
+      // is safe to write into a script.
+      const ga = spec.rules?.site?.analytics?.google;
+      const gtag = typeof ga === "string" && /^G-[A-Z0-9]{4,}$/.test(ga) ? [
+        `<script>if (!location.pathname.startsWith("/admin")) { var s = document.createElement("script"); s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=${ga}"; document.head.appendChild(s); }`,
+        `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag("js", new Date()); gtag("config", "${ga}");</script>`,
+      ].join("\n    ") : "";
       const tags = [
         description ? `<meta name="description" content="${esc(description)}" />` : "",
         existsSync(join(APP, "public/favicon.svg")) ? `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` : "",
+        gtag,
       ].filter(Boolean).join("\n    ");
       return html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title ?? "FishTea")}</title>${tags ? `\n    ${tags}` : ""}`);
     },

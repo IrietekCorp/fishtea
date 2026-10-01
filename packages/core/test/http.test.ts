@@ -234,3 +234,18 @@ describe("tooling visitors", () => {
     expect((await db`SELECT 1 FROM conversation.visitor WHERE id = ${mixed.visitor.id}`).length).toBe(1);
   });
 });
+
+describe("the visitor cookie", () => {
+  // behind Traefik and Caddy the core hears plain HTTP; the proxy's x-forwarded-proto says what the browser used
+  const first = (headers: Record<string, string> = {}) => fetch(`${base}/`, { headers });
+  test("is Secure when the visit is HTTPS", async () => {
+    const c = (await first({ "x-forwarded-proto": "https" })).headers.get("set-cookie") ?? "";
+    expect(c).toContain("fishtea_visitor=");
+    expect(c).toMatch(/;\s*Secure/i);
+  });
+  test("is not Secure over plain HTTP, so development keeps working", async () => {
+    const c = (await first()).headers.get("set-cookie") ?? "";
+    expect(c).toContain("fishtea_visitor=");
+    expect(c).not.toMatch(/;\s*Secure/i);
+  });
+});
