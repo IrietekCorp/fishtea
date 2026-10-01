@@ -279,6 +279,18 @@ describe("ui plugins", () => {
     expect(existsSync(r.path)).toBe(true);
   });
 
+  test("a question for the views is not a stylesheet knob, so it is neither substituted nor reported", async () => {
+    const w = await world();
+    const mf = join(w.home, "plugins/boutique/fishtea.plugin.json");
+    const m = JSON.parse(readFileSync(mf, "utf8"));
+    m.config.push({ id: "heroTitle", ask: "The home page's heading", type: "string", default: "Welcome", for: "views" });
+    writeFileSync(mf, JSON.stringify(m));
+    add("boutique", w.app, { home: w.home });
+    const r = generateUiAssets(w.app, w.home);
+    expect(r.warnings).toEqual([]);
+    expect(r.css).not.toContain("hero-title");
+  });
+
   test("defaults are used for questions left unanswered", async () => {
     const w = await world();
     add("boutique", w.app, { home: w.home });

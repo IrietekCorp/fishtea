@@ -45,6 +45,13 @@ export interface PluginQuestion {
   doc?: string;
   /** a secret: prompted, never written into spec.json, read from the environment at run time */
   env?: string;
+  /**
+   * ui plugins: what the answer is for. "tokens" (the default) is a design-system knob — config id
+   * `accentHue` is the custom property `--<plugin>-accent-hue` in the stylesheet. "views" is read by the
+   * plugin's own views from the application's spec (a heading, a placeholder), so it has no property and
+   * the stylesheet is not checked for one.
+   */
+  for?: "tokens" | "views";
 }
 
 export interface PluginManifest {

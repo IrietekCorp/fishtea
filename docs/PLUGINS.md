@@ -183,9 +183,14 @@ A shell exports `Shell`, and is handed the application's **views**: a `ui` plugi
 files that export `View` — the application's own page for that shape.
 
 ```json
-{ "name": "shawnstewart", "kind": "ui", "tokens": "tokens.css",
+{ "name": "piscopour", "kind": "ui", "tokens": "tokens.css",
   "views": { "home": "views/home.view.tsx", "getInTouch": "views/getInTouch.view.tsx" } }
 ```
+
+A view's words that belong to one site rather than to the design — a heading, a placeholder, a name —
+are config questions marked `"for": "views"`: each application answers them in its spec (so they appear
+in /admin → Settings), and the view reads them from `@app/spec.json`. They are not stylesheet knobs, so
+`ui-assets` does not look for a custom property for them.
 
 A shape with no view is drawn from the layout its answer carries (`pour.present` — see
 [generative UI](generative-ui.html)), so most shapes need none. `fishtea ui-assets` writes the registry

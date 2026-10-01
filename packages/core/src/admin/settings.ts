@@ -12,7 +12,7 @@
 import { applySectionPatch, leaves, pathPatch, readSpecFile, type App } from "@fishtea/spec";
 
 export interface Setting {
-  /** "rules.contact.replyWithinDays", "plugins.shawnstewart.config.accent" */
+  /** "rules.contact.replyWithinDays", "plugins.piscopour.config.accent" */
   id: string;
   section: "rules" | "plugins";
   /** the path inside the section */

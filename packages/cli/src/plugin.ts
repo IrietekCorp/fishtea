@@ -316,7 +316,9 @@ export function generateUiAssets(appDir: string, home: string): UiAssets {
     // A knob that matches nothing is reported rather than ignored: it means the manifest and the
     // stylesheet have drifted apart, and the symptom — an answered question that changes nothing — is
     // otherwise invisible and maddening.
+    const forViews = new Set((p.manifest.config ?? []).filter((q) => q.for === "views").map((q) => q.id));
     for (const [k, v] of Object.entries(config)) {
+      if (forViews.has(k)) continue;               // read by the plugin's views, not a stylesheet knob
       const prop = `--${p.manifest.name}-${k.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`;
       const declaration = new RegExp(`(${prop}\\s*:\\s*)[^;]+;`, "g");
       if (!declaration.test(css)) {
