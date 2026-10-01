@@ -35,9 +35,11 @@ export function AskView({ pour, c }: { pour: Extract<Pour, { kind: "ask" }>; c: 
 
 const inputCls = "h-12 w-full rounded border border-border bg-background px-3 text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:outline-none";
 
-export function FieldInput({ f, value, onChange, error }: { f: Field; value: unknown; onChange: (v: unknown) => void; error?: string }) {
+/** One field of a form. `placeholder` is an example in the box, in a view's voice; never a label's stand-in. */
+export function FieldInput({ f, value, onChange, error, placeholder }: { f: Field; value: unknown; onChange: (v: unknown) => void; error?: string; placeholder?: string }) {
   const id = `f-${f.name}`;
   const common = { id, name: f.name, required: f.required, "aria-invalid": !!error || undefined };
+  const hint = placeholder ? { placeholder } : {};
   let control;
   if (f.enumValues?.length) control = (
     <select {...common} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={inputCls}>
@@ -46,9 +48,9 @@ export function FieldInput({ f, value, onChange, error }: { f: Field; value: unk
       {f.enumValues.map((v) => <option key={v} value={v}>{v}</option>)}
     </select>
   );
-  else if (f.type === "text") control = <textarea {...common} rows={5} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={`${inputCls} h-auto py-3`} />;
+  else if (f.type === "text") control = <textarea {...common} {...hint} rows={5} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={`${inputCls} h-auto py-3`} />;
   else if (f.type === "boolean") control = <input {...common} type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 accent-[var(--accent)]" />;
-  else control = <input {...common} type={f.type === "email" ? "email" : f.type === "int" || f.type === "number" ? "number" : "text"} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={inputCls} />;
+  else control = <input {...common} {...hint} type={f.type === "email" ? "email" : f.type === "int" || f.type === "number" ? "number" : "text"} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={inputCls} />;
   return (
     <div className="space-y-2">
       <label htmlFor={id} className="text-xs font-black uppercase tracking-widest text-muted-foreground">{f.label}{f.required && <span className="text-accent"> *</span>}</label>
