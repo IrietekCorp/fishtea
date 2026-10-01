@@ -263,11 +263,17 @@
             },
             "analytics": {
               "type": "object",
-              "description": "Page analytics a shell loads on the site's pages (not /admin). google: a Google Analytics 4 measurement id, G-…",
+              "description": "Page analytics on the site's pages (never /admin). google: a GA4 measurement id, G-…. consent (default true): load nothing until the visitor accepts in a banner; false loads it at once. notice: the banner's sentence.",
               "properties": {
                 "google": {
                   "type": "string",
                   "pattern": "^G-[A-Z0-9]{4,}$"
+                },
+                "consent": {
+                  "type": "boolean"
+                },
+                "notice": {
+                  "type": "string"
                 }
               },
               "additionalProperties": false

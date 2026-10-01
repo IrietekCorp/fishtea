@@ -37,14 +37,23 @@ function head() {
       const copy = spec.rules?.site?.copy ?? {};
       const title = copy.title ?? spec.business?.name;
       const description = copy.description ?? spec.business?.doc;
-      // rules.site.analytics.google: the GA4 tag, on the site's pages only — /admin is the operators', not
-      // the audience's, and is never counted. The id is checked by the spec (G- and letters/digits), so it
-      // is safe to write into a script.
-      const ga = spec.rules?.site?.analytics?.google;
-      const gtag = typeof ga === "string" && /^G-[A-Z0-9]{4,}$/.test(ga) ? [
-        `<script>if (!location.pathname.startsWith("/admin")) { var s = document.createElement("script"); s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=${ga}"; document.head.appendChild(s); }`,
-        `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag("js", new Date()); gtag("config", "${ga}");</script>`,
-      ].join("\n    ") : "";
+      // rules.site.analytics: the GA4 tag, on the site's pages only (/admin is the operators', not the
+      // audience's). Nothing of Google's loads until the visitor accepts in the consent banner (src/consent.tsx),
+      // unless the site set consent: false. The id is checked by the spec (G- and letters/digits); the notice
+      // is written as JSON with < escaped, so neither can leave the script.
+      const an = spec.rules?.site?.analytics;
+      const ga = typeof an?.google === "string" && /^G-[A-Z0-9]{4,}$/.test(an.google) ? an.google : null;
+      const cfg = ga ? JSON.stringify({ google: ga, consent: an.consent !== false, notice: typeof an.notice === "string" ? an.notice : undefined }).replace(/</g, "\\u003c") : "";
+      const gtag = ga ? `<script>
+      window.__fishteaAnalytics = ${cfg};
+      window.fishteaLoadAnalytics = function () {
+        if (window.__fishteaGa) return; window.__fishteaGa = true;
+        var s = document.createElement("script"); s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=${ga}"; document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || []; window.gtag = function () { dataLayer.push(arguments); };
+        gtag("js", new Date()); gtag("config", "${ga}");
+      };
+      try { if (!/^\\/admin(\\/|$)/.test(location.pathname) && (!window.__fishteaAnalytics.consent || localStorage.getItem("fishtea:consent") === "granted")) window.fishteaLoadAnalytics(); } catch (e) {}
+    </script>` : "";
       const tags = [
         description ? `<meta name="description" content="${esc(description)}" />` : "",
         existsSync(join(APP, "public/favicon.svg")) ? `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` : "",

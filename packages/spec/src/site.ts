@@ -10,7 +10,9 @@
  *             title and description, the input's placeholder, the call to action in the footer. They live
  *             here so a shell has no business in it.
  *   analytics page analytics the site's pages load (never /admin): `google`, a GA4 measurement id. The UI
- *             server writes the tag into the page's <head> at build time; a site without it loads nothing.
+ *             server writes the tag into the page's <head> at build time, and by default loads it only once
+ *             the visitor accepts in a consent banner (`consent: false` loads it at once; `notice` is the
+ *             banner's sentence). A site without it loads nothing.
  *
  * Nothing in the core reads it: it is for shells. It is in the spec, and checked, because every name in it
  * is a shape name and a typo there is a dead menu item nobody notices until a visitor does.
@@ -25,7 +27,7 @@ export interface SiteRules {
   parents?: Record<string, string>;
   actions?: Record<string, SiteSection>;
   copy?: { title?: string; description?: string; ask?: string; cta?: { title?: string; lead?: string; label?: string } };
-  analytics?: { google?: string };
+  analytics?: { google?: string; consent?: boolean; notice?: string };
 }
 
 /** Problems with `rules.site`: shapes that do not exist, a parent that is not a section, a home off the menu. */

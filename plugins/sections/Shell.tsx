@@ -16,6 +16,7 @@ import { useConversation, shapeOf, type Conversation } from "./useConversation";
 import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, needsInput, parentOf, sectionOf, sections } from "./site";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
+import { asksConsent, reopenConsent } from "@fishtea/ui/consent";
 import type { View } from "./types";
 
 type Views = Partial<Record<string, View>>;
@@ -209,6 +210,7 @@ function Footer({ c }: { c: Conversation }) {
                 <span className="text-sm font-bold uppercase tracking-tighter text-muted-foreground">Utilities</span>
                 <ul className="mt-1 space-y-1">
                   {actions.remember && <li><button onClick={() => c.act("remember")} className="text-xs text-muted-foreground/60 hover:text-foreground">{actions.remember.label}</button></li>}
+                  {asksConsent() && <li><button onClick={reopenConsent} className="text-xs text-muted-foreground/60 hover:text-foreground">Cookie settings</button></li>}
                 </ul>
               </li>
             </ul>
