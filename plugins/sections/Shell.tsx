@@ -1,18 +1,21 @@
 /**
  * The sections shell: a site you navigate by the spec's `rules.site` — a header with its sections and its
  * primary action, a command bar (back, up, home and the conversation input), the section's page, any
- * action open over it, the threads the answer offers, and a footer with the sitemap. Diagnostics live on
- * /admin (the framework's, behind a sign-in), not on this site.
+ * action open over it, the threads the answer offers, and a footer with the sitemap. Under the command bar,
+ * in a drawer its own button opens and closes, is the breadcrumb: every point of this visit in order, the
+ * one on screen outlined, any of them a click away. Entering a section from the menu is choosing a room,
+ * not a point in the conversation, so it adds nothing here. Diagnostics live on /admin (the framework's, behind a
+ * sign-in), not on this site.
  *
  * Each shape is drawn by the application's view for it (a ui plugin's `views`), or else from the layout
  * the answer carries (`pour.present`, declared in rules.present or derived from the spec) — so a new shape
  * reads well before anyone has written a view. Every turn is a history entry: Back and Forward rewind the
  * trail, they never re-classify.
  */
-import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUp, Home as HomeIcon, Loader2, Menu, Send, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowUp, History, Home as HomeIcon, Loader2, Menu, Send, X } from "lucide-react";
 import type { Pour, Response } from "@fishtea/ui/lib/client";
-import { useConversation, shapeOf, type Conversation } from "./useConversation";
+import { useConversation, shapeOf, type Conversation, type Crumb } from "./useConversation";
 import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, needsInput, parentOf, sectionOf, sections } from "./site";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
@@ -141,15 +144,22 @@ function Header({ c, active }: { c: Conversation; active: string }) {
   );
 }
 
+/** Whether the breadcrumb's drawer is open: open to begin with, then as this visitor last left it. */
+const DRAWER = "fishtea:breadcrumb";
+const drawerWas = () => { try { return localStorage.getItem(DRAWER) !== "closed"; } catch { return true; } };
+
 function CommandBar({ c, shape }: { c: Conversation; shape?: string }) {
   const [text, setText] = useState("");
+  const [open, setOpen] = useState(drawerWas);
+  const toggle = () => setOpen((o) => { try { localStorage.setItem(DRAWER, o ? "closed" : "open"); } catch { /* remembered for this page only */ } return !o; });
+  const n = c.crumbs.length;
   const up = parentOf(shape);
   const btn = "flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-accent hover:text-foreground disabled:opacity-30 disabled:hover:border-border disabled:hover:text-muted-foreground";
   return (
     <div className="no-print sticky top-16 z-30 border-b border-border bg-muted/95 backdrop-blur-sm">
       <form className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:px-6 lg:px-8" role="search"
         onSubmit={(e) => { e.preventDefault(); if (text.trim()) { c.ask(text.trim()); setText(""); } }}>
-        <button type="button" onClick={c.back} className={btn} aria-label="Back" title="Back"><ArrowLeft className="h-4 w-4" /></button>
+        <button type="button" onClick={c.back} disabled={!c.canBack} className={btn} aria-label="Back" title="Back"><ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /></button>
         <button type="button" onClick={c.up} disabled={!up} className={btn} aria-label={up ? `Up to ${labelOf(up)}` : "Up"} title={up ? `Up: ${labelOf(up)}` : "Up"}><ArrowUp className="h-4 w-4" /></button>
         <button type="button" onClick={c.home} disabled={shape === home} className={btn} aria-label="Home" title="Home"><HomeIcon className="h-4 w-4" /></button>
         <div className="relative flex-1">
@@ -159,8 +169,56 @@ function CommandBar({ c, shape }: { c: Conversation; shape?: string }) {
           {c.busy && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-accent" aria-label="Working" />}
         </div>
         <button type="submit" disabled={c.busy || !text.trim()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-accent text-accent-foreground hover:brightness-110 disabled:opacity-50" aria-label="Ask"><Send className="h-4 w-4" /></button>
+        <button type="button" onClick={toggle} disabled={!n} aria-expanded={open} aria-controls="conversation-drawer"
+          className={`${btn} relative aria-expanded:border-accent aria-expanded:text-foreground disabled:aria-expanded:border-border`} aria-label={open ? "Hide this conversation" : "Show this conversation"} title={open ? "Hide this conversation" : "Show this conversation"}>
+          <History className="h-4 w-4" />
+          {!open && n > 0 && <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-accent px-1 text-[10px] font-black leading-5 text-accent-foreground">{n}</span>}
+        </button>
       </form>
+      <Breadcrumb c={c} open={open} />
     </div>
+  );
+}
+
+/**
+ * The visit, as a row of equal pills in a drawer under the command bar, oldest first (in the reading
+ * direction, so right to left in a right-to-left language), all in one faint wash of the accent; the one
+ * on screen is outlined. A click reviews that point:
+ * nothing is added until the visitor says something, and then the new point goes on the end.
+ */
+function Breadcrumb({ c, open }: { c: Conversation; open: boolean }) {
+  const row = useRef<HTMLOListElement>(null);
+  const n = c.crumbs.length;
+  const onScreen = c.current?.res.turn.id;
+  // keep the newest in view as the row grows, and when the drawer opens
+  useEffect(() => { if (open) row.current?.lastElementChild?.scrollIntoView({ block: "nearest", inline: "end", behavior: "smooth" }); }, [n, open]);
+  if (!n) return null;
+  return (
+    <div id="conversation-drawer" className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      {...(open ? {} : { inert: "" as any })}>
+      <nav aria-label="This conversation" className="overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 pb-3 sm:px-6 lg:px-8">
+          <ol ref={row} className="crumbs flex gap-2 overflow-x-auto scroll-smooth pb-1">
+            {c.crumbs.map((k) => <Pill key={k.turnId} k={k} here={k.turnId === onScreen} onClick={() => k.turnId !== onScreen && c.revisit(k.turnId)} />)}
+          </ol>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+function Pill({ k, here, onClick }: { k: Crumb; here: boolean; onClick: () => void }) {
+  // every point the same faint wash of the accent (.crumb, in the stylesheet, which also lightens it on
+  // hover); the one on screen is told by its border
+  return (
+    <li className="shrink-0">
+      <button type="button" onClick={onClick} aria-current={here ? "step" : undefined}
+        aria-label={`Step ${k.step}, ${k.section ? `${k.section}: ` : ""}${k.title}${here ? " (on screen)" : ""}`} title={k.section ? `${k.section}: ${k.title}` : k.title}
+        className="crumb flex h-12 w-40 flex-col justify-center rounded-lg border px-3 text-start text-foreground transition-[background-color,transform] active:scale-[0.98]">
+        <span className="block truncate text-[10px] font-black uppercase tracking-widest text-muted-foreground">{String(k.step).padStart(2, "0")}{k.section && ` · ${k.section}`}</span>
+        <span className="block truncate text-[13px] font-semibold leading-tight">{k.title}</span>
+      </button>
+    </li>
   );
 }
 

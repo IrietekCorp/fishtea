@@ -85,6 +85,22 @@ Fine-grained stepping stays where it already is: the trail rail in the UI, which
 **The browser's back button is for places; the trail widget is for turns.** Two controls, two
 granularities, neither pretending to be the other.
 
+> **Revised in the sections shell (1.4.6).** In practice the split above inverted. The *conversation* is
+> what a visitor navigates, and the sections are rooms to have it in. So, in the shell:
+>
+> - **A point is a change to the conversation:** a question typed, a card or thread followed, a filter,
+>   a form. Each one is a crumb in the breadcrumb (a drawer under the command bar) and one history entry,
+>   in the same order, so Back and Forward step through the conversation and a pill is a `history.go`.
+> - **Entering a section with nothing asked** (the menu, Home, Up) is choosing a room, not a point. It
+>   makes no crumb. Its history entry lasts only until something is said, when the next point replaces it.
+> - **Reviewing a point never truncates.** A push after a review lays the later points back down first,
+>   so what was said is never lost from history. The trail still branches on the server.
+> - **The URL follows the conversation** for sharing and search. Nothing navigates by it once the page is
+>   open.
+>
+> The entries' order lives in `sessionStorage` (`fishtea:history`), beside the browser's own entries,
+> which outlive a reload just as it does. See `plugins/sections/useConversation.ts`.
+
 ## Which points are addressable is derived, not annotated
 
 A shape is addressable when it is **`effect: "read"` and `allow` includes `stranger`**. Anything a
