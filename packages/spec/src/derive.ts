@@ -106,9 +106,9 @@ export function shapeTool(name: string, shape: ShapeDef, spec: Spec): ToolSpec {
   return tool;
 }
 
-/** Consumer tool list (operator shapes live in a separate registry, §12.5). */
+/** Consumer tool list (operator shapes live in a separate registry, §12.5; `classify: false` shapes in none). */
 export function deriveTools(spec: Spec): ToolSpec[] {
-  return shapes(spec).map(([n, s]) => shapeTool(n, s, spec));
+  return shapes(spec).filter(([, s]) => s.classify !== false).map(([n, s]) => shapeTool(n, s, spec));
 }
 export function deriveOperatorTools(spec: Spec): ToolSpec[] {
   return operatorShapes(spec).map(([n, s]) => shapeTool(n, s, spec));

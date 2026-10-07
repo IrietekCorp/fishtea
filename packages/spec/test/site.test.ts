@@ -78,4 +78,26 @@ describe("where the framework is", () => {
     expect(problems({ ...base, analytics: { google: "UA-123" } }).join("\n")).toMatch(/analytics.google/);
     expect(problems({ ...base, analytics: { google: 'G-1"></script><script>alert(1)' } }).length).toBeGreaterThan(0);
   });
+  test("brand points only at public/ or https, with sane sizes and colours", () => {
+    const base = { home: "askAbout", sections: [{ shape: "askAbout", label: "Ask" }] };
+    expect(problems({ ...base, brand: {
+      logo: { src: "/logo.png", alt: "Chic", height: 36, footerHeight: 28 },
+      icons: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }, { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" }],
+      themeColor: "#f8f7f4", image: "/hero.png", url: "https://chicdujour.com",
+    } })).toEqual([]);
+    expect(problems({ ...base, brand: { logo: { src: "//evil.example/x.png" } } }).join("\n")).toMatch(/brand.logo.src/);
+    expect(problems({ ...base, brand: { logo: { src: "javascript:alert(1)" } } }).join("\n")).toMatch(/brand.logo.src/);
+    expect(problems({ ...base, brand: { logo: { src: "/logo.png", height: 900 } } }).join("\n")).toMatch(/brand.logo.height/);
+    expect(problems({ ...base, brand: { icons: [{ rel: "stylesheet", href: "/x.css" }] } }).length).toBeGreaterThan(0);
+    expect(problems({ ...base, brand: { icons: [{ rel: "icon", href: '/x.png" onload="alert(1)' }] } }).length).toBeGreaterThan(0);
+    expect(problems({ ...base, brand: { themeColor: "pink" } }).join("\n")).toMatch(/themeColor/);
+    expect(problems({ ...base, brand: { url: "http://chicdujour.com" } }).join("\n")).toMatch(/brand.url/);
+  });
+  test("menu is a card or flush, and a chip fills or asks", () => {
+    const base = { home: "askAbout", sections: [{ shape: "askAbout", label: "Ask" }] };
+    expect(problems({ ...base, menu: { layout: "flush", suggestions: "ask" } })).toEqual([]);
+    expect(problems({ ...base, menu: { layout: "card", suggestions: "fill" } })).toEqual([]);
+    expect(problems({ ...base, menu: { layout: "floating" } }).join("\n")).toMatch(/menu.layout/);
+    expect(problems({ ...base, menu: { suggestions: "submit" } }).join("\n")).toMatch(/menu.suggestions/);
+  });
 });

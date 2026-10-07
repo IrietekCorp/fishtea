@@ -62,6 +62,13 @@ describe("manifests", () => {
     expect(problems[0]).toContain("may not contribute");
   });
 
+  test("chrome is a ui plugin's header and footer, inside the plugin", () => {
+    expect(validateManifest(manifest({ kind: "ui", chrome: { header: "views/Header.tsx", footer: "views/Footer.tsx" } }), "x")).toEqual([]);
+    expect(validateManifest(manifest({ kind: "ui", chrome: { sidebar: "x.tsx" } as any }), "x").join("\n")).toContain("not a chrome slot");
+    expect(validateManifest(manifest({ kind: "ui", chrome: { footer: "../elsewhere.tsx" } }), "x").join("\n")).toContain("inside the plugin");
+    expect(validateManifest(manifest({ kind: "integration", chrome: { footer: "f.tsx" } }), "x").join("\n")).toContain("only a ui plugin may carry chrome");
+  });
+
   test("compatibility is checked against the framework version", () => {
     expect(pluginCompatible(manifest({ fishtea: "^1.0.0" }), "1.5.0")).toBe(true);
     expect(pluginCompatible(manifest({ fishtea: "^2.0.0" }), "1.5.0")).toBe(false);

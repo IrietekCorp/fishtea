@@ -18,16 +18,18 @@ import { FishteaMenu } from "@fishtea/ui/menu/FishteaMenu";
 import type { Turn, Vessel } from "@fishtea/ui/menu/types";
 import spec from "@app/spec.json";
 import { useConversation, shapeOf, type Conversation, type Crumb } from "./useConversation";
-import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, needsInput, parentOf, sectionOf, sections, suggestions, urlFor } from "./site";
+import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, logo, menu, needsInput, parentOf, sectionOf, sections, suggestions, urlFor } from "./site";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
 import { asksConsent, reopenConsent } from "@fishtea/ui/consent";
-import type { View } from "./types";
+import type { Act, Brand, Chrome, FooterProps, HeaderProps, NavLink, View } from "./types";
 
 type Views = Partial<Record<string, View>>;
 
-export function Shell({ views = {} }: { views?: Views }) {
+export function Shell({ views = {}, chrome = {} }: { views?: Views; chrome?: Chrome }) {
   const c = useConversation();
+  const OwnHeader = chrome.header;
+  const OwnFooter = chrome.footer;
   const cur = c.current?.res.pour;
   const overlay = cur && isAction(shapeOf(cur)) ? cur : null;
   const shown = c.section?.res.pour;
@@ -35,7 +37,7 @@ export function Shell({ views = {} }: { views?: Views }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <Header c={c} active={active} />
+      {OwnHeader ? <OwnHeader {...headerProps(c, active)} /> : <Header c={c} active={active} />}
       <Menu c={c} />
       {c.resumed && shown && (
         <div className="no-print border-b border-border bg-card">
@@ -59,7 +61,7 @@ export function Shell({ views = {} }: { views?: Views }) {
       </main>
 
       {overlay && <ActionOverlay pour={overlay} res={c.current!.res} c={c} views={views} key={c.current!.res.turn.id} />}
-      <Footer c={c} />
+      {OwnFooter ? <OwnFooter {...footerProps(c, active)} /> : <Footer c={c} />}
       <Toasts c={c} />
     </div>
   );
@@ -113,19 +115,52 @@ function Threads({ pour, c }: { pour: Pour; c: Conversation }) {
   );
 }
 
+/* ── the frame a brand may draw itself (a ui plugin's chrome) ───────────────────────────────────────── */
+
+const brand: Brand = { name: business.name, doc: business.doc, logo };
+// real links, for new tabs and crawlers; a plain click goes in place
+const plain = (e: React.MouseEvent) => !(e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+const navLink = (c: Conversation, shape: string, label: string, active: string, after?: () => void): NavLink => ({
+  shape, label, active: active === shape, href: urlFor({ shape, args: {} }),
+  onClick: (e) => { if (plain(e)) { e.preventDefault(); after?.(); c.go(shape); } },
+});
+const contactAct = (c: Conversation): Act | null => (actions.contact ? { label: actions.contact.label, go: () => c.contact() } : null);
+
+export function headerProps(c: Conversation, active: string): HeaderProps {
+  return { c, brand, home: navLink(c, home, business.name, active), sections: sections.map((s) => navLink(c, s.shape, s.label, active)), action: contactAct(c) };
+}
+
+export function footerProps(c: Conversation, active: string): FooterProps {
+  const utilities: Act[] = [];
+  if (actions.remember) utilities.push({ label: actions.remember.label, go: () => c.act("remember") });
+  if (asksConsent()) utilities.push({ label: "Cookie settings", go: reopenConsent });
+  return {
+    c, brand, home: navLink(c, home, business.name, active),
+    sections: sections.map((s) => ({ ...navLink(c, s.shape, s.label, active), children: childrenOf(s.shape).filter((ch) => !needsInput(ch)).map((ch) => ({ label: labelOf(ch), go: () => c.go(ch) })) })),
+    utilities,
+    cta: { title: copy.cta.title, lead: copy.cta.lead, action: copy.cta.label ? { label: copy.cta.label, go: () => c.contact() } : null },
+  };
+}
+
+/** The business's mark: its logo when rules.site.brand has one, else its name set in type. */
+function Mark({ height, footer = false }: { height: number; footer?: boolean }) {
+  if (logo) return <img src={logo.src} alt={logo.alt ?? business.name} decoding={footer ? "async" : "sync"} loading={footer ? "lazy" : "eager"} style={{ height, width: "auto" }} className="block" />;
+  const [first, ...rest] = business.name.toUpperCase().split(" ");
+  return footer
+    ? <>{business.name}<span className="text-accent">.</span></>
+    : <>{first} {rest.join(" ")}<span className="text-accent">.</span></>;
+}
+
 /** The business's name, its sections (rooms: entering one adds nothing to the trail) and its primary action. */
 function Header({ c, active }: { c: Conversation; active: string }) {
   const [open, setOpen] = useState(false);
-  const [first, ...rest] = business.name.toUpperCase().split(" ");
   const nav = (shape: string) => { setOpen(false); c.go(shape); };
-  // real links, for new tabs and crawlers; a plain click goes in place
-  const plain = (e: React.MouseEvent) => !(e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
   const link = (shape: string) => ({ href: urlFor({ shape, args: {} }), onClick: (e: React.MouseEvent) => { if (plain(e)) { e.preventDefault(); nav(shape); } } });
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a {...link(home)} className="text-lg font-black tracking-tighter transition-colors hover:text-accent sm:text-xl">
-          {first} {rest.join(" ")}<span className="text-accent">.</span>
+        <a {...link(home)} aria-label={business.name} className="text-lg font-black tracking-tighter transition-colors hover:text-accent sm:text-xl">
+          <Mark height={logo?.height ?? 36} />
         </a>
         <nav className="hidden items-center gap-7 lg:flex" aria-label="Sections">
           {sections.map((s) => (
@@ -200,13 +235,20 @@ function Menu({ c }: { c: Conversation }) {
   const onScreen = c.current?.res.turn.id;
   // in a room — a section entered with nothing asked — no point of the trail is current
   const current = onScreen && turns.some((x) => x.id === onScreen) ? onScreen : null;
+  // flush: the menu is the sub-header — the page's own ground, the full width, one hairline under it. It
+  // sticks under the header, whose height a brand's own header says with --shell-header-h (4rem otherwise).
+  const flush = menu.layout === "flush";
   return (
-    <div className="no-print relative z-30 border-b border-border bg-muted/95 backdrop-blur-sm md:sticky md:top-16">
-     <div className="mx-auto w-full max-w-[880px] px-4 py-3 sm:px-6">
+    <div className={flush
+      ? "no-print relative z-30 border-b border-border bg-background/95 backdrop-blur-sm md:sticky md:top-[var(--shell-header-h,4rem)]"
+      : "no-print relative z-30 border-b border-border bg-muted/95 backdrop-blur-sm md:sticky md:top-[var(--shell-header-h,4rem)]"}>
+     <div className={flush ? "w-full px-6 py-2 md:px-12" : "mx-auto w-full max-w-[880px] px-4 py-3 sm:px-6"}>
       <FishteaMenu
         turns={turns}
         currentTurnId={current}
         suggestions={suggestions}
+        suggestionMode={menu.suggestions}
+        layout={menu.layout}
         busy={c.busy}
         onSubmit={c.ask}
         onRewind={c.revisit}
@@ -243,7 +285,7 @@ function Footer({ c }: { c: Conversation }) {
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-12">
           <div className="space-y-5 md:col-span-4">
-            <h3 className="text-3xl font-black uppercase tracking-tighter">{business.name}<span className="text-accent">.</span></h3>
+            <h3 className="text-3xl font-black uppercase tracking-tighter"><Mark height={logo?.footerHeight ?? logo?.height ?? 28} footer /></h3>
             {business.doc && <p className="max-w-md font-medium leading-relaxed text-muted-foreground">{business.doc}</p>}
           </div>
           <nav className="space-y-5 md:col-span-5" aria-label="Sitemap">

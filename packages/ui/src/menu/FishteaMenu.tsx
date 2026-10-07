@@ -78,6 +78,8 @@ export function FishteaMenu({
   turns,
   currentTurnId,
   suggestions = [],
+  suggestionMode = 'fill',
+  layout = 'card',
   busy = false,
   defaultTrailOpen = false,
   onSubmit,
@@ -196,6 +198,7 @@ export function FishteaMenu({
       ref={rootRef}
       className={['ft-menu', className].filter(Boolean).join(' ')}
       data-open={open}
+      data-layout={layout}
       onKeyDown={handleRootKey}
     >
       <form className="ft-menu__bar" onSubmit={handleSubmit}>
@@ -225,6 +228,10 @@ export function FishteaMenu({
                 type="button"
                 className="ft-menu__suggestion"
                 onClick={() => {
+                  if (suggestionMode === 'ask') {
+                    if (!busy) onSubmit(s);
+                    return;
+                  }
                   setValue(s);
                   inputRef.current?.focus();
                 }}
@@ -247,7 +254,7 @@ export function FishteaMenu({
             onClick={() => (open ? close(false) : setOpen(true))}
           >
             <Plus className="ft-menu__plus" aria-hidden="true" />
-            <span aria-hidden="true">{open ? 'Close' : 'Trail'}</span>
+            <span className="ft-menu__toggle-label" aria-hidden="true">{open ? 'Close' : 'Trail'}</span>
             {!open && (
               <span className="ft-menu__count" aria-hidden="true">
                 {turns.length}

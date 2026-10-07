@@ -62,6 +62,13 @@ export interface ShapeDef {
    * composite can never smuggle in a write or something the gate would have refused on its own.
    */
   compose?: string[];
+  /**
+   * `false` keeps this shape out of the classifier's tool list. It is still a shape — reachable as a
+   * composite part, a chip, a greeting or a posted shape, and gated by `allow` like any other — but
+   * nobody's words are classified to it. For a part that only makes sense beside its lead: offered to
+   * the classifier, it competes with the lead for the same utterances and, being smaller, often wins.
+   */
+  classify?: boolean;
 }
 
 export interface GreetingDef { shape?: string; hint?: string; resume?: boolean; offer?: string[] }

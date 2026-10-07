@@ -47,6 +47,16 @@ export interface FishteaMenuProps {
   currentTurnId?: string | null;
   /** Feeds the rotating "Ask anything — …" placeholder and the first 3 chips. */
   suggestions?: string[];
+  /**
+   * What a suggestion chip does: `fill` puts it in the input for the visitor to edit and send (the
+   * default); `ask` sends it at once — one tap instead of two, for suggestions that are complete questions.
+   */
+  suggestionMode?: 'fill' | 'ask';
+  /**
+   * `card` (the default) floats the menu as a bordered, shadowed card; `flush` drops the card so the menu
+   * is the band it sits in — no border, corners or shadow, the full width it is given, one row where it fits.
+   */
+  layout?: 'card' | 'flush';
   /** True while a question is being answered: send becomes stop. */
   busy?: boolean;
   /** Open the trail drawer on mount (for demos/tests). */

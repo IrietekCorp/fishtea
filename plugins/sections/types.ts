@@ -14,3 +14,22 @@ export type View = ComponentType<ViewProps> & { ownThreads?: boolean };
 /** The names views were first written against, kept so they read the same. */
 export type VesselProps<A = any> = ViewProps<A>;
 export type ActionViewProps = ViewProps;
+
+/**
+ * The brand's own frame (a ui plugin's `chrome`). The shell keeps navigation — what is a section, which
+ * one is active, how a click becomes a turn and a history entry — and hands it over ready to draw: a
+ * link's `href` is real (new tabs, crawlers) and its `onClick` goes in place. A header or footer only
+ * decides how that looks.
+ */
+export interface NavLink { shape: string; label: string; href: string; onClick: (e: React.MouseEvent) => void; active: boolean }
+export interface Act { label: string; go: () => void }
+export interface Brand { name: string; doc?: string; logo: { src: string; alt?: string; height?: number; footerHeight?: number } | null }
+export interface HeaderProps { c: Conversation; brand: Brand; home: NavLink; sections: NavLink[]; action: Act | null }
+export interface FooterProps {
+  c: Conversation; brand: Brand; home: NavLink;
+  sections: (NavLink & { children: Act[] })[];
+  /** remember me, cookie settings: what the site offers beside its sections */
+  utilities: Act[];
+  cta: { title: string; lead: string; action: Act | null };
+}
+export type Chrome = Partial<{ header: ComponentType<HeaderProps>; footer: ComponentType<FooterProps> }>;

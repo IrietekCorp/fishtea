@@ -207,6 +207,33 @@ history the conversation: Back and Forward rewind the trail rather than asking a
 show on `/debug` — visits, turns, layouts — is in `/admin`, behind a sign-in; an old `/debug` link goes
 there.
 
+A composite's parts are streamed: the lead is drawn with the response, and each part (a strip of fresh
+results under the main answer, say) lands over `/events` and is folded in where it belongs. A part that
+only makes sense beside its lead says `"classify": false`, so the classifier is never offered it and
+cannot pick it over the lead.
+
+Three more things in `rules.site` are for a business whose look is its own:
+
+- **`brand`** — its marks. `logo` (an image in `public/`, at `height` in the header and `footerHeight` in
+  the footer) replaces the name set in type; `icons` are the favicon and touch icons written into
+  `<head>`; `themeColor`, and `image` + `url` for what a shared link shows. Every path is in `public/` or
+  an https URL, and the spec refuses anything else.
+- **`menu`** — how the Ask anything menu is worn. `layout: "card"` floats it (the default); `"flush"`
+  makes it the full-width sub-header under the header, with no border, corners or shadow — the input
+  across the width with send at its right, the trail and suggestions on the line beneath.
+  `suggestions: "ask"` sends a chip at once instead of filling the input with it.
+- A `ui` plugin's **`chrome`** — its own `header` and/or `footer`, each a file exporting `View`. The
+  shell keeps navigation (which sections, which is active, what a click does, history) and hands it over
+  as `HeaderProps` / `FooterProps` (`@fishtea/plugins/sections/types`); the brand only decides how it
+  looks. A header that is not 4rem tall says so with `--shell-header-h`, which is where the menu band
+  sticks.
+
+```json
+{ "name": "chicdujour", "kind": "ui", "tokens": "tokens.css",
+  "views": { "home": "views/home.view.tsx" },
+  "chrome": { "header": "views/header.view.tsx", "footer": "views/footer.view.tsx" } }
+```
+
 ## What ships
 
 - **`boutique`** — a design system for shops: warm paper, one decisive accent, a distinct colour reserved

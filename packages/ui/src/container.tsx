@@ -11,6 +11,7 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Separator } from "./components/ui/separator";
 import { utter, resume, subscribe, trail as fetchTrail, rewind as doRewind, type Pour, type Response, type Chip } from "./lib/client";
+import { patchPart } from "./lib/parts";
 import { ListVessel } from "./vessels/list";
 import { CardVessel } from "./vessels/card";
 import { DetailVessel } from "./vessels/detail";
@@ -234,32 +235,6 @@ function Vessel({ pour, pick, submitForm }: { pour: Pour; pick: (c: Chip) => voi
   return null;
 }
 
-/**
- * Fold one streamed part (or the settled marker) into a composite pour.
- *
- * Pure, because it is applied from two places: live, when the part arrives after its response, and
- * replayed, when it arrived before. A flat parts map is what makes this a merge rather than a rebuild.
- */
-function patchPart(pour: Pour, d: any): Pour {
-  if (pour.kind !== "composite") return pour;
-  const next = { ...pour, parts: { ...pour.parts }, pending: [...(pour.pending ?? [])] };
-  if (d._settled) { next.pending = []; return next; }          // whatever has not arrived is not coming
-
-  // Idempotent, because the same part can be folded in more than once: React invokes a state updater
-  // twice under StrictMode, an SSE stream can redeliver after a reconnect, and a part buffered before
-  // its response could otherwise be applied on top of one already there. Caught by a browser test
-  // counting three verify strips for a two-part composite.
-  if (next.parts[d.id]) return pour;
-
-  next.parts[d.id] = d.part;
-  const root = next.parts[next.root];
-  if (root && !(root.children ?? []).includes(d.id)) next.parts[next.root] = { ...root, children: [...(root.children ?? []), d.id] };
-  next.pending = next.pending.filter((n) => n !== d.id);
-  const chips = d.part?.of?.next ?? [];
-  next.next = [...next.next, ...chips.filter((c: any) => !next.next.some((x) => x.shape === c.shape && JSON.stringify(x.args ?? {}) === JSON.stringify(c.args ?? {})))];
-  if (d.part?.of?.provenance) next.provenance = [...next.provenance, d.part.of.provenance];
-  return next;
-}
 
 function VerifyStrip({ p, classifier, timings }: { p: any; classifier: string; timings: Response["timings"] }) {
   return (

@@ -78,12 +78,23 @@ export interface PluginManifest {
    */
   views?: Record<string, string>;
   /**
+   * ui plugins: the brand's own frame for a shell to wear — `header` and/or `footer`, each a component file
+   * exporting `View`. The shell still owns navigation and passes it in (HeaderProps / FooterProps in
+   * @fishtea/plugins/sections/types); a slot left out is the shell's own. For a business whose header and
+   * footer are part of its brand, not something a framework should restyle.
+   */
+  chrome?: Partial<Record<ChromeSlot, string>>;
+  /**
    * classifier and channel plugins: the module that implements the seam, relative to the plugin
    * directory. What it must export depends on the kind — see SEAM_EXPORT — and is checked when it is
    * loaded, not here, because reading a manifest must never run anybody's code.
    */
   module?: string;
 }
+
+/** The parts of a shell's frame a ui plugin may replace. */
+export const CHROME_SLOTS = ["header", "footer"] as const;
+export type ChromeSlot = (typeof CHROME_SLOTS)[number];
 
 /**
  * The vessels a `ui` plugin may override, which is all of them: seven shapes of answer plus the three
@@ -177,6 +188,11 @@ export function validateManifest(m: unknown, where: string): string[] {
     if (typeof file !== "string" || file.startsWith("/") || file.includes("..")) problems.push(`${where}: view "${shape}" must name a file inside the plugin, not ${String(file)}`);
   }
   if (p.views && p.kind !== "ui") problems.push(`${where}: only a ui plugin may carry views`);
+  for (const [slot, file] of Object.entries(p.chrome ?? {})) {
+    if (!CHROME_SLOTS.includes(slot as ChromeSlot)) problems.push(`${where}: "${slot}" is not a chrome slot (one of ${CHROME_SLOTS.join(", ")})`);
+    if (typeof file !== "string" || file.startsWith("/") || file.includes("..")) problems.push(`${where}: chrome "${slot}" must name a file inside the plugin, not ${String(file)}`);
+  }
+  if (p.chrome && p.kind !== "ui") problems.push(`${where}: only a ui plugin may carry chrome`);
   return problems;
 }
 

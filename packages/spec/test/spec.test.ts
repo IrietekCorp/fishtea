@@ -34,6 +34,14 @@ describe("ecommerce template", () => {
     expect(cmp.parameters.required).toEqual(["leftId", "rightId"]);
     expect(tools.find((t) => t.name === "findProducts")!.parameters.properties.maxPrice).toMatchObject({ type: "number" });
   });
+  test("a shape with classify: false is no tool, and is still a shape", () => {
+    const spec = JSON.parse(JSON.stringify(chic.spec));
+    spec.shapes.trending.classify = false;
+    expect(deriveTools(spec).map((t) => t.name)).not.toContain("trending");
+    expect(deriveTools(spec).length).toBe(shapes(spec).length - 1);
+    expect(getShape(spec, "trending")).toBeDefined();
+    expect(() => validateSpec(spec)).not.toThrow();
+  });
   test("vessels are inferred from the answer shape", () => {
     expect(vesselFor(getShape(chic.spec, "findProducts")!, chic.spec)).toBe("list");
     expect(vesselFor(getShape(chic.spec, "relatedProducts")!, chic.spec)).toBe("detail");

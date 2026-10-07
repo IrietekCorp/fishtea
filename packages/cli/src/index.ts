@@ -393,7 +393,7 @@ async function main() {
       const P = await import("./plugin.ts");
       const r = P.generateUiAssets(resolveAppDir(flags), FISHTEA_HOME);
       console.log(pc.green(`✓ ${r.path}${r.plugins.length ? ` from ${r.plugins.join(", ")}` : " (no ui plugins; base tokens only)"}`));
-      if (r.shell || r.views.length) console.log(pc.dim(`  ${r.shell ? `shell ${r.shell}` : "the framework's container"}${r.views.length ? ` · views for ${r.views.join(", ")}` : ""}`));
+      if (r.shell || r.views.length || r.chrome.length) console.log(pc.dim(`  ${r.shell ? `shell ${r.shell}` : "the framework's container"}${r.views.length ? ` · views for ${r.views.join(", ")}` : ""}${r.chrome.length ? ` · its own ${r.chrome.join(" and ")}` : ""}`));
       for (const w of r.warnings) console.log(pc.yellow(`  ⚠ ${w}`));
       if (flags.typecheck === true) {
         const t = P.typecheckUi(resolveAppDir(flags), FISHTEA_HOME);

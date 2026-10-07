@@ -4,4 +4,5 @@ import type { ComponentType } from "react";
 
 export const vesselOverrides: Partial<Record<string, ComponentType<any>>> = {};
 export const views: Partial<Record<string, ComponentType<any>>> = {};
+export const chrome: Partial<Record<string, ComponentType<any>>> = {};
 export const shell: ComponentType<any> | null = null;

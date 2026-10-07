@@ -54,9 +54,28 @@ function head() {
       };
       try { if (!/^\\/admin(\\/|$)/.test(location.pathname) && (!window.__fishteaAnalytics.consent || localStorage.getItem("fishtea:consent") === "granted")) window.fishteaLoadAnalytics(); } catch (e) {}
     </script>` : "";
+      // rules.site.brand: the business's icons, its browser colour and what a shared link shows. Every value
+      // was checked by the spec (paths in public/ or https, #hex, sizes like 32x32) and is escaped here too.
+      const brand = spec.rules?.site?.brand ?? {};
+      const icons: { rel: string; href: string; type?: string; sizes?: string }[] = Array.isArray(brand.icons) ? brand.icons : [];
+      const abs = (p: string) => (p.startsWith("/") && typeof brand.url === "string" ? brand.url.replace(/\/$/, "") + p : p);
+      const share = typeof brand.image === "string" ? [
+        `<meta property="og:type" content="website" />`,
+        `<meta property="og:title" content="${esc(title ?? "")}" />`,
+        description ? `<meta property="og:description" content="${esc(description)}" />` : "",
+        `<meta property="og:image" content="${esc(abs(brand.image))}" />`,
+        typeof brand.url === "string" ? `<meta property="og:url" content="${esc(brand.url)}" />` : "",
+        `<meta property="og:site_name" content="${esc(spec.business?.name ?? "")}" />`,
+        `<meta name="twitter:card" content="summary_large_image" />`,
+        `<meta name="twitter:image" content="${esc(abs(brand.image))}" />`,
+      ] : [];
       const tags = [
         description ? `<meta name="description" content="${esc(description)}" />` : "",
-        existsSync(join(APP, "public/favicon.svg")) ? `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` : "",
+        ...icons.map((i) => `<link rel="${esc(i.rel)}"${i.type ? ` type="${esc(i.type)}"` : ""}${i.sizes ? ` sizes="${esc(i.sizes)}"` : ""} href="${esc(i.href)}" />`),
+        !icons.length && existsSync(join(APP, "public/favicon.svg")) ? `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` : "",
+        typeof brand.themeColor === "string" ? `<meta name="theme-color" content="${esc(brand.themeColor)}" />` : "",
+        typeof brand.logo?.src === "string" ? `<link rel="preload" as="image" href="${esc(brand.logo.src)}" />` : "",
+        ...share,
         gtag,
       ].filter(Boolean).join("\n    ");
       return html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title ?? "FishTea")}</title>${tags ? `\n    ${tags}` : ""}`);

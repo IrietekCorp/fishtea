@@ -8,7 +8,8 @@ import spec from "@app/spec.json";
 
 export interface Section { shape: string; label: string }
 export interface Action { shape: string; label: string }
-interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: string[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } } }
+export interface Logo { src: string; alt?: string; height?: number; footerHeight?: number }
+interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: string[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" } }
 
 const rules = (spec as any).rules.site as SiteRules;
 const shapes = (spec as any).shapes as Record<string, { asks: string; input: Record<string, unknown> }>;
@@ -17,6 +18,10 @@ export const business = (spec as any).business as { name: string; doc?: string }
 export const home = rules.home;
 export const sections = rules.sections;
 export const actions = rules.actions;
+/** The business's logo (`rules.site.brand.logo`), drawn where the shell would otherwise set its name in type. */
+export const logo: Logo | null = rules.brand?.logo ?? null;
+/** How the Ask anything menu is worn (`rules.site.menu`): a floating card or the flush band, and what a chip does. */
+export const menu = { layout: rules.menu?.layout ?? "card", suggestions: rules.menu?.suggestions ?? "fill" } as const;
 /** Things a visitor might ask: the menu's rotating placeholder and its chips. */
 export const suggestions = rules.suggestions ?? [];
 /** The shell's few business sentences — the input's placeholder, the footer's call to action — from the spec. */

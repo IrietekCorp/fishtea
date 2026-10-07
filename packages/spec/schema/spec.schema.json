@@ -286,6 +286,101 @@
               },
               "maxItems": 12,
               "description": "Things a visitor might ask, in their words: the menu's rotating placeholder and its first three chips."
+            },
+            "brand": {
+              "type": "object",
+              "description": "The business's own marks, for a shell that would otherwise set its name in type. logo: an image in public/ drawn in the header (height) and footer (footerHeight). icons: the favicon and touch icons, written into <head>. themeColor: the browser's chrome colour. image and url: the picture and canonical origin a shared link shows. Paths are in public/ (/…) or https URLs.",
+              "properties": {
+                "logo": {
+                  "type": "object",
+                  "properties": {
+                    "src": {
+                      "type": "string",
+                      "pattern": "^(/(?!/)[A-Za-z0-9._~/-]+|https://[^\\s\"<>]+)$"
+                    },
+                    "alt": {
+                      "type": "string"
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 12,
+                      "maximum": 160
+                    },
+                    "footerHeight": {
+                      "type": "number",
+                      "minimum": 12,
+                      "maximum": 160
+                    }
+                  },
+                  "required": [
+                    "src"
+                  ],
+                  "additionalProperties": false
+                },
+                "icons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "rel": {
+                        "enum": [
+                          "icon",
+                          "apple-touch-icon"
+                        ]
+                      },
+                      "href": {
+                        "type": "string",
+                        "pattern": "^(/(?!/)[A-Za-z0-9._~/-]+|https://[^\\s\"<>]+)$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "pattern": "^image/[a-z0-9.+-]+$"
+                      },
+                      "sizes": {
+                        "type": "string",
+                        "pattern": "^((\\d+x\\d+)( \\d+x\\d+)*|any)$"
+                      }
+                    },
+                    "required": [
+                      "rel",
+                      "href"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "themeColor": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$"
+                },
+                "image": {
+                  "type": "string",
+                  "pattern": "^(/(?!/)[A-Za-z0-9._~/-]+|https://[^\\s\"<>]+)$"
+                },
+                "url": {
+                  "type": "string",
+                  "pattern": "^https://[A-Za-z0-9.-]+(:\\d+)?/?$"
+                }
+              },
+              "additionalProperties": false
+            },
+            "menu": {
+              "type": "object",
+              "description": "How the shell wears the Ask anything menu. layout: card (floating; the default) or flush (the full-width band under the header, no border, corners or shadow). suggestions: fill (a chip fills the input; the default) or ask (a chip asks at once).",
+              "properties": {
+                "layout": {
+                  "enum": [
+                    "card",
+                    "flush"
+                  ]
+                },
+                "suggestions": {
+                  "enum": [
+                    "fill",
+                    "ask"
+                  ]
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -749,6 +844,10 @@
             "type": "string"
           },
           "description": "Sibling shapes whose answers pour alongside this one, as parts of a single composite. Each must be a read this persona may ask; a write is never composed, because a write pours confirm-write on its own and a composite must not hide one."
+        },
+        "classify": {
+          "type": "boolean",
+          "description": "false keeps this shape out of the classifier's tool list: it is reached as a composite part, a chip, a greeting or a posted shape, never by classifying someone's words. For a part that would otherwise compete with its lead."
         }
       },
       "additionalProperties": false

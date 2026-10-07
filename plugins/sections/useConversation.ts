@@ -24,6 +24,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { resume as arrive, rewind, sessions, subscribe, utter, type Pour, type Response, type Utterance } from "@fishtea/ui/lib/client";
+import { patchPart, type StreamedPart } from "@fishtea/ui/lib/parts";
 import { actions, home, isAction, isSection, labelOf, parentOf, parseLocation, sectionOf, urlFor, type Route } from "./site";
 
 export interface View { res: Response; route: Route }
@@ -154,8 +155,29 @@ export function useConversation(): Conversation {
     setPos(at);
   }, []);
 
+  /**
+   * A composite's parts, streamed over /events after its response. A part that lands before its response
+   * (the core publishes the moment the plan resolves) waits in `early` until show() puts the turn up.
+   */
+  const early = useRef(new Map<string, StreamedPart[]>());
+  const onPart = useCallback((d: StreamedPart) => {
+    const known = log.current.get(d.turnId);
+    if (!known) { early.current.set(d.turnId, [...(early.current.get(d.turnId) ?? []), d]); return; }
+    const res = { ...known, pour: patchPart(known.pour, d) };
+    log.current.set(d.turnId, res);
+    const patch = (v: View | null) => (v && v.res.turn.id === d.turnId ? { ...v, res } : v);
+    if (sectionRef.current?.res.turn.id === d.turnId) sectionRef.current = patch(sectionRef.current);
+    setSection(patch);
+    setCurrent(patch);
+  }, []);
+
   /** Put a view on screen, and (unless it came from history) record it in history. */
   const show = useCallback((view: View, how: "push" | "replace" | "none", room = false) => {
+    const waiting = early.current.get(view.res.turn.id);
+    if (waiting) {
+      early.current.delete(view.res.turn.id);
+      view = { ...view, res: { ...view.res, pour: waiting.reduce(patchPart, view.res.pour) } };
+    }
     log.current.set(view.res.turn.id, view.res);
     const action = isAction(shapeOf(view.res.pour)) ? shapeOf(view.res.pour) : undefined;
     let url: string;
@@ -254,7 +276,10 @@ export function useConversation(): Conversation {
       let res: Response;
       try { res = await arrive(); } catch (e) { setError((e as Error).message); setBusy(false); return; }
       setBusy(false);
-      unsubscribe.current = subscribe((type, data) => { if (type === "notification") notice(data.text); });
+      unsubscribe.current = subscribe((type, data) => {
+        if (type === "notification") notice(data.text);
+        if (type === "part" || type === "settled") onPart({ ...data, _settled: type === "settled" });
+      });
       const restored = await restoreCrumbs();
 
       // a reload: this entry already says which point of the conversation it is

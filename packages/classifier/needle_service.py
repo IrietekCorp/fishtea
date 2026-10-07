@@ -282,6 +282,8 @@ def tools_from_spec(path: str) -> list[dict]:
     for name, shape in spec.get("shapes", {}).items():
         if name in ("version", "doc") or not isinstance(shape, dict):
             continue
+        if shape.get("classify") is False:   # a composite part or chip-only shape: never a tool (deriveTools)
+            continue
         props, required = {}, []
         for k, t in (shape.get("input") or {}).items():
             if isinstance(t, dict) and "type" not in t:

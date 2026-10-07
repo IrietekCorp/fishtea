@@ -4,7 +4,7 @@ import "./index.css";
 import { Container } from "./container";
 import { Admin } from "./admin/Admin";
 import { ConsentBanner } from "./consent";
-import { shell as Shell, views } from "#generated/plugins.generated";
+import { chrome, shell as Shell, views } from "#generated/plugins.generated";
 
 /**
  * /admin is the operators' console, whatever the application wears; everywhere else is its shell when a
@@ -13,5 +13,5 @@ import { shell as Shell, views } from "#generated/plugins.generated";
  */
 const admin = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
 createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>{admin ? <Admin /> : Shell ? <Shell views={views} /> : <Container />}<ConsentBanner /></React.StrictMode>,
+  <React.StrictMode>{admin ? <Admin /> : Shell ? <Shell views={views} chrome={chrome} /> : <Container />}<ConsentBanner /></React.StrictMode>,
 );
