@@ -65,6 +65,11 @@ describe("where the framework is", () => {
       if (before === undefined) delete process.env.FISHTEA_HOME; else process.env.FISHTEA_HOME = before;
     }
   });
+  test("suggestions are a short list of things to ask", () => {
+    const base = { home: "askAbout", sections: [{ shape: "askAbout", label: "Ask" }] };
+    expect(problems({ ...base, suggestions: ["fintech experience", "are you available?"] })).toEqual([]);
+    expect(problems({ ...base, suggestions: [""] }).length).toBeGreaterThan(0);
+  });
   test("analytics names a GA4 measurement id, nothing else", () => {
     const base = { home: "askAbout", sections: [{ shape: "askAbout", label: "Ask" }] };
     expect(problems({ ...base, analytics: { google: "G-76492E02E7" } })).toEqual([]);

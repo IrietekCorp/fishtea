@@ -9,6 +9,8 @@
  *   copy      the few sentences a shell needs that are about this business, not about shapes: the page's
  *             title and description, the input's placeholder, the call to action in the footer. They live
  *             here so a shell has no business in it.
+ *   suggestions things a visitor might ask, in their words: the menu rotates them through the input's
+ *             placeholder ("Ask anything — …") and offers the first three as chips that fill the input
  *   analytics page analytics the site's pages load (never /admin): `google`, a GA4 measurement id. The UI
  *             server writes the tag into the page's <head> at build time, and by default loads it only once
  *             the visitor accepts in a consent banner (`consent: false` loads it at once; `notice` is the
@@ -27,6 +29,7 @@ export interface SiteRules {
   parents?: Record<string, string>;
   actions?: Record<string, SiteSection>;
   copy?: { title?: string; description?: string; ask?: string; cta?: { title?: string; lead?: string; label?: string } };
+  suggestions?: string[];
   analytics?: { google?: string; consent?: boolean; notice?: string };
 }
 
@@ -49,6 +52,7 @@ export function checkSite(spec: SpecLike): string[] {
     if (!known(a.shape)) out.push(`rules.site.actions.${k}: no shape "${a.shape}"`);
     if (sections.has(a.shape)) out.push(`rules.site.actions.${k}: "${a.shape}" is a section, not something that opens over one`);
   }
+  for (const [i, s] of (site.suggestions ?? []).entries()) if (typeof s !== "string" || !s.trim()) out.push(`rules.site.suggestions[${i}]: an empty suggestion`);
   const ga = site.analytics?.google;
   if (ga !== undefined && !/^G-[A-Z0-9]{4,}$/.test(ga)) out.push(`rules.site.analytics.google: "${ga}" is not a GA4 measurement id (G-…)`);
   return out;

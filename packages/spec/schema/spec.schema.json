@@ -277,6 +277,15 @@
                 }
               },
               "additionalProperties": false
+            },
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "maxItems": 12,
+              "description": "Things a visitor might ask, in their words: the menu's rotating placeholder and its first three chips."
             }
           },
           "additionalProperties": false

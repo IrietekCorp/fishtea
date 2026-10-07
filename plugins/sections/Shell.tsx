@@ -1,10 +1,9 @@
 /**
  * The sections shell: a site you navigate by the spec's `rules.site` — a header with its sections and its
- * primary action, a command bar (back, up, home and the conversation input), the section's page, any
- * action open over it, the threads the answer offers, and a footer with the sitemap. Under the command bar,
- * in a drawer its own button opens and closes, is the breadcrumb: every point of this visit in order, the
- * one on screen outlined, any of them a click away. Entering a section from the menu is choosing a room,
- * not a point in the conversation, so it adds nothing here. Diagnostics live on /admin (the framework's, behind a
+ * primary action; under it, the Fishtea menu (@fishtea/ui/menu): the prompt and the trail drawer of this
+ * visit's points; the section's page, any action open over it, the threads the answer offers, and a
+ * footer with the sitemap. Entering a section with nothing asked is choosing a room, not a point in the
+ * conversation, so it adds nothing to the trail. Diagnostics live on /admin (the framework's, behind a
  * sign-in), not on this site.
  *
  * Each shape is drawn by the application's view for it (a ui plugin's `views`), or else from the layout
@@ -12,11 +11,14 @@
  * reads well before anyone has written a view. Every turn is a history entry: Back and Forward rewind the
  * trail, they never re-classify.
  */
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowUp, History, Home as HomeIcon, Loader2, Menu, Send, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Menu as MenuIcon, X } from "lucide-react";
 import type { Pour, Response } from "@fishtea/ui/lib/client";
+import { FishteaMenu } from "@fishtea/ui/menu/FishteaMenu";
+import type { Turn, Vessel } from "@fishtea/ui/menu/types";
+import spec from "@app/spec.json";
 import { useConversation, shapeOf, type Conversation, type Crumb } from "./useConversation";
-import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, needsInput, parentOf, sectionOf, sections } from "./site";
+import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, needsInput, parentOf, sectionOf, sections, suggestions, urlFor } from "./site";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
 import { asksConsent, reopenConsent } from "@fishtea/ui/consent";
@@ -34,7 +36,7 @@ export function Shell({ views = {} }: { views?: Views }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Header c={c} active={active} />
-      <CommandBar c={c} shape={shapeOf(shown)} />
+      <Menu c={c} />
       {c.resumed && shown && (
         <div className="no-print border-b border-border bg-card">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-6 lg:px-8">
@@ -111,31 +113,35 @@ function Threads({ pour, c }: { pour: Pour; c: Conversation }) {
   );
 }
 
+/** The business's name, its sections (rooms: entering one adds nothing to the trail) and its primary action. */
 function Header({ c, active }: { c: Conversation; active: string }) {
   const [open, setOpen] = useState(false);
   const [first, ...rest] = business.name.toUpperCase().split(" ");
   const nav = (shape: string) => { setOpen(false); c.go(shape); };
+  // real links, for new tabs and crawlers; a plain click goes in place
+  const plain = (e: React.MouseEvent) => !(e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+  const link = (shape: string) => ({ href: urlFor({ shape, args: {} }), onClick: (e: React.MouseEvent) => { if (plain(e)) { e.preventDefault(); nav(shape); } } });
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <button onClick={() => nav(home)} className="text-lg font-black tracking-tighter transition-colors hover:text-accent sm:text-xl">
+        <a {...link(home)} className="text-lg font-black tracking-tighter transition-colors hover:text-accent sm:text-xl">
           {first} {rest.join(" ")}<span className="text-accent">.</span>
-        </button>
+        </a>
         <nav className="hidden items-center gap-7 lg:flex" aria-label="Sections">
           {sections.map((s) => (
-            <button key={s.shape} onClick={() => nav(s.shape)} aria-current={active === s.shape ? "page" : undefined}
+            <a key={s.shape} {...link(s.shape)} aria-current={active === s.shape ? "page" : undefined}
               className={`text-sm font-medium transition-colors ${active === s.shape ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
               {s.label}{active === s.shape && <span className="mx-auto mt-1 block h-0.5 w-full bg-accent" />}
-            </button>
+            </a>
           ))}
           <button onClick={() => c.contact()} className="rounded bg-accent px-5 py-2 font-semibold text-accent-foreground transition-all hover:brightness-110">{actions.contact.label}</button>
         </nav>
-        <button onClick={() => setOpen(!open)} className="rounded p-2 hover:bg-card lg:hidden" aria-label="Menu" aria-expanded={open}>{open ? <X /> : <Menu />}</button>
+        <button onClick={() => setOpen(!open)} className="rounded p-2 hover:bg-card lg:hidden" aria-label="Menu" aria-expanded={open}>{open ? <X /> : <MenuIcon />}</button>
       </div>
       {open && (
         <nav className="space-y-1 border-t border-border px-4 py-3 lg:hidden" aria-label="Sections">
           {sections.map((s) => (
-            <button key={s.shape} onClick={() => nav(s.shape)} className={`block w-full rounded px-3 py-2 text-left text-sm font-medium ${active === s.shape ? "bg-card text-foreground" : "text-muted-foreground"}`}>{s.label}</button>
+            <a key={s.shape} {...link(s.shape)} className={`block w-full rounded px-3 py-2 text-left text-sm font-medium ${active === s.shape ? "bg-card text-foreground" : "text-muted-foreground"}`}>{s.label}</a>
           ))}
           <button onClick={() => { setOpen(false); c.contact(); }} className="mt-2 block w-full rounded bg-accent px-3 py-2.5 text-center font-semibold text-accent-foreground">{actions.contact.label}</button>
         </nav>
@@ -144,81 +150,70 @@ function Header({ c, active }: { c: Conversation; active: string }) {
   );
 }
 
-/** Whether the breadcrumb's drawer is open: open to begin with, then as this visitor last left it. */
-const DRAWER = "fishtea:breadcrumb";
-const drawerWas = () => { try { return localStorage.getItem(DRAWER) !== "closed"; } catch { return true; } };
+/* ── the menu ──────────────────────────────────────────────────────────────────────────────────────── */
 
-function CommandBar({ c, shape }: { c: Conversation; shape?: string }) {
-  const [text, setText] = useState("");
-  const [open, setOpen] = useState(drawerWas);
-  const toggle = () => setOpen((o) => { try { localStorage.setItem(DRAWER, o ? "closed" : "open"); } catch { /* remembered for this page only */ } return !o; });
-  const n = c.crumbs.length;
-  const up = parentOf(shape);
-  const btn = "flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground transition-colors hover:border-accent hover:text-foreground disabled:opacity-30 disabled:hover:border-border disabled:hover:text-muted-foreground";
-  return (
-    <div className="no-print sticky top-16 z-30 border-b border-border bg-muted/95 backdrop-blur-sm">
-      <form className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:px-6 lg:px-8" role="search"
-        onSubmit={(e) => { e.preventDefault(); if (text.trim()) { c.ask(text.trim()); setText(""); } }}>
-        <button type="button" onClick={c.back} disabled={!c.canBack} className={btn} aria-label="Back" title="Back"><ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /></button>
-        <button type="button" onClick={c.up} disabled={!up} className={btn} aria-label={up ? `Up to ${labelOf(up)}` : "Up"} title={up ? `Up: ${labelOf(up)}` : "Up"}><ArrowUp className="h-4 w-4" /></button>
-        <button type="button" onClick={c.home} disabled={shape === home} className={btn} aria-label="Home" title="Home"><HomeIcon className="h-4 w-4" /></button>
-        <div className="relative flex-1">
-          <input value={text} onChange={(e) => setText(e.target.value)} aria-label="Ask anything"
-            placeholder={copy.ask}
-            className="h-11 w-full rounded border border-border bg-background px-4 pr-10 text-foreground placeholder:text-muted-foreground/60 focus:border-accent focus:outline-none" />
-          {c.busy && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-accent" aria-label="Working" />}
-        </div>
-        <button type="submit" disabled={c.busy || !text.trim()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-accent text-accent-foreground hover:brightness-110 disabled:opacity-50" aria-label="Ask"><Send className="h-4 w-4" /></button>
-        <button type="button" onClick={toggle} disabled={!n} aria-expanded={open} aria-controls="conversation-drawer"
-          className={`${btn} relative aria-expanded:border-accent aria-expanded:text-foreground disabled:aria-expanded:border-border`} aria-label={open ? "Hide this conversation" : "Show this conversation"} title={open ? "Hide this conversation" : "Show this conversation"}>
-          <History className="h-4 w-4" />
-          {!open && n > 0 && <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full bg-accent px-1 text-[10px] font-black leading-5 text-accent-foreground">{n}</span>}
-        </button>
-      </form>
-      <Breadcrumb c={c} open={open} />
-    </div>
-  );
+const layouts = ((spec as any).rules?.present?.shapes ?? {}) as Record<string, { organism?: string }[]>;
+
+/** The vessel a point's answer poured into: the kind of pour, or for an answer, the shape of its layout. */
+function vesselOf(shape: string | undefined, kind: string): Vessel {
+  if (kind === "form") return "form";
+  if (kind === "confirm-write") return "confirm";
+  if (kind === "ask" || !shape) return "ask";
+  const organisms = (layouts[shape] ?? []).map((o) => o.organism);
+  if (organisms.includes("timeline")) return "timeline";
+  if (organisms.some((o) => o === "grid" || o === "list" || o === "faq")) return "list";
+  if (organisms.some((o) => o === "panel" || o === "facts" || o === "features")) return "detail";
+  return "card";
+}
+
+const words = (s: string, n: number) => { const w = s.trim().split(/\s+/); return w.length > n ? `${w.slice(0, n).join(" ")}…` : w.join(" "); };
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * A crumb as the menu's trail shows it. The pill: the visitor's first words when they typed, else where
+ * they went. The card: what they said (or where they went), and the answer's own phrase as its summary.
+ */
+function turnOf(k: Crumb): Turn {
+  const room = k.shape ? (isAction(k.shape) ? sectionOf(undefined) : sectionOf(k.shape)) : home;
+  const where = k.typed ? "" : k.title;
+  return {
+    id: k.turnId,
+    index: k.step,
+    roomId: room,
+    roomLabel: labelOf(room),
+    utterance: k.said ?? where,
+    short: k.said ? words(k.said, 4) : where,
+    summary: k.phrase ? cap(k.phrase) : k.section ? `${k.section} · ${k.title}` : k.title,
+    shape: k.shape ?? "ask",
+    vessel: vesselOf(k.shape, k.kind),
+    at: k.at,
+  };
 }
 
 /**
- * The visit, as a row of equal pills in a drawer under the command bar, oldest first (in the reading
- * direction, so right to left in a right-to-left language), all in one faint wash of the accent; the one
- * on screen is outlined. A click reviews that point:
- * nothing is added until the visitor says something, and then the new point goes on the end.
+ * The Fishtea menu over this conversation, in a band right under the header: the prompt, and the trail
+ * of this visit's points. Held under the header on wider screens; on a phone it scrolls with the page,
+ * where a pinned prompt would take a quarter of the screen.
  */
-function Breadcrumb({ c, open }: { c: Conversation; open: boolean }) {
-  const row = useRef<HTMLOListElement>(null);
-  const n = c.crumbs.length;
+function Menu({ c }: { c: Conversation }) {
+  const turns = c.crumbs.map(turnOf);
   const onScreen = c.current?.res.turn.id;
-  // keep the newest in view as the row grows, and when the drawer opens
-  useEffect(() => { if (open) row.current?.lastElementChild?.scrollIntoView({ block: "nearest", inline: "end", behavior: "smooth" }); }, [n, open]);
-  if (!n) return null;
+  // in a room — a section entered with nothing asked — no point of the trail is current
+  const current = onScreen && turns.some((x) => x.id === onScreen) ? onScreen : null;
   return (
-    <div id="conversation-drawer" className={`grid transition-[grid-template-rows] duration-200 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-      {...(open ? {} : { inert: "" as any })}>
-      <nav aria-label="This conversation" className="overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 pb-3 sm:px-6 lg:px-8">
-          <ol ref={row} className="crumbs flex gap-2 overflow-x-auto scroll-smooth pb-1">
-            {c.crumbs.map((k) => <Pill key={k.turnId} k={k} here={k.turnId === onScreen} onClick={() => k.turnId !== onScreen && c.revisit(k.turnId)} />)}
-          </ol>
-        </div>
-      </nav>
+    <div className="no-print relative z-30 border-b border-border bg-muted/95 backdrop-blur-sm md:sticky md:top-16">
+     <div className="mx-auto w-full max-w-[880px] px-4 py-3 sm:px-6">
+      <FishteaMenu
+        turns={turns}
+        currentTurnId={current}
+        suggestions={suggestions}
+        busy={c.busy}
+        onSubmit={c.ask}
+        onRewind={c.revisit}
+        onStop={c.stop}
+      />
+     </div>
     </div>
-  );
-}
-
-function Pill({ k, here, onClick }: { k: Crumb; here: boolean; onClick: () => void }) {
-  // every point the same faint wash of the accent (.crumb, in the stylesheet, which also lightens it on
-  // hover); the one on screen is told by its border
-  return (
-    <li className="shrink-0">
-      <button type="button" onClick={onClick} aria-current={here ? "step" : undefined}
-        aria-label={`Step ${k.step}, ${k.section ? `${k.section}: ` : ""}${k.title}${here ? " (on screen)" : ""}`} title={k.section ? `${k.section}: ${k.title}` : k.title}
-        className="crumb flex h-12 w-40 flex-col justify-center rounded-lg border px-3 text-start text-foreground transition-[background-color,transform] active:scale-[0.98]">
-        <span className="block truncate text-[10px] font-black uppercase tracking-widest text-muted-foreground">{String(k.step).padStart(2, "0")}{k.section && ` · ${k.section}`}</span>
-        <span className="block truncate text-[13px] font-semibold leading-tight">{k.title}</span>
-      </button>
-    </li>
   );
 }
 

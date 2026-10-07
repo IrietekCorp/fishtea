@@ -1,0 +1,412 @@
+/* Fishtea menu — the component's styles, from the v1 handoff (docs/design/fishtea-menu-v1/SPEC.md), in the
+   `components` layer so a brand's tokens and Tailwind utilities still apply. Token variables only; every
+   corner follows --ft-radius, so a style guide makes it rounded or flat. Since v1: no Ask tab and no
+   rooms (an application places its own navigation), and the summary card holds while the pointer is on it. */
+@layer components {
+/* Fishtea menu v1 — styles. Requires tokens.css. Plain CSS, BEM-ish, works alongside Tailwind/shadcn. */
+
+.ft-menu {
+  position: relative;
+  font-family: var(--ft-font);
+  color: var(--ft-ink);
+  /* bar padding-bottom (8) + bar border (1): how far the open toggle tab reaches down */
+  --ft-tab-reach: 9px;
+}
+
+.ft-menu :focus-visible {
+  outline: 2px solid var(--ft-focus);
+  outline-offset: 2px;
+}
+
+/* ───────── Bar ───────── */
+.ft-menu__bar {
+  position: relative;
+  z-index: 6;
+  margin: 0;
+  background: var(--ft-pot);
+  border: 1px solid var(--ft-line);
+  border-radius: var(--ft-radius-md);
+  box-shadow: var(--ft-shadow-low);
+  transition: border-radius 160ms ease, box-shadow 160ms ease;
+}
+.ft-menu[data-open="true"] .ft-menu__bar {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none;
+}
+
+/* ───────── Input + suggestions ───────── */
+.ft-menu__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 4px;
+}
+
+/*
+ * The prompt mark: a "/" in the highlight colour, left of the input. It is the field's focus state — no
+ * ring on the bar or the input. It pulses at one slow rate whether or not the field has focus, so it
+ * never competes with the text cursor's own blink; focus changes only its colour, from a dull blend of
+ * the highlight to the highlight itself.
+ */
+.ft-menu__prompt {
+  flex-shrink: 0;
+  font: 600 28px/28px var(--ft-mono);
+  color: color-mix(in oklab, var(--ft-focus) 40%, var(--ft-ink-3));
+  user-select: none;
+  animation: ft-pulse 2.6s ease-in-out infinite;
+  transition: color 200ms ease;
+}
+.ft-menu__field:focus-within .ft-menu__prompt { color: var(--ft-focus); }
+@keyframes ft-pulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+.ft-menu__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--ft-ink);
+  font: 400 18px/28px var(--ft-font);
+}
+.ft-menu__input::placeholder { color: var(--ft-ink-3); }
+
+.ft-menu__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 16px 6px;
+}
+.ft-menu__suggestion {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--ft-radius-pill);
+  background: none;
+  border: 1px solid var(--ft-line);
+  color: var(--ft-ink-3);
+  font: 400 13px var(--ft-font);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.ft-menu__suggestion:hover { color: var(--ft-ink); border-color: var(--ft-ink-3); }
+@media (pointer: coarse) { .ft-menu__suggestion { height: 44px; } }
+
+/* ───────── Tools row ───────── */
+.ft-menu__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 8px;
+}
+.ft-menu__spacer { flex: 1; }
+
+.ft-menu__icon-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--ft-radius-md);
+  background: none;
+  color: var(--ft-ink-2);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.ft-menu__icon-btn:hover { color: var(--ft-ink); background: var(--ft-tan); }
+.ft-menu__icon-btn svg { width: 18px; height: 18px; stroke-width: 1.5; }
+
+.ft-menu__send { background: var(--ft-tan); color: var(--ft-ink-3); }
+.ft-menu__send[data-state="charged"],
+.ft-menu__send[data-state="busy"] { background: var(--ft-ink); color: var(--ft-ground); }
+.ft-menu__send svg { stroke-width: 1.75; }
+
+/* ───────── Trail toggle → tab ───────── */
+.ft-menu__toggle {
+  position: relative;
+  z-index: 2;
+  align-self: flex-end;
+  box-sizing: border-box;
+  height: 44px;
+  margin-bottom: 0;
+  padding: 0 14px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  color: var(--ft-ink-2);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--ft-radius-md);
+  font: 600 13px var(--ft-font);
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease,
+    border-radius 200ms ease,
+    height 200ms var(--ft-standard),
+    margin 200ms var(--ft-standard),
+    padding 200ms var(--ft-standard);
+}
+.ft-menu__toggle:disabled { opacity: .5; cursor: default; }
+.ft-menu__toggle:not(:disabled):hover { color: var(--ft-ink); }
+
+.ft-menu__toggle[aria-expanded="true"] {
+  height: calc(44px + var(--ft-tab-reach));
+  margin-bottom: calc(-1 * var(--ft-tab-reach));
+  padding-bottom: var(--ft-tab-reach);
+  background: var(--ft-drawer);
+  color: var(--ft-ink);
+  border-color: var(--ft-line);
+  border-radius: var(--ft-radius-md) var(--ft-radius-md) 0 0;
+}
+
+.ft-menu__plus {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+  transition: transform 420ms var(--ft-spring);
+}
+.ft-menu__toggle[aria-expanded="true"] .ft-menu__plus { transform: rotate(135deg); }
+
+.ft-menu__count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ft-radius-pill);
+  background: var(--ft-line);
+  color: var(--ft-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ───────── Drawer ───────── */
+.ft-menu__drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 5; /* below the bar: slides out from behind it */
+  transform: translateY(-100%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 260ms var(--ft-standard),
+    opacity 180ms ease 80ms,
+    visibility 0s linear 260ms;
+}
+.ft-menu[data-open="true"] .ft-menu__drawer {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  transition: transform 460ms var(--ft-spring), opacity 160ms ease;
+}
+
+.ft-menu__drawer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 14px;
+  background: var(--ft-drawer);
+  border: 1px solid var(--ft-line);
+  border-top: none;
+  border-radius: 0 0 var(--ft-radius-md) var(--ft-radius-md);
+  box-shadow: var(--ft-shadow-mid);
+}
+
+.ft-menu__drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.ft-key {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ft-ink-3);
+}
+.ft-mono {
+  font: 400 12px/16px var(--ft-mono);
+  color: var(--ft-ink-3);
+}
+
+/* ───────── Pills ───────── */
+.ft-menu__pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ft-menu__pill-item { display: inline-flex; align-items: center; gap: 4px; }
+.ft-menu__sep { width: 14px; height: 14px; color: var(--ft-steam); stroke-width: 1.5; }
+.ft-menu__pill-wrap { position: relative; display: inline-flex; }
+
+.ft-menu__pill {
+  height: 40px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--ft-radius-pill);
+  background: var(--ft-pot);
+  border: 1px solid var(--ft-line);
+  color: var(--ft-ink-2);
+  font: 400 13px var(--ft-font);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.ft-menu__pill:hover,
+.ft-menu__pill[data-active="true"] {
+  background: var(--ft-tan);
+  border-color: var(--ft-ink-3);
+  color: var(--ft-ink);
+}
+.ft-menu__pill[aria-current="step"] {
+  background: var(--ft-ink);
+  border-color: var(--ft-ink);
+  color: var(--ft-ground);
+  font-weight: 600;
+  cursor: default;
+}
+.ft-menu__pill svg { width: 14px; height: 14px; stroke-width: 1.75; flex-shrink: 0; }
+.ft-menu__pill-label {
+  max-width: 190px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ───────── Summary card ───────── */
+.ft-menu__card {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 20;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--ft-tan);
+  border: 1px solid var(--ft-line-strong);
+  border-radius: var(--ft-radius-md);
+  box-shadow: var(--ft-shadow-pop);
+  transform-origin: 24px top;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-6px) scale(.96);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
+}
+/* the gap between the pill and its card is part of the card, so the pointer can cross it and stay */
+.ft-menu__card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -13px;
+  height: 13px;
+}
+.ft-menu__card[data-show="true"] {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition: opacity 180ms ease, transform 280ms var(--ft-spring);
+}
+.ft-menu__caret {
+  position: absolute;
+  top: -6px;
+  left: 22px;
+  width: 10px;
+  height: 10px;
+  background: var(--ft-tan);
+  border-top: 1px solid var(--ft-line-strong);
+  border-left: 1px solid var(--ft-line-strong);
+  transform: rotate(45deg);
+}
+.ft-menu__card .ft-key,
+.ft-menu__card .ft-mono { color: var(--ft-ink-2); } /* ink-3 fails contrast on tan */
+.ft-menu__card-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ft-menu__card-quote { margin: 0; font-size: 15px; line-height: 22px; color: var(--ft-ink); }
+.ft-menu__card-summary { margin: 0; font-size: 14px; line-height: 20px; color: var(--ft-ink-2); }
+.ft-menu__card-preview { display: flex; gap: 6px; }
+.ft-menu__card-preview > * {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ft-radius-sm);
+  border: 1px solid var(--ft-line);
+  object-fit: cover;
+}
+.ft-menu__card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ft-line);
+}
+.ft-menu__here { font-size: 12px; font-weight: 600; color: var(--ft-ink); }
+.ft-menu__rewind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ft-green-ink);
+}
+.ft-menu__rewind svg { width: 12px; height: 12px; stroke-width: 2; }
+
+.ft-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ───────── Responsive ───────── */
+@media (max-width: 640px) {
+  .ft-menu__pill-wrap { position: static; } /* card anchors to the drawer, not the pill */
+  .ft-menu__drawer-inner { position: relative; }
+  .ft-menu__card { left: 16px; }
+  .ft-menu__caret { display: none; }
+}
+
+/* ───────── Reduced motion ───────── */
+@media (prefers-reduced-motion: reduce) {
+  .ft-menu__prompt { animation: none; }
+  .ft-menu *,
+  .ft-menu *::before,
+  .ft-menu *::after {
+    transition-duration: 1ms !important;
+    transition-delay: 0s !important;
+  }
+}
+}
+
+/*
+ * Outside the layer on purpose. The input's focus is the prompt mark, so it draws no ring of its own, and
+ * a brand's global `:focus-visible { outline … }` — unlayered, so it would beat anything in `components` —
+ * must not put one back.
+ */
+.ft-menu .ft-menu__input:focus-visible { outline: none; }

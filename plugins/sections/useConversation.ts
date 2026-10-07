@@ -28,7 +28,15 @@ import { actions, home, isAction, isSection, labelOf, parentOf, parseLocation, s
 
 export interface View { res: Response; route: Route }
 /** A point in the visit: where it went (`title`), which section that is (`section`), and how to get back. */
-export interface Crumb { turnId: string; step: number; section: string; title: string; typed: boolean; route: Route }
+/**
+ * A point in the visit: where it went (`title`), which section that is (`section`), and how to get back —
+ * plus what the menu's trail shows of it: the shape and the kind of pour it got, when, what the visitor
+ * said (when they typed), and the answer's own phrase.
+ */
+export interface Crumb {
+  turnId: string; step: number; section: string; title: string; typed: boolean; route: Route;
+  shape?: string; kind: string; at: string; said?: string; phrase?: string;
+}
 export interface Conversation {
   current: View | null;
   section: View | null;
@@ -46,6 +54,8 @@ export interface Conversation {
   contact(prefill?: Record<string, unknown>): void;
   act(key: string, prefill?: Record<string, unknown>): void;
   closeAction(): void;
+  /** Let go of the answer in flight: it is dropped when it lands, and the trail stays where it is. */
+  stop(): void;
   /** Whether there is an earlier point in this tab to go back to (Back never leaves the site). */
   canBack: boolean;
   back(): void;
@@ -86,11 +96,12 @@ const samePlace = (a: Route, b: Route) => {
  * A crumb's words. Typed, it is what the visitor asked, in their own words; clicked, it is where they
  * arrived — the answer's phrase ("FishTea", "Resume · AI · patents"), else the shape's label.
  */
-function crumbOf(turnId: string, step: number, shape: string | undefined, kind: string, phrase: string | undefined, text: string | undefined, route: Route): Crumb {
+function crumbOf(turnId: string, step: number, shape: string | undefined, kind: string, phrase: string | undefined, text: string | undefined, route: Route, at = new Date().toISOString()): Crumb {
   const section = shape ? labelOf(isAction(shape) ? shape : sectionOf(shape)) : "Asked";
-  if (text) return { turnId, step, section: kind === "ask" ? "Asked" : section, title: `“${text}”`, typed: true, route };
+  const about = { shape, kind, at, said: text, phrase };
+  if (text) return { turnId, step, section: kind === "ask" ? "Asked" : section, title: `“${text}”`, typed: true, route, ...about };
   const title = cap(kind === "answer" && phrase ? phrase : shape ? labelOf(shape) : phrase ?? "…");
-  return { turnId, step, section: title === section ? "" : section, title, typed: false, route };
+  return { turnId, step, section: title === section ? "" : section, title, typed: false, route, ...about };
 }
 
 export function useConversation(): Conversation {
@@ -103,6 +114,9 @@ export function useConversation(): Conversation {
   const log = useRef(new Map<string, Response>());
   const sectionRef = useRef<View | null>(null);
   const [crumbs, setCrumbs] = useState<Crumb[]>([]);
+  const stopped = useRef(false);
+  const currentRef = useRef<View | null>(null);
+  useEffect(() => { currentRef.current = current; }, [current]);
   const routes = useRef(new Map<string, Route>());
   /** Append a crumb for a new turn (never twice for the same turn). */
   const addCrumb = useCallback((res: Response, route: Route, text?: string) => {
@@ -164,10 +178,18 @@ export function useConversation(): Conversation {
   const knownArgs = (p: Pour) => ((p.kind === "answer" && p.args) || {}) as Record<string, string>;
 
   const send = useCallback(async (u: Utterance, how: "push" | "replace" = "push") => {
+    stopped.current = false;
     setBusy(true);
     try {
       const res = await utter(u);
-      if (!res) return; // a newer utterance overtook this one
+      if (!res) return; // a newer utterance overtook this one, or the visitor stopped it
+      if (stopped.current) {
+        // stopped, but the core answered anyway and moved the trail's head to it: put the head back
+        stopped.current = false;
+        const here = currentRef.current?.res.turn.id;
+        if (here) rewind(here).catch(() => {});
+        return;
+      }
       const shape = shapeOf(res.pour);
       let route: Route;
       if ("shape" in u) route = { shape: u.shape, args: (u.args ?? {}) as Record<string, string> };
@@ -201,7 +223,7 @@ export function useConversation(): Conversation {
         const u = x.utterance ?? {};
         const route: Route = { shape: x.shape ?? undefined, args: (u.known ?? u.args ?? {}) as Record<string, string> };
         routes.current.set(x.id, route);
-        return crumbOf(x.id, i + 1, x.shape ?? undefined, x.kind, x.phrase, typeof u.text === "string" ? u.text : undefined, route);
+        return crumbOf(x.id, i + 1, x.shape ?? undefined, x.kind, x.phrase, typeof u.text === "string" ? u.text : undefined, route, x.at);
       });
       setCrumbs((cs) => [...restored, ...cs.filter((c) => !restored.some((r) => r.turnId === c.turnId))].map((c, i) => ({ ...c, step: i + 1 })));
       return restored;
@@ -309,6 +331,7 @@ export function useConversation(): Conversation {
     current, section, resumed, busy, error, notices, log: log.current,
     revisit,
     crumbs,
+    stop: () => { stopped.current = true; setBusy(false); },
     canBack: pos > 0,
     go,
     ask: (text) => { setResumed(false); send({ text }); },

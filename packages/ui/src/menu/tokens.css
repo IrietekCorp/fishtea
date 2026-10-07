@@ -1,0 +1,62 @@
+/* Fishtea design tokens the menu reads: Ebony (dark) by default, Oak (light) under [data-theme="oak"] — and
+   under the framework's own [data-theme="light"]. In the `base` layer, so a brand's plain :root wins: a brand maps
+   the --ft-* tokens onto its own palette. --ft-drawer and --ft-spring are new in menu v1. */
+@layer base {
+
+:root {
+  --ft-ground: #14100c;
+  --ft-pot: #1e1813;
+  --ft-drawer: #18130f; /* new: between ground and pot — "belongs to the bar, but secondary" */
+  --ft-tan: #2b2119;
+  --ft-line: #3d3128;
+  --ft-line-strong: #4a3b30; /* card edge on tan */
+  --ft-ink: #f1e8d8;
+  --ft-ink-2: #c9bca6;
+  --ft-ink-3: #978a76;
+  --ft-green: #2f9e50;
+  --ft-green-ink: #7cd494;
+  --ft-gold: #f0c808;
+  --ft-broth-ink: #f2b95b;
+  --ft-steam: #6b5f52;
+  --ft-focus: #f0c808;
+
+  --ft-shadow-low: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px -12px rgba(0, 0, 0, .6);
+  --ft-shadow-mid: 0 2px 4px rgba(0, 0, 0, .5), 0 16px 40px -16px rgba(0, 0, 0, .7);
+  --ft-shadow-pop: 0 2px 4px rgba(0, 0, 0, .5), 0 24px 48px -16px rgba(0, 0, 0, .85);
+
+  /* One knob for every corner: a style guide sets --ft-radius (0 is flat, pills and chips included). */
+  --ft-radius: 12px;
+  --ft-radius-md: var(--ft-radius);
+  --ft-radius-sm: calc(var(--ft-radius) * 2 / 3);
+  --ft-radius-pill: calc(var(--ft-radius) * 1000);
+
+  --ft-font: "Manrope", system-ui, -apple-system, sans-serif;
+  --ft-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --ft-pour: cubic-bezier(.16, 1, .3, 1);
+  --ft-spring: cubic-bezier(.34, 1.3, .64, 1); /* new */
+  --ft-standard: cubic-bezier(.4, 0, .2, 1);
+}
+
+[data-theme="oak"], [data-theme="light"] {
+  --ft-ground: #efe6d6;
+  --ft-pot: #f9f4ea;
+  --ft-drawer: #f3ecdf;
+  --ft-tan: #e4d6bf;
+  --ft-line: #cdbea6;
+  --ft-line-strong: #b9a88d;
+  --ft-ink: #1c1510;
+  --ft-ink-2: #4f4335;
+  --ft-ink-3: #6b5f50;
+  --ft-green: #188038;
+  --ft-green-ink: #146c30;
+  --ft-gold: #f0c808;
+  --ft-broth-ink: #875407;
+  --ft-steam: #b3a48c;
+  --ft-focus: #188038;
+
+  --ft-shadow-low: 0 1px 2px rgba(28, 21, 16, .08), 0 8px 24px -12px rgba(28, 21, 16, .18);
+  --ft-shadow-mid: 0 2px 4px rgba(28, 21, 16, .1), 0 16px 40px -16px rgba(28, 21, 16, .25);
+  --ft-shadow-pop: 0 2px 4px rgba(28, 21, 16, .12), 0 24px 48px -16px rgba(28, 21, 16, .32);
+}
+}

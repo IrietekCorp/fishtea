@@ -8,7 +8,7 @@ import spec from "@app/spec.json";
 
 export interface Section { shape: string; label: string }
 export interface Action { shape: string; label: string }
-interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } } }
+interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: string[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } } }
 
 const rules = (spec as any).rules.site as SiteRules;
 const shapes = (spec as any).shapes as Record<string, { asks: string; input: Record<string, unknown> }>;
@@ -17,6 +17,8 @@ export const business = (spec as any).business as { name: string; doc?: string }
 export const home = rules.home;
 export const sections = rules.sections;
 export const actions = rules.actions;
+/** Things a visitor might ask: the menu's rotating placeholder and its chips. */
+export const suggestions = rules.suggestions ?? [];
 /** The shell's few business sentences — the input's placeholder, the footer's call to action — from the spec. */
 export const copy = { ask: rules.copy?.ask ?? "Ask anything", cta: { title: rules.copy?.cta?.title ?? "", lead: rules.copy?.cta?.lead ?? "", label: rules.copy?.cta?.label ?? actions.contact?.label ?? "" } };
 
