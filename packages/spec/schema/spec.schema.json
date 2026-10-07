@@ -702,6 +702,12 @@
         },
         "transaction": {
           "type": "boolean"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600000,
+          "description": "This call's own budget in milliseconds, in place of rules.calls.timeoutMs (x1 for compute, x4 otherwise). For a vendor feed or a sync that honestly takes longer, without loosening every SQL call."
         }
       },
       "additionalProperties": false

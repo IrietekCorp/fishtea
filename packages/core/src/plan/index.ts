@@ -95,7 +95,9 @@ export class Planner {
           return bound.run(args, ctxBase);
         };
         let timer: ReturnType<typeof setTimeout> | undefined;
-        const budget = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new PlanError(`${step.call} exceeded ${timeoutMs * (def.kind === "compute" ? 1 : 4)} ms`, id, step.call)), timeoutMs * (def.kind === "compute" ? 1 : 4)); });
+        // a call's own timeoutMs, else the global budget (×1 for compute, ×4 for everything else)
+        const limit = def.timeoutMs ?? timeoutMs * (def.kind === "compute" ? 1 : 4);
+        const budget = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new PlanError(`${step.call} exceeded ${limit} ms`, id, step.call)), limit); });
         try {
           const r = await Promise.race([exec(), budget]);
           outputs[id] = r.output;

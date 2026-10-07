@@ -26,6 +26,7 @@ Full contract: `packages/classifier/contract.md`.
 - **Recall re-classify**: classification returns the embedding; recall runs after it; when the first pass was weak (no calls, below floor, or required args missing) and something resonates, the engine classifies once more with the recalled turns as context. Worst case is two budgets.
 - **Reserved identifiers**: DDL, migrations and seeding quote every identifier (`business."order"`, `"order"`), so entity/field names like `order` work.
 - **jsonb parameters** are passed as JS values; postgres.js encodes them (pre-stringifying double-encodes).
+- **A call may carry its own budget.** The blueprint gives every step `rules.calls.timeoutMs` (×1 compute, ×4 otherwise). A vendor feed answers in 0.5–2 s and a sync across a dozen queries takes a minute, so raising the global budget for them also let every SQL call run 4× as long before anyone heard of it. `calls.<name>.timeoutMs` replaces the global budget for that call alone; nothing else moves (`core.test.ts` "call budgets").
 - **Operator shapes** with engine-side plans: `op.unmetReport`, `op.notify`. `op.editSection` and `op.restart` are handled by the serve process (file patch + reload; process exit for Compose to restart).
 
 ## Bench (packages/bench, 2026-09-21, this machine)

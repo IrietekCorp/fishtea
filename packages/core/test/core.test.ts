@@ -283,6 +283,39 @@ describe("the framework's own schema reaches an existing database", () => {
  * model composes it: `compose` is declared in the spec, each part is planned in its own right, and a
  * part is an ordinary pour so every vessel keeps its contract.
  */
+describe("call budgets", () => {
+  /**
+   * `trending` is replanned onto a compute call that takes 50ms (test/fixtures/sleep.ts), so the budget
+   * decides the outcome rather than how fast Postgres happens to be. Only the spec is cloned (an App
+   * carries a function, which structuredClone refuses).
+   */
+  const slow = (edit: (spec: any) => void) => {
+    const spec = structuredClone(app.spec) as any;
+    spec.calls["test.sleep"] = { kind: "compute", in: {}, out: "json", impl: { module: resolve(import.meta.dir, "fixtures/sleep.ts") } };
+    spec.shapes.trending.plan = [{ call: "test.sleep", with: {} }];
+    spec.rules.calls = { timeoutMs: 10 };
+    edit(spec);
+    return { ...app, spec } as typeof app;
+  };
+  const ask = async (a: typeof app) => {
+    const e = new Engine({ app: a, db, classifier: new LexicalClassifier() });
+    await e.primeLexical();
+    const { visitor } = await e.utter({ text: "hello" });
+    return e.utter({ shape: "trending", args: {} }, { visitorId: visitor.id });
+  };
+
+  test("a call past the global budget fails the plan", async () => {
+    const r = await ask(slow(() => {}));
+    expect(r.pour.kind).not.toBe("answer");
+    expect(JSON.stringify(r.pour)).toContain("test.sleep exceeded 10 ms");
+  });
+  test("a call's own timeoutMs replaces the global budget, for that call only", async () => {
+    const r = await ask(slow((s) => { s.calls["test.sleep"].timeoutMs = 1000; }));
+    expect(r.pour.kind).toBe("answer");
+    expect((r.pour as any).shape).toBe("trending");
+  });
+});
+
 describe("composite pours", () => {
   /**
    * The ecommerce archetype does not compose anything — whether a shop's product search also shows

@@ -15,6 +15,12 @@ export interface CallDef {
   out: TypeSpec;
   impl: { sql?: string; module?: string; url?: string; doc?: string };
   transaction?: boolean;
+  /**
+   * This call's own budget in milliseconds, in place of `rules.calls.timeoutMs` (×1 for compute, ×4
+   * otherwise). For the few calls that honestly take longer — a vendor feed, a sync — so that loosening
+   * them does not loosen every SQL call with them.
+   */
+  timeoutMs?: number;
 }
 
 export interface PlanStep {
