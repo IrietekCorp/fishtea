@@ -5,11 +5,12 @@
  *
  * A page that silently renders empty is the failure mode here — it looks fine in a file listing.
  */
-import { describe, expect, test, beforeAll } from "bun:test";
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { describe, expect, test, beforeAll, beforeEach, afterAll } from "bun:test";
+import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import { build, posts, readTokens, PUBLISH_INSTALL } from "./build.ts";
+import { build, posts, readTokens, stageReleases, PUBLISH_INSTALL } from "./build.ts";
+import { FISHTEA_VERSION } from "@fishtea/spec";
 
 const HOME = join(import.meta.dir, "..");
 const OUT = join(HOME, "site/dist");
@@ -263,5 +264,41 @@ describe("links", () => {
       expect({ page: f, card: html.includes("og:image") }).toEqual({ page: f, card: true });
       expect({ page: f, emoji: html.includes("text y='13'") }).toEqual({ page: f, emoji: false });
     }
+  });
+});
+
+/**
+ * `dist/` is build output nobody clears, so it accumulates — it held 1.1.0 through 1.4.x while the
+ * framework was at 1.6.0. Staging whatever is there makes `latest` mean "the newest tarball on this
+ * disk", which is not the current version, and both `install.sh` and `fishtea upgrade` believe it.
+ */
+describe("a release set must contain the version it is built from", () => {
+  const DIST = join(HOME, "dist");
+  const tarball = (v: string, t = "linux-x64") => {
+    mkdirSync(DIST, { recursive: true });
+    writeFileSync(join(DIST, `fishtea-${v}-${t}.tar.gz`), "not a real tarball");
+  };
+  const clear = () => rmSync(DIST, { recursive: true, force: true });
+
+  beforeEach(clear);
+  afterAll(clear);
+
+  test("a dist holding only old versions is refused, and says what to do", () => {
+    tarball("1.1.0");
+    expect(() => stageReleases()).toThrow(/has tarballs for 1\.1\.0 but not/);
+    expect(() => stageReleases()).toThrow(/rm -rf dist/);
+  });
+
+  test("the current version alongside older ones is fine, and latest is the newest", () => {
+    tarball("1.1.0");
+    tarball(FISHTEA_VERSION);
+    const written = stageReleases();
+    expect(written.some((f) => f.includes(`fishtea-${FISHTEA_VERSION}-`))).toBe(true);
+    expect(written.some((f) => f.includes("fishtea-1.1.0-"))).toBe(true);   // still downloadable
+    expect(read("releases/latest").trim()).toBe(FISHTEA_VERSION);
+  });
+
+  test("no dist at all publishes nothing, rather than failing", () => {
+    expect(stageReleases()).toEqual([]);
   });
 });

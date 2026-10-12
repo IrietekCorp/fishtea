@@ -202,7 +202,13 @@ bun run deploy
 
 `build-release` leaves tarballs in `dist/`; the site build copies whatever is there into
 `site/dist/releases/`, computes `SHA256SUMS`, and writes `latest` as the highest version **by semver** —
-not by filename or mtime. Release artefacts are not in git: they are 26–39 MB of build output, and
+not by filename or mtime.
+
+**`dist/` is never cleared for you, so the build refuses a set the current version is absent from.**
+It accumulated 1.1.0 through 1.4.x while the framework was at 1.6.0; staging that would have published
+1.1.0 as `latest`, and `install.sh` and `fishtea upgrade` would both have believed it. Older versions
+*beside* the current one are fine and wanted — somebody pinning `^1.5.0` should still be able to fetch
+it. `rm -rf dist` before a release build is the safe habit; the guard is there for when you forget. Release artefacts are not in git: they are 26–39 MB of build output, and
 `dist/` is ignored.
 
 **Both download paths verify.** `install.sh` and `fishtea upgrade` each fetch `SHA256SUMS` and refuse on a

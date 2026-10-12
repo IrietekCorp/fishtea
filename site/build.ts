@@ -761,6 +761,26 @@ export function stageReleases(): string[] {
   }
 
   const versions = [...new Set(tarballs.map((f) => f.match(/^fishtea-(\d+\.\d+\.\d+[^-]*)-/)?.[1]).filter(Boolean) as string[])];
+
+  /**
+   * Refuse a release set that does not contain the framework this build *is*.
+   *
+   * `dist/` is build output that nobody clears, so it accumulates. Staging whatever happens to be
+   * there means `latest` is "the newest tarball on this disk", which is not the same thing as the
+   * current version — a dist holding only 1.1.0 while the framework says 1.6.0 publishes 1.1.0 as
+   * newest, and `install.sh` and `fishtea upgrade` both believe it.
+   *
+   * Older versions alongside the current one are fine and wanted: somebody pinning ^1.5.0 should still
+   * be able to download it. What is never right is shipping a set the current build is absent from.
+   */
+  if (!versions.includes(VERSION)) {
+    throw new Error(
+      `dist/ has tarballs for ${versions.join(", ") || "nothing"} but not ${VERSION}, so "latest" would ` +
+      `advertise ${versions.sort(compareVersions).at(-1)} as the newest release.\n` +
+      `  Build this version:  bun run build-release --target <t> --tarball\n` +
+      `  Or clear the stale output: rm -rf dist`,
+    );
+  }
   const latest = versions.sort(compareVersions).at(-1) ?? VERSION;
 
   writeFileSync(join(out, "SHA256SUMS"), sums.join("\n") + "\n");
