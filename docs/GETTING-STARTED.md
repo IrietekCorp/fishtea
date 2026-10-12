@@ -63,7 +63,7 @@ fishtea doctor    # spec, database, classifier, binding, framework compatibility
 ```
 
 ```
-✓ framework   1.2.0 satisfies ^1.1.0
+✓ framework   1.5.0 satisfies ^1.5.0
 ✓ spec        My Shop v2026.09.22-1
 ✓ database    postgres://fishtea:***@localhost:5432/fishtea
 ✓ classifier  http://localhost:8081 · needle3 · 3/3 workers · 11 tools

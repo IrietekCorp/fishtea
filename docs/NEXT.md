@@ -3,13 +3,15 @@
 Read `CLAUDE.md` first (commands, layout, rules of the house), then `docs/DESIGN.md` (measured deviations
 from `docs/BLUEPRINT.md`). This file is what is left.
 
-Updated 2026-09-22, after the platform work (versioning, plugins, the binary, the site) and the launch of
-fishtea.io.
+Updated 2026-10-12, on the `chicdujour-1.6` branch, after the work ChicDuJour needed — the layout
+language (`rules.present`), the `sections` shell, operator sign-in at `/admin`, the breadcrumb, streamed
+parts and per-call budgets.
 
 ## State
 
-- **1.1.0.** 202 tests, 0 failing, on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean on both projects; the
-  UI builds; the site builds; the compiled binary runs standalone; 9 headless browser tests pass.
+- **1.5.0.** 280 tests passing, 8 skipped, 0 failing across 21 files, on PostgreSQL 18.6 / pgvector
+  0.8.6; `tsc` clean on both projects; 32 headless browser tests pass. The 8 skips are the needle suite,
+  which wants a pool on 8082 (`FISHTEA_TEST_CLASSIFIER_URL`) that nothing starts for you.
 - **fishtea.io is live** on Firebase Hosting with a Google Trust Services certificate. See
   `docs/DEPLOY.md`. Redeploy is `bun run deploy`. The site is built from the design system's tokens
   (`docs/design/tokens.json` → `static/tokens.generated.css`); `site.css` hand-writes no colour and a
@@ -245,7 +247,9 @@ Still open, in rough priority order:
 - The SPA keeps it in `localStorage`, so `httpOnly` on the cookie buys nothing against XSS. Deliberate
   for a cross-origin SPA, but it should be a decision: same-site cookie plus a CSRF token is the
   alternative.
-- Operator auth is one shared token (see §7), and the rate limiter is per process (see below).
+- ~~Operator auth is one shared token~~ — **done**: sign-in at `/admin`, argon2id, hashed session
+  cookies, a forced first-password change, lockout. `FISHTEA_OPERATOR_TOKEN` is now the script door
+  only. The rate limiter is still per process (see below).
 
 ### 3d. Generative UI, and the encoding to borrow
 `docs/GENERATIVE-UI.md` — a read of Vercel's [json-render](https://json-render.dev/), the closest public
@@ -396,7 +400,7 @@ Two things fell out of this that are worth knowing:
   not compile.
 
 ### 7. Later
-- Operator auth beyond `FISHTEA_OPERATOR_TOKEN`.
+- ~~Operator auth beyond `FISHTEA_OPERATOR_TOKEN`~~ — done, see §3c.
 - Offline notification delivery (email) — see the `channel` note above.
 - needle LoRA fine-tune per archetype on its own utterances (`cactus-needle` supports it;
   `contract.md` lists the bare-verb quirks it would fix).

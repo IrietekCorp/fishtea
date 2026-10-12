@@ -92,8 +92,12 @@ id short enough to guess.
   request headers, so `/events?visitor=…` is the browser's only way to identify itself on the stream.
   That puts a bearer credential in access logs and browser history. Splitting the identifier from the
   credential would fix it properly; a short-lived stream token would fix it cheaply.
-- **Operator auth is one shared token.** `FISHTEA_OPERATOR_TOKEN` — no accounts, no per-operator
-  attribution, no revocation. Already on the work list.
+- ~~**Operator auth is one shared token.**~~ **Done.** People sign in at `/admin`: argon2id passwords,
+  a session token stored as a hash in an httpOnly SameSite=Strict cookie, a first password that must be
+  replaced before anything else opens, lockout after five wrong attempts, and `x-fishtea-admin` on any
+  cookie'd change. `FISHTEA_OPERATOR_TOKEN` remains the *script* door — the TUI and `fishtea notify` —
+  and a new application gets a random one rather than a shared constant. See
+  [Running it](operating.html#admin).
 - **The rate limiter is in-memory per process**, so it does not survive a restart or bind across
   replicas. It is a nuisance filter, not a control.
 

@@ -89,7 +89,7 @@ granularities, neither pretending to be the other.
 > what a visitor navigates, and the sections are rooms to have it in. So, in the shell:
 >
 > - **A point is a change to the conversation:** a question typed, a card or thread followed, a filter,
->   a form. Each one is a pill in the trail (the Fishtea menu's drawer, since 1.5.0) and one history entry,
+>   a form. Each one is a pill in the trail (the `FishteaMenu` drawer, since 1.5.0) and one history entry,
 >   in the same order, so Back and Forward step through the conversation and a pill is a `history.go`.
 > - **Entering a section with nothing asked** (the menu, Home, Up) is choosing a room, not a point. It
 >   makes no crumb. Its history entry lasts only until something is said, when the next point replaces it.

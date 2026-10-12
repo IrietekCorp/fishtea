@@ -77,7 +77,7 @@ That scaffolds `plugins/loyalty/` in your application, with a manifest and a wor
   "name": "loyalty",
   "version": "0.1.0",
   "kind": "integration",
-  "fishtea": "^1.1.0",
+  "fishtea": "^1.5.0",
   "config": [{ "id": "greeting", "ask": "What should it say?", "type": "string", "default": "hello" }],
   "provides": {
     "calls": {

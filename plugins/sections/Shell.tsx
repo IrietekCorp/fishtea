@@ -38,7 +38,7 @@ export function Shell({ views = {}, chrome = {} }: { views?: Views; chrome?: Chr
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {OwnHeader ? <OwnHeader {...headerProps(c, active)} /> : <Header c={c} active={active} />}
-      <Menu c={c} />
+      <Menu c={c} ownHeader={!!OwnHeader} />
       {c.resumed && shown && (
         <div className="no-print border-b border-border bg-card">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-6 lg:px-8">
@@ -230,7 +230,7 @@ function turnOf(k: Crumb): Turn {
  * of this visit's points. Held under the header on wider screens; on a phone it scrolls with the page,
  * where a pinned prompt would take a quarter of the screen.
  */
-function Menu({ c }: { c: Conversation }) {
+function Menu({ c, ownHeader }: { c: Conversation; ownHeader: boolean }) {
   const turns = c.crumbs.map(turnOf);
   const onScreen = c.current?.res.turn.id;
   // in a room — a section entered with nothing asked — no point of the trail is current
@@ -242,7 +242,11 @@ function Menu({ c }: { c: Conversation }) {
     <div className={flush
       ? "no-print relative z-30 border-b border-border bg-background/95 backdrop-blur-sm md:sticky md:top-[var(--shell-header-h,4rem)]"
       : "no-print relative z-30 border-b border-border bg-muted/95 backdrop-blur-sm md:sticky md:top-[var(--shell-header-h,4rem)]"}>
-     <div className={flush ? "w-full px-6 py-2 md:px-12" : "mx-auto w-full max-w-[880px] px-4 py-3 sm:px-6"}>
+     {/* flush lines up with the header above it: the shell's own header is a max-w-7xl column, so the menu
+         takes that column too; a brand's own header (chrome) keeps the brand's wider gutters */}
+     <div className={flush
+       ? ownHeader ? "w-full px-6 py-2 md:px-12" : "mx-auto w-full max-w-7xl px-4 py-2 sm:px-6 lg:px-8"
+       : "mx-auto w-full max-w-[880px] px-4 py-3 sm:px-6"}>
       <FishteaMenu
         turns={turns}
         currentTurnId={current}

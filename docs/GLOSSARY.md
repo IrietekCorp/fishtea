@@ -12,6 +12,10 @@ One file, `spec.json`, plus the `calls/` it names.
 **Section** — a top-level part of the spec (`entities`, `shapes`, …). Each carries its own `version` and
 is content-hashed independently, so the engine and the console can tell exactly what changed.
 
+> One word, two places, and worth keeping straight: a **spec section** is a part of the *document*; a
+> **site section** (`rules.site.sections`) is a place in the *site* a shell navigates to. They are named
+> the same because both are "a top-level part of the thing", and they are never the same thing.
+
 **Entity** — a typed record kind: product, order, customer. Becomes a Postgres table.
 
 **Call** — a named, typed data operation declared in the spec: a query, a mutation, a compute module or an
@@ -61,6 +65,19 @@ branchable, and it never dies.
 **Vessel** — one of seven fixed UI containers an answer is rendered into, chosen deterministically from
 the *shape of the answer*, never from the shape's name: `list`, `card`, `detail`, `compare`, `timeline`,
 `confirm`, `notice`. Plus `ask` and `form` for the other pour kinds.
+
+**Present** — the layout language (`rules.present`): how an answer is arranged once a vessel has it.
+**Molecules** say which field of an entity is the title, the eyebrow, the body, the link; **organisms**
+are the ordered blocks a shape's answer is laid out as. Anything undeclared is derived from the spec, so
+a business that says nothing still gets a layout. Resolved into `pour.present` before it reaches the
+browser — the UI is handed a layout, never asked to infer one.
+
+**Shell** — what a visitor sees around the conversation: header, menu, footer, the page they landed on.
+A `ui` plugin provides one (`sections` is the shipped one, a site navigated by `rules.site`). A shell
+never shows operator data; that lives behind `/admin`.
+
+**Site section** — a place a shell navigates to, listed in order in `rules.site.sections`. Distinct from
+a *spec* section above.
 
 **Chip** — a suggested next question, derived from the shape's `next`. Chips are how a conversation offers
 direction without becoming a menu.

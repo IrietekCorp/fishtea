@@ -408,7 +408,7 @@ $ fishtea up
     <div>
       <pre><code>$ fishtea update
 
-framework  1.1.0 → 1.2.0  (pinned ^1.1.0)
+framework  1.5.0 → 1.6.0  (pinned ^1.5.0)
 spec       format 1.1 → 1.2
 files      2 to update, 1 new, 1 conflicting, 3 yours
 
