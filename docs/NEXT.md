@@ -3,15 +3,17 @@
 Read `CLAUDE.md` first (commands, layout, rules of the house), then `docs/DESIGN.md` (measured deviations
 from `docs/BLUEPRINT.md`). This file is what is left.
 
-Updated 2026-10-12, on the `chicdujour-1.6` branch, after the work ChicDuJour needed — the layout
+Updated 2026-10-12, at **1.6.0**, after the work ChicDuJour needed — the layout
 language (`rules.present`), the `sections` shell, operator sign-in at `/admin`, the breadcrumb, streamed
 parts and per-call budgets.
 
 ## State
 
-- **1.5.0.** 280 tests passing, 8 skipped, 0 failing across 21 files, on PostgreSQL 18.6 / pgvector
-  0.8.6; `tsc` clean on both projects; 32 headless browser tests pass. The 8 skips are the needle suite,
-  which wants a pool on 8082 (`FISHTEA_TEST_CLASSIFIER_URL`) that nothing starts for you.
+- **1.6.0.** 312 tests passing, 8 skipped, 0 failing across 22 files (`bun test packages scripts site`),
+  on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean on both projects; 32 headless browser tests pass. The
+  8 skips are the needle suite, which wants a pool on 8082 (`FISHTEA_TEST_CLASSIFIER_URL`) that nothing
+  starts for you. The spec *format* stays at 1.1: everything 1.6 added to the schema is additive, so a
+  spec written for 1.5 loads unchanged and an application pinned `^1.5.0` runs under it (verified).
 - **fishtea.io is live** on Firebase Hosting with a Google Trust Services certificate. See
   `docs/DEPLOY.md`. Redeploy is `bun run deploy`. The site is built from the design system's tokens
   (`docs/design/tokens.json` → `static/tokens.generated.css`); `site.css` hand-writes no colour and a
