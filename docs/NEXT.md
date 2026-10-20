@@ -3,12 +3,15 @@
 Read `CLAUDE.md` first (commands, layout, rules of the house), then `docs/DESIGN.md` (measured deviations
 from `docs/BLUEPRINT.md`). This file is what is left.
 
-Updated 2026-10-12, at **1.6.0**, after the work ChicDuJour needed — the layout
+Updated 2026-10-20, at **1.7.0** (tiles, a working rewind, social links, /admin → Data, view `forms`, a hero's contact line); before that, 1.6.0, after the work ChicDuJour needed — the layout
 language (`rules.present`), the `sections` shell, operator sign-in at `/admin`, the breadcrumb, streamed
 parts and per-call budgets.
 
 ## State
 
+- **1.7.0.** 316 tests, 308 passing, 8 skipped, 0 failing across 22 files (`bun test packages scripts site`);
+  `tsc` clean; the menu's 14 browser tests pass. Schema changes are additive again (`rules.site.social`, an
+  entity's `admin`, a molecule's `quotes`, a hero's `contact`), so an application pinned `^1.6.0` runs under it.
 - **1.6.0.** 312 tests passing, 8 skipped, 0 failing across 22 files (`bun test packages scripts site`),
   on PostgreSQL 18.6 / pgvector 0.8.6; `tsc` clean on both projects; 32 headless browser tests pass. The
   8 skips are the needle suite, which wants a pool on 8082 (`FISHTEA_TEST_CLASSIFIER_URL`) that nothing
