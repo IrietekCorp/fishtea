@@ -437,6 +437,7 @@ function Organism({ o, answer, scope, x }: OrgProps) {
             {meta && <span className="shrink-0 font-mono text-sm text-accent sm:pt-3">{meta}</span>}
             {!center && o.actions?.length ? <div className="no-print flex shrink-0 gap-3 self-start">{o.actions.map((a, i) => <ActionButton key={i} a={a} scope={scope} x={x} primary={a.primary ?? i === 0} />)}</div> : null}
           </div>
+          {o.contact?.length ? <Contact items={o.contact} scope={scope} center={center} /> : null}
           {sub && <p className="mt-3 text-lg font-semibold italic text-muted-foreground">{sub}</p>}
           {lead && <Prose value={lead} className={`mt-5 max-w-3xl text-base text-muted-foreground sm:text-lg ${center ? "mx-auto" : ""}`} />}
         </div>
@@ -634,6 +635,22 @@ function Facets({ o, answer, scope, x }: { o: ResolvedOrganism; answer: unknown;
       ))}
       {text(o.hint, scope) && <p className="text-xs text-muted-foreground/60">{text(o.hint, scope)}</p>}
     </section>
+  );
+}
+
+/** A hero's contact line: where, and how to reach them, the reachable ones as links. */
+function Contact({ items, scope, center }: { items: Action[]; scope: unknown; center: boolean }) {
+  const shown = items.map((a) => ({ label: text(a.label, scope), href: a.href ? text(a.href, scope) : "" })).filter((a) => a.label);
+  if (!shown.length) return null;
+  return (
+    <ul className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground ${center ? "justify-center" : ""}`}>
+      {shown.map((a, i) => (
+        <li key={i} className="flex items-center gap-3">
+          {i > 0 && <span aria-hidden className="text-accent">·</span>}
+          {a.href ? <a href={a.href} target={a.href.startsWith("mailto:") ? undefined : "_blank"} rel="noreferrer" className="font-semibold text-foreground underline-offset-4 hover:text-accent hover:underline">{a.label}</a> : <span>{a.label}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }
 

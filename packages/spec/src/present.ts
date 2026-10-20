@@ -107,6 +107,9 @@ export interface OrganismDef {
   /** panel: labelled blocks of text read from the answer */
   blocks?: { label: string; from: string }[];
   actions?: Action[];
+  /** hero: a line of contact under the title, each item text, or a link when it has an `href`; an item
+   *  whose label comes out empty is left out */
+  contact?: Action[];
   /** shown in place of the organism when `from` is empty; nothing when absent */
   empty?: Bind;
   /** stats: the figures */
