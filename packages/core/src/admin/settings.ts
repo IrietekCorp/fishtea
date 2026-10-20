@@ -24,7 +24,7 @@ export interface Setting {
   value: unknown;
 }
 
-/** rules subtrees that are structure, not settings — except the site's copy, which is prose. */
+/** rules subtrees that are structure, not settings — except the site's copy, which is prose, and its social links. */
 const STRUCTURE = ["present", "site"];
 /**
  * Rules that guard visitors rather than tune the site: whether a write is confirmed first, and how sure
@@ -39,7 +39,7 @@ export function settingsOf(app: App): Setting[] {
   const out: Setting[] = [];
   for (const { path, value } of leaves(spec.rules ?? {})) {
     const top = path.split(".")[0];
-    if (STRUCTURE.includes(top) && !path.startsWith("site.copy.")) continue;
+    if (STRUCTURE.includes(top) && !path.startsWith("site.copy.") && !path.startsWith("site.social.")) continue;
     if (GUARDED.includes(top)) continue;
     if (value !== null && typeof value === "object") continue; // arrays: structure
     const type = typeof value === "boolean" ? "boolean" : typeof value === "number" ? "number" : typeof value === "string" && (value.length > 80 || value.includes("\n")) ? "text" : "string";

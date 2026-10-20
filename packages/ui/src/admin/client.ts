@@ -53,3 +53,12 @@ export const specVersion = (name: string) => call<{ name: string; text: string }
 export interface Setting { id: string; section: string; path: string; group: string; label: string; type: "string" | "text" | "number" | "boolean" | "enum"; values?: string[]; value: unknown }
 export const settings = () => call<{ settings: Setting[] }>("GET", "/settings");
 export const saveSettings = (changes: { id: string; value: unknown }[]) => call<{ ok: true; sections: string[]; settings: Setting[] }>("PATCH", "/settings", { changes });
+
+export interface DataField { name: string; type: string; array: boolean; optional: boolean; values?: string[]; doc?: string }
+export interface DataEntity { name: string; doc?: string; title: string; columns: string[]; order: string; collect?: string; fields: DataField[]; count: number }
+export type DataRow = Record<string, unknown> & { id: string; $seeded: string[] };
+export const dataEntities = () => call<{ entities: DataEntity[] }>("GET", "/data");
+export const dataRows = (entity: string) => call<{ rows: DataRow[] }>("GET", `/data/${encodeURIComponent(entity)}`);
+export const createRow = (entity: string, row: Record<string, unknown>) => call<{ row: DataRow }>("POST", `/data/${encodeURIComponent(entity)}`, { row });
+export const updateRow = (entity: string, id: string, patch: Record<string, unknown>) => call<{ row: DataRow }>("PATCH", `/data/${encodeURIComponent(entity)}/${encodeURIComponent(id)}`, { patch });
+export const deleteRow = (entity: string, id: string) => call<{ ok: boolean }>("DELETE", `/data/${encodeURIComponent(entity)}/${encodeURIComponent(id)}`);

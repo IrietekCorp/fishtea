@@ -162,6 +162,15 @@ test.describe("8 · Rewind", () => {
     expect(await calls(page)).toEqual([{ name: "rewind", arg: "t2" }]);
     await expect(drawer(page)).toBeHidden();
   });
+  test("the card's Rewind here rewinds too", async ({ page }) => {
+    await open(page, "?open");
+    await pills(page).nth(1).hover();
+    const card = page.locator(".ft-menu__card").nth(1);
+    await expect(card).toHaveAttribute("data-show", "true");
+    await card.getByRole("button", { name: "Rewind here" }).click();
+    expect(await calls(page)).toEqual([{ name: "rewind", arg: "t2" }]);
+    await expect(drawer(page)).toBeHidden();
+  });
   test("on touch, the first tap previews and the second rewinds", async ({ browser }) => {
     const ctx = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();

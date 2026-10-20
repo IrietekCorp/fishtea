@@ -381,6 +381,17 @@
                 }
               },
               "additionalProperties": false
+            },
+            "social": {
+              "type": "object",
+              "description": "Where else the business is: a network's name (linkedin, x, instagram, github, youtube, facebook, or any other) → its https profile URL. An empty URL is a network not used yet, kept so /admin offers it.",
+              "propertyNames": {
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^$|^(https://|mailto:)[^\\s\"<>]+$"
+              }
             }
           },
           "additionalProperties": false
@@ -644,6 +655,35 @@
           "items": {
             "type": "string"
           }
+        },
+        "admin": {
+          "description": "Rows an operator reads and edits at /admin → Data. true takes the defaults; title: the field a row is called by; columns: the fields the list shows; order: the field it sorts by, highest first; collect: the shape of a public form that adds rows, whose link /admin offers.",
+          "oneOf": [
+            {
+              "const": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "order": {
+                  "type": "string"
+                },
+                "collect": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         }
       },
       "additionalProperties": false

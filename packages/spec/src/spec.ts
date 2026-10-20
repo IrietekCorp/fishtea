@@ -6,7 +6,15 @@ export interface EntityDef {
   index?: string[];
   embed?: string[];
   unique?: string[];
+  /**
+   * Rows an operator reads and edits at /admin → Data. `true` takes the defaults; otherwise `title` (the
+   * field each row is called by), `columns` (the fields its list shows), `order` (the field it is sorted
+   * by, newest or highest first) and `collect` (the shape of a public form that adds rows, whose link
+   * /admin offers to copy and send).
+   */
+  admin?: true | EntityAdmin;
 }
+export interface EntityAdmin { title?: string; columns?: string[]; order?: string; collect?: string }
 
 export interface CallDef {
   kind: "query" | "mutation" | "compute" | "external";

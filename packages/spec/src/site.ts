@@ -18,6 +18,9 @@
  *   menu      how the shell wears the Ask anything menu: `layout` "card" (floating, the default) or "flush"
  *             (the full-width band under the header, no card), and what a suggestion chip does —
  *             `suggestions` "fill" (into the input, the default) or "ask" (at once).
+ *   social    where else the business is: a network's name → its profile URL (`linkedin`, `x`, `instagram`,
+ *             `github`, `youtube`, `facebook`, or any other name, drawn with a plain link mark). An empty URL
+ *             is a network not used yet: it stays in the spec, so /admin offers it as a setting to fill in.
  *   brand     the business's own marks, for a shell that would otherwise set its name in type: `logo` (an
  *             image in public/, drawn in the header at `height` and in the footer at `footerHeight`), `icons`
  *             (the favicon and touch icons, written into <head>), `themeColor`, and `image` + `url` (the
@@ -41,6 +44,7 @@ export interface SiteRules {
   analytics?: { google?: string; consent?: boolean; notice?: string };
   brand?: SiteBrand;
   menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" };
+  social?: Record<string, string>;
 }
 
 export interface SiteIcon { rel: "icon" | "apple-touch-icon"; href: string; type?: string; sizes?: string }
@@ -99,6 +103,13 @@ export function checkSite(spec: SpecLike): string[] {
   const ga = site.analytics?.google;
   if (ga !== undefined && !/^G-[A-Z0-9]{4,}$/.test(ga)) out.push(`rules.site.analytics.google: "${ga}" is not a GA4 measurement id (G-…)`);
   if (site.brand) out.push(...checkBrand(site.brand));
+  if (site.social !== undefined) {
+    if (!site.social || typeof site.social !== "object" || Array.isArray(site.social)) out.push("rules.site.social: a network's name → its URL");
+    else for (const [k, u] of Object.entries(site.social)) {
+      if (!/^[a-z][a-z0-9-]*$/.test(k)) out.push(`rules.site.social: "${k}" is not a lowercase network name`);
+      if (typeof u !== "string" || (u !== "" && !/^(https:\/\/|mailto:)[^\s"<>]+$/.test(u))) out.push(`rules.site.social.${k}: "${u}" is neither empty nor an https or mailto: URL`);
+    }
+  }
   const menu = site.menu;
   if (menu?.layout !== undefined && menu.layout !== "card" && menu.layout !== "flush") out.push(`rules.site.menu.layout: "${menu.layout}" is not card or flush`);
   if (menu?.suggestions !== undefined && menu.suggestions !== "fill" && menu.suggestions !== "ask") out.push(`rules.site.menu.suggestions: "${menu.suggestions}" is not fill or ask`);

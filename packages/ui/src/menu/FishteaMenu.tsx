@@ -11,6 +11,7 @@
  * - The `@`, `/` and mic buttons appear only when their callbacks exist.
  * - On touch, the first tap previews and only the second rewinds (§3.3); focus had made the first tap
  *   count as both.
+ * - "Rewind here" in the summary card is a button, not a label: it rewinds, as the pill does.
  * - The field's focus is a "/" prompt mark left of the input, not a ring around the bar. It pulses at one
  *   rate always; focus only changes its colour (dull → the highlight).
  */
@@ -369,10 +370,17 @@ export function FishteaMenu({
                         {isCurrent ? (
                           <span className="ft-menu__here">You are here</span>
                         ) : (
-                          <span className="ft-menu__rewind">
+                          <button
+                            type="button"
+                            className="ft-menu__rewind"
+                            onClick={() => {
+                              onRewind?.(turn.id);
+                              close(false);
+                            }}
+                          >
                             <RotateCcw aria-hidden="true" />
                             Rewind here
-                          </span>
+                          </button>
                         )}
                       </div>
                     </div>

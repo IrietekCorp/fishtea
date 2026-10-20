@@ -4,7 +4,7 @@
  * Postgres, and a scratch copy of an application so a save never rewrites the framework's own template.
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { loadApp } from "@fishtea/spec";
@@ -15,6 +15,10 @@ const URL = process.env.FISHTEA_TEST_DATABASE_URL ?? "postgres://fishtea:fishtea
 const db = connect(URL);
 const dir = mkdtempSync(join(tmpdir(), "fishtea-admin-"));
 cpSync(join(ROOT, "templates/ecommerce"), dir, { recursive: true });
+// one entity opened to operators, for /admin → Data
+const scratch = JSON.parse(readFileSync(join(dir, "spec.json"), "utf8"));
+scratch.entities.customer.admin = { columns: ["email", "name"], order: "createdAt" };
+writeFileSync(join(dir, "spec.json"), JSON.stringify(scratch, null, 2) + "\n");
 let app = loadApp(dir);
 let engine: Engine;
 let server: ReturnType<typeof Bun.serve>;
@@ -156,5 +160,33 @@ describe("editing", () => {
     const after = JSON.parse(readFileSync(join(dir, "spec.json"), "utf8"));
     expect(after.rules.version).not.toBe(before);
     expect(number.path.split(".").reduce((o: any, k: string) => o[k], after.rules)).toBe(Number(number.value) + 1);
+  });
+});
+
+describe("data", () => {
+  const session = async () => sessionOf(await signIn("admin", NEW_PASSWORD));
+
+  test("only the entities the spec opens, each value checked against its type, never the id", async () => {
+    const s = await session();
+    const get = async (path: string) => (await fetch(`${base}/op/data${path}`, { headers: as(s) }));
+    const send = (method: string, path: string, body?: unknown) => fetch(`${base}/op/data${path}`, { method, headers: as(s, admin), body: body === undefined ? undefined : JSON.stringify(body) });
+
+    const { entities } = (await (await get("")).json()) as any;
+    expect(entities.map((e: any) => e.name)).toEqual(["customer"]);
+    expect(entities[0].columns).toEqual(["email", "name"]);
+    expect((await get("/product")).status).toBe(400);
+
+    const created = (await (await send("POST", "/customer", { row: { email: "ops@example.com", name: "Ops", source: "admin" } })).json()) as any;
+    const id = created.row.id;
+    expect(created.row.$seeded).toEqual([]);
+    expect((await send("PATCH", `/customer/${id}`, { patch: { email: "not an email" } })).status).toBe(400);
+    expect((await send("PATCH", `/customer/${id}`, { patch: { nosuch: 1 } })).status).toBe(400);
+    const edited = (await (await send("PATCH", `/customer/${id}`, { patch: { name: "Operator", id: "x_other" } })).json()) as any;
+    expect(edited.row.name).toBe("Operator");
+    expect(edited.row.id).toBe(id);
+    // a cookie'd change without the header is refused, as everywhere on /op
+    expect((await fetch(`${base}/op/data/customer/${id}`, { method: "DELETE", headers: as(s) })).status).toBe(403);
+    expect(((await (await send("DELETE", `/customer/${id}`)).json()) as any).ok).toBe(true);
+    expect(((await (await get("/customer")).json()) as any).rows.some((r: any) => r.id === id)).toBe(false);
   });
 });

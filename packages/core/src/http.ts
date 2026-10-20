@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { SpecError, validateSpec } from "@fishtea/spec";
 import { OperatorAuth, SESSION_HOURS, type Operator } from "./admin/auth.ts";
 import { applySettings, settingsOf } from "./admin/settings.ts";
+import { Data, DataError } from "./admin/data.ts";
 import { streamSSE } from "hono/streaming";
 import type { Engine, Utterance } from "./engine.ts";
 import type { App } from "@fishtea/spec";
@@ -335,6 +336,32 @@ export function createServer(opts: ServerOptions) {
     if (opts.onReload) await opts.onReload();
     if (r.sections.includes("plugins") && opts.onPluginsChanged) await opts.onPluginsChanged();
     return c.json({ ok: true, sections: r.sections, settings: settingsOf(engine.app) });
+  });
+
+  // ── data ─────────────────────────────────────────────────────────────────
+  //
+  // The rows of the entities the spec opens to operators (entities.<name>.admin): read, edited by field,
+  // added and removed. What may be touched is the spec's to say (admin/data.ts), not this route's.
+  const data = new Data(engine.db, () => engine.app);
+  const dataError = (c: any, e: unknown) => e instanceof DataError ? c.json({ error: e.message }, 400) : Promise.reject(e);
+  op.get("/data", async (c) => c.json({ entities: await data.list() }));
+  op.get("/data/:entity", async (c) => {
+    try { return c.json({ rows: await data.rows(c.req.param("entity"), { limit: Number(c.req.query("limit") ?? 200) || 200, offset: Number(c.req.query("offset") ?? 0) || 0 }) }); }
+    catch (e) { return dataError(c, e); }
+  });
+  op.post("/data/:entity", async (c) => {
+    try { return c.json({ row: await data.create(c.req.param("entity"), (await c.req.json().catch(() => ({}))).row ?? {}) }); }
+    catch (e) { return dataError(c, e); }
+  });
+  op.patch("/data/:entity/:id", async (c) => {
+    try {
+      const row = await data.update(c.req.param("entity"), c.req.param("id"), (await c.req.json().catch(() => ({}))).patch ?? {});
+      return row ? c.json({ row }) : c.json({ error: "no such row" }, 404);
+    } catch (e) { return dataError(c, e); }
+  });
+  op.delete("/data/:entity/:id", async (c) => {
+    try { return c.json(await data.remove(c.req.param("entity"), c.req.param("id"))); }
+    catch (e) { return dataError(c, e); }
   });
   app.route("/op", op);
 

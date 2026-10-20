@@ -18,7 +18,8 @@ import { FishteaMenu } from "@fishtea/ui/menu/FishteaMenu";
 import type { Turn, Vessel } from "@fishtea/ui/menu/types";
 import spec from "@app/spec.json";
 import { useConversation, shapeOf, type Conversation, type Crumb } from "./useConversation";
-import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, logo, menu, needsInput, parentOf, sectionOf, sections, suggestions, urlFor } from "./site";
+import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, logo, menu, needsInput, parentOf, sectionOf, sections, social, suggestions, urlFor } from "./site";
+import { SocialLinks } from "./social";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
 import { asksConsent, reopenConsent } from "@fishtea/ui/consent";
@@ -93,6 +94,11 @@ function PourView({ pour, res, c, views }: { pour: Pour; res: Response; c: Conve
     return <>{order.map((id) => <PourView key={id} pour={pour.parts[id].of} res={res} c={c} views={views} />)}</>;
   }
   if (pour.kind === "ask") return <AskView pour={pour} c={c} />;
+  if (pour.kind === "form" || pour.kind === "confirm-write") {
+    // a page's view that says it draws forms gets its form and its confirmation too, as an action's does
+    const V = views[pour.shape];
+    if (V?.forms) return <V answer={undefined} pour={pour} res={res} c={c} />;
+  }
   if (pour.kind === "form" || pour.kind === "confirm-write") return (
     <section className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
       <h1 className="mb-8 text-3xl font-black tracking-tighter">{pour.phrase || labelOf(pour.shape)}</h1>
@@ -139,6 +145,7 @@ export function footerProps(c: Conversation, active: string): FooterProps {
     sections: sections.map((s) => ({ ...navLink(c, s.shape, s.label, active), children: childrenOf(s.shape).filter((ch) => !needsInput(ch)).map((ch) => ({ label: labelOf(ch), go: () => c.go(ch) })) })),
     utilities,
     cta: { title: copy.cta.title, lead: copy.cta.lead, action: copy.cta.label ? { label: copy.cta.label, go: () => c.contact() } : null },
+    social,
   };
 }
 
@@ -291,6 +298,7 @@ function Footer({ c }: { c: Conversation }) {
           <div className="space-y-5 md:col-span-4">
             <h3 className="text-3xl font-black uppercase tracking-tighter"><Mark height={logo?.footerHeight ?? logo?.height ?? 28} footer /></h3>
             {business.doc && <p className="max-w-md font-medium leading-relaxed text-muted-foreground">{business.doc}</p>}
+            <SocialLinks className="pt-2" />
           </div>
           <nav className="space-y-5 md:col-span-5" aria-label="Sitemap">
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-accent">Sitemap</h4>

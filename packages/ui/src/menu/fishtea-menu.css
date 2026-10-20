@@ -374,7 +374,15 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--ft-green-ink);
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--ft-radius-sm);
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
 }
+.ft-menu__rewind:hover { text-decoration: underline; text-underline-offset: 3px; }
 .ft-menu__rewind svg { width: 12px; height: 12px; stroke-width: 2; }
 
 .ft-visually-hidden {

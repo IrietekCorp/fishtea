@@ -58,6 +58,11 @@ export interface MoleculeDef {
   tags?: string | TagSource[];
   /** a string[] field shown as a bulleted list */
   bullets?: string;
+  /**
+   * a field of rows shown as short quotes inside this one (a role's colleagues, in their words): each is
+   * read for `quote` or `description` (the words), `name`, `title` and `company`, and `imageUrl`
+   */
+  quotes?: string;
   /** an ordinal field drawn as a meter, and its scale, low to high; derived from an enum named `level` */
   level?: string; levels?: string[];
   /** when this binds to something truthy the row is shown quietly — dimmed, its detail folded away */

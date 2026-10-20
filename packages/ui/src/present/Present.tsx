@@ -17,7 +17,7 @@
  *   chips      cnippet-dev/v-meter-6                             a level drawn on its scale
  *   steps      slide-cn/timeline                                 numbered markers for an ordered process
  */
-import type { PointerEvent, ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import {
   Activity, ArrowRight, BarChart3, BookOpen, Brain, Briefcase, Building2, Calendar, ChevronDown, Code2, Compass, Cpu, ExternalLink,
   Globe, GraduationCap, HeartHandshake, Layers, Link2, Mail, Mic, Network, Newspaper, Plane, Printer, Quote, Rocket, ShieldCheck,
@@ -134,7 +134,7 @@ function ask(x: Ctx, go: Go, scope: unknown) {
 
 interface Filled {
   eyebrow: string; title: string; subtitle: string; body: string; meta: string; number: string; hint: string; cta: string;
-  tags: { source: TagSource; values: string[] }[]; bullets: string[]; level?: string; quiet: boolean;
+  tags: { source: TagSource; values: string[] }[]; bullets: string[]; quotes: Said[]; level?: string; quiet: boolean;
   image?: string; href?: string; icon?: LucideIcon;
 }
 
@@ -144,16 +144,57 @@ function fill(m: MoleculeDef, row: unknown, icons?: Record<string, string>): Fil
     return { source, values: Array.isArray(v) ? v.map(String) : [] };
   }).filter((t) => t.values.length);
   const bullets = m.bullets ? read(row, m.bullets) : undefined;
+  const quotes = m.quotes ? read(row, m.quotes) : undefined;
   return {
     eyebrow: text(m.eyebrow, row), title: text(m.title, row), subtitle: text(m.subtitle, row), body: text(m.body, row), meta: text(m.meta, row),
     number: text(m.number, row), hint: text(m.hint, row), cta: text(m.cta, row),
     tags, bullets: Array.isArray(bullets) ? bullets.map((b) => (typeof b === "object" && b ? text("$name", b) : String(b))) : [],
+    quotes: Array.isArray(quotes) ? quotes.map(said).filter((q) => q.words) : [],
     level: m.level ? text(`$${m.level}`, row) || undefined : undefined,
     quiet: !!bind(m.quiet, row) && bind(m.quiet, row) !== "false",
     image: m.image ? (read(row, m.image) as string | undefined) || undefined : undefined,
     href: m.href ? (read(row, m.href) as string | undefined) || undefined : undefined,
     icon: iconFor(text(m.icon, row), icons),
   };
+}
+
+/** One quote carried inside a row: the words, who said them, and their face. */
+interface Said { words: string; name: string; role: string; image?: string }
+const said = (q: unknown): Said => {
+  const r = (q && typeof q === "object" ? q : {}) as Record<string, unknown>;
+  const s = (k: string) => (typeof r[k] === "string" ? (r[k] as string) : "");
+  return {
+    words: s("quote") || s("description"), name: s("name"),
+    role: [s("title"), s("company")].filter(Boolean).join(" · "), image: s("imageUrl") || s("image_url") || undefined,
+  };
+};
+
+/** A quote inside a row: its opening line, the whole of it a click away. */
+function Aside({ q }: { q: Said }) {
+  const [open, setOpen] = useState(false);
+  // "Read all" only when the clamp actually hides something, which depends on the width it is given
+  const [long, setLong] = useState(false);
+  const text = useRef<HTMLQuoteElement>(null);
+  useLayoutEffect(() => {
+    const el = text.current;
+    if (!el || open) return;
+    const measure = () => setLong(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+  return (
+    <figure className="relative mt-5 overflow-hidden rounded-lg border border-border bg-card p-5">
+      <Quote aria-hidden className="absolute -right-2 -top-2 h-16 w-16 text-accent opacity-5" />
+      <blockquote ref={text} className={`relative text-sm italic leading-relaxed text-foreground/90 ${open ? "" : "line-clamp-3"}`}>“{q.words}”</blockquote>
+      <figcaption className="mt-4 flex items-center gap-3">
+        {q.image && <img src={q.image} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-full border border-accent object-cover" />}
+        <p className="min-w-0 flex-1 text-xs"><span className="font-black">{q.name}</span>{q.role && <span className="text-muted-foreground"> · {q.role}</span>}</p>
+        {(long || open) && <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="no-print shrink-0 text-xs font-black uppercase tracking-widest text-accent hover:underline">{open ? "Less" : "Read all"}</button>}
+      </figcaption>
+    </figure>
+  );
 }
 
 interface MolProps { m: MoleculeDef; row: unknown; x: Ctx; i: number; icon?: LucideIcon; last?: boolean }
@@ -185,10 +226,10 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
   switch (m.as) {
     case "quote":
       return (
-        <figure className={`${rise} relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-background p-8`}>
-          <Quote className="absolute right-4 top-4 h-20 w-20 text-accent opacity-5" />
-          <blockquote className="mb-6 text-lg font-medium italic leading-relaxed">“{f.body}”</blockquote>
-          <figcaption className="flex items-center gap-4 border-t border-border pt-6">
+        <figure className={`${rise} relative flex h-full flex-col justify-between overflow-hidden rounded-lg border border-border bg-card p-8 sm:p-10`}>
+          <Quote aria-hidden className="absolute -right-4 -top-4 h-32 w-32 text-accent opacity-5" />
+          <blockquote className="relative mb-8 text-lg font-medium italic leading-relaxed">“{f.body}”</blockquote>
+          <figcaption className="flex items-center gap-4 border-t border-border/40 pt-6">
             {f.image && <img src={f.image} alt="" className="h-12 w-12 rounded-full border-2 border-accent object-cover" />}
             <div><p className="font-black">{f.title}</p>{f.subtitle && <p className="text-xs font-bold uppercase tracking-widest text-accent">{f.subtitle}</p>}</div>
           </figcaption>
@@ -196,7 +237,7 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
       );
     case "disclosure":
       return (
-        <details open={i === 0} className="group rounded-xl border border-border bg-card px-5 py-4 open:border-accent/40">
+        <details open={i === 0} className="group rounded-lg border border-border bg-card px-5 py-4 open:border-accent/40">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-muted-foreground group-open:text-foreground">
             <span>{f.eyebrow && <Kicker className="mb-1">{f.eyebrow}</Kicker>}{f.title}</span>
             <ChevronDown className="h-4 w-4 shrink-0 text-accent transition-transform group-open:rotate-180" />
@@ -206,7 +247,7 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
       );
     case "prompt":
       return (
-        <button onClick={open} className={`${rise} group flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-card p-6 text-left transition-colors hover:border-accent`}>
+        <button onClick={open} className={`${rise} group flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-card p-6 text-left transition-colors hover:border-accent`}>
           <div>{f.eyebrow && <Kicker className="mb-2">{f.eyebrow}</Kicker>}<p className="text-lg font-bold">{f.title}</p></div>
           <ArrowRight className="h-5 w-5 shrink-0 text-accent transition-transform group-hover:translate-x-1" />
         </button>
@@ -236,7 +277,7 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
     }
     case "step":
       return (
-        <div className="h-full rounded-2xl border border-border bg-background p-6 shadow-lg transition-all hover:border-accent/30 sm:p-8">
+        <div className="h-full rounded-lg border border-border bg-background p-6 shadow-lg transition-all hover:border-accent/30 sm:p-8">
           <div className="mb-4 select-none text-6xl font-black text-accent opacity-10 sm:text-7xl">{f.number || String(i + 1).padStart(2, "0")}</div>
           {Icon && <div className="mb-6 flex h-12 w-12 items-center justify-center rounded border border-border bg-card"><Icon className="h-6 w-6 text-accent" strokeWidth={2} /></div>}
           <h3 className="mb-3 text-lg font-black tracking-tight sm:text-xl">{f.title}</h3>
@@ -247,28 +288,36 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
       return <Event f={f} row={row} x={x} open={open} last={!!last} />;
     case "feature":
       return <FeatureCard f={f} open={open} icon={Icon} />;
-    default:
-      // A card that opens a shape is a stretched button under its title, so an external link or a tag
-      // inside it stays its own control rather than a link nested in a button.
+    default: {
+      // A tile: one hairline frame, the row's icon as a watermark, the title set large, and what a click
+      // does in a ruled foot. No accent edge and no lift — the frame takes the accent on hover, and that
+      // is all. A card that opens a shape is a stretched button under its title, so an external link or a
+      // tag inside it stays its own control rather than a link nested in a button.
+      const short = f.title.length <= 14;
       return (
-        <article className={`${rise} group relative block h-full w-full rounded-xl border border-border border-t-2 border-t-accent/30 bg-card p-6 text-left transition-all sm:p-8 ${open ? "hover:-translate-y-1 hover:border-accent/40" : ""}`}>
-          <div className="flex flex-col gap-6 sm:flex-row">
-            {Icon && <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-border bg-background group-hover:border-accent/50"><Icon className="h-5 w-5 text-accent" strokeWidth={1.5} /></div>}
-            <div className="min-w-0 flex-1">
-              {f.eyebrow && <p className="mb-1 text-xs font-black uppercase tracking-[0.15em] text-accent">{f.eyebrow}</p>}
-              <h3 className="mb-3 text-lg font-black leading-snug tracking-tight sm:text-xl">
-                {open ? <button onClick={open} className="text-left after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent">{f.title}</button> : f.title}
-              </h3>
-              {f.subtitle && <p className="-mt-2 mb-3 text-sm italic text-muted-foreground">{f.subtitle}</p>}
-              {f.body && <p className={`mb-4 text-sm leading-relaxed text-muted-foreground ${open ? "line-clamp-3" : ""}`}>{f.body}</p>}
-              {f.tags.length > 0 && <div className="mb-4"><Tags f={f} row={row} x={x} /></div>}
-              {f.meta && <p className="font-mono text-xs text-muted-foreground/60">{f.meta}</p>}
-              {open && <span aria-hidden className="mt-4 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-accent transition-all group-hover:gap-3">{f.cta || "View details"} <ArrowRight className="h-4 w-4" /></span>}
-            </div>
-            {external}
+        <article className={`${rise} group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-lg border border-border bg-card p-8 text-left transition-colors sm:p-10 ${open ? "hover:border-accent/50" : ""}`}>
+          {Icon && <div aria-hidden className="pointer-events-none absolute -right-4 -top-4 opacity-5 transition-opacity group-hover:opacity-10"><Icon className="h-32 w-32 text-accent" /></div>}
+          <div className="relative min-w-0">
+            {f.eyebrow && <Kicker className="mb-4">{f.eyebrow}</Kicker>}
+            <h3 className={`mb-4 font-black uppercase tracking-tight text-foreground ${short ? "text-3xl sm:text-4xl" : "text-xl leading-tight sm:text-2xl"} ${Icon ? "pr-12" : ""}`}>
+              {open ? <button onClick={open} className="text-left uppercase after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent">{f.title}</button> : f.title}
+            </h3>
+            {f.subtitle && <p className="mb-4 text-lg font-bold leading-tight text-foreground">{f.subtitle}</p>}
+            {f.body && <p className={`text-sm leading-relaxed text-muted-foreground ${open ? "line-clamp-4" : ""}`}>{f.body}</p>}
+            {f.tags.length > 0 && <div className="mt-6"><Tags f={f} row={row} x={x} /></div>}
+            {f.meta && <p className="mt-4 font-mono text-xs text-muted-foreground/60">{f.meta}</p>}
           </div>
+          {(open || external) && (
+            <div className="relative mt-10 flex items-center justify-between gap-4 border-t border-border/40 pt-6">
+              {open
+                ? <span aria-hidden className="text-xs font-black uppercase tracking-widest text-foreground transition-colors group-hover:text-accent">{f.cta || "View details"}</span>
+                : <span />}
+              {external || <ArrowRight aria-hidden className="h-5 w-5 -translate-x-4 text-accent opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />}
+            </div>
+          )}
         </article>
       );
+    }
   }
 }
 
@@ -297,6 +346,7 @@ function Event({ f, row, x, open, last }: { f: Filled; row: unknown; x: Ctx; ope
             </ul>
           )}
           {f.tags.length > 0 && <div className="no-print mt-3"><Tags f={f} row={row} x={x} /></div>}
+          {f.quotes.map((q, j) => <Aside key={j} q={q} />)}
         </>
       )}
     </li>
@@ -465,7 +515,7 @@ function Organism({ o, answer, scope, x }: OrgProps) {
     }
     case "panel":
       return (
-        <section className="rise mb-14 overflow-hidden rounded-2xl border border-border bg-card">
+        <section className="rise mb-14 overflow-hidden rounded-lg border border-border bg-card">
           <div className="grid gap-8 p-6 sm:p-8 md:grid-cols-3">
             {(o.blocks ?? []).map((b, i) => {
               const v = text(`$${b.from}`, answer);
@@ -477,7 +527,7 @@ function Organism({ o, answer, scope, x }: OrgProps) {
     case "callout": {
       const t = text(o.title, scope), l = text(o.lead, scope);
       if (t && (l || o.actions?.length)) return (
-        <div className="mb-14 rounded-xl border border-border bg-gradient-to-br from-card to-background p-8 text-center shadow-2xl sm:p-12">
+        <div className="mb-14 rounded-lg border border-border bg-gradient-to-br from-card to-background p-8 text-center shadow-2xl sm:p-12">
           <h3 className="mb-4 text-2xl font-black tracking-tighter sm:text-3xl">{t}</h3>
           {l && <p className="mx-auto mb-8 max-w-2xl text-base italic text-muted-foreground sm:text-lg">{l}</p>}
           <div className="flex flex-wrap justify-center gap-3">{(o.actions ?? []).map((a, i) => <ActionButton key={i} a={a} scope={scope} x={x} primary={a.primary ?? i === 0} />)}</div>
@@ -521,7 +571,7 @@ function Stats({ o, scope, x }: { o: ResolvedOrganism; scope: Record<string, unk
     <section className="mb-14"><Heading o={o} scope={scope} />
       <dl className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${stats.length >= 4 ? "lg:grid-cols-4" : stats.length === 3 ? "lg:grid-cols-3" : ""}`}>
         {stats.map(({ s, value, label, detail }, i) => (
-          <div key={i} className={`rise ${i < 4 ? `rise-${i + 1}` : ""} flex flex-col justify-between rounded-xl border border-border bg-card`}>
+          <div key={i} className={`rise ${i < 4 ? `rise-${i + 1}` : ""} flex flex-col justify-between rounded-lg border border-border bg-card`}>
             <div className="p-6">
               <dt className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{label}</dt>
               <dd className="mt-3 text-5xl font-black tracking-tighter text-accent">{value}</dd>
@@ -552,7 +602,7 @@ function Facets({ o, answer, scope, x }: { o: ResolvedOrganism; answer: unknown;
   const pick = (arg: string, v: string) => ask(x, { shape: x.shape, args: { [arg]: v } }, scope);
   const t = text(o.title, scope);
   return (
-    <section className="no-print rise rise-1 mb-12 space-y-4 rounded-xl border border-border bg-card p-5">
+    <section className="no-print rise rise-1 mb-12 space-y-4 rounded-lg border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-accent"><SlidersHorizontal className="h-3.5 w-3.5" />{t && <Kicker>{t}</Kicker>}</div>
         {set.length > 0 && (

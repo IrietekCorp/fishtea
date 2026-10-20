@@ -126,6 +126,11 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     for (const [f, t] of Object.entries(ent.fields)) typeProblems(`entities.${name}.fields.${f}`, t, spec, problems);
     for (const f of ent.index ?? []) if (!(f in ent.fields)) problems.push(`entities.${name}.index: unknown field "${f}"`);
     for (const f of ent.embed ?? []) if (!(f in ent.fields)) problems.push(`entities.${name}.embed: unknown field "${f}"`);
+    if (ent.admin && ent.admin !== true) {
+      const a = ent.admin;
+      for (const f of [a.title, a.order, ...(a.columns ?? [])]) if (f !== undefined && !(f in ent.fields)) problems.push(`entities.${name}.admin: unknown field "${f}"`);
+      if (a.collect !== undefined && (!(a.collect in spec.shapes) || a.collect === "version")) problems.push(`entities.${name}.admin.collect: no shape "${a.collect}"`);
+    }
   }
 
   for (const [name, call] of calls(spec)) {

@@ -9,10 +9,10 @@ import spec from "@app/spec.json";
 export interface Section { shape: string; label: string }
 export interface Action { shape: string; label: string }
 export interface Logo { src: string; alt?: string; height?: number; footerHeight?: number }
-interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: string[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" } }
+interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: string[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" }; social?: Record<string, string> }
 
 const rules = (spec as any).rules.site as SiteRules;
-const shapes = (spec as any).shapes as Record<string, { asks: string; input: Record<string, unknown> }>;
+const shapes = (spec as any).shapes as Record<string, { asks: string; input: Record<string, unknown>; effect?: string }>;
 
 export const business = (spec as any).business as { name: string; doc?: string };
 export const home = rules.home;
@@ -22,6 +22,12 @@ export const actions = rules.actions;
 export const logo: Logo | null = rules.brand?.logo ?? null;
 /** How the Ask anything menu is worn (`rules.site.menu`): a floating card or the flush band, and what a chip does. */
 export const menu = { layout: rules.menu?.layout ?? "card", suggestions: rules.menu?.suggestions ?? "fill" } as const;
+/** One of the business's other profiles: the network, what to call it, and where it is. */
+export interface Profile { network: string; label: string; url: string }
+const NETWORKS: Record<string, string> = { linkedin: "LinkedIn", x: "X", instagram: "Instagram", github: "GitHub", youtube: "YouTube", facebook: "Facebook", email: "Email" };
+/** Where else the business is (`rules.site.social`), in the spec's order; a network with no URL yet is left out. */
+export const social: Profile[] = Object.entries(rules.social ?? {}).filter(([, url]) => !!url)
+  .map(([network, url]) => ({ network, url, label: NETWORKS[network] ?? network.charAt(0).toUpperCase() + network.slice(1) }));
 /** Things a visitor might ask: the menu's rotating placeholder and its chips. */
 export const suggestions = rules.suggestions ?? [];
 /** The shell's few business sentences — the input's placeholder, the footer's call to action — from the spec. */
@@ -71,7 +77,10 @@ export interface Route { shape?: string; args: Record<string, string>; text?: st
 export function urlFor(r: Route): string {
   const base = r.shape && r.shape !== home ? (isSection(r.shape) ? `/${r.shape}` : `/${sectionOf(r.shape)}/${r.shape}`).replace(`/${home}/`, "/") : "/";
   const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(r.args ?? {})) if (v != null && v !== "" && typeof v !== "object") q.set(k, String(v));
+  // a short argument is part of the address (?industry=fintech). What is typed into a form that writes — a
+  // name, a message, a photo as a data: URL — is not: it has no place in an address, a history or a log
+  const writes = !!r.shape && shapes[r.shape]?.effect === "write";
+  if (!writes) for (const [k, v] of Object.entries(r.args ?? {})) if (v != null && v !== "" && typeof v !== "object" && String(v).length <= 120 && !String(v).startsWith("data:")) q.set(k, String(v));
   if (r.text && !q.size) q.set("q", r.text);
   return `${base}${q.size ? `?${q}` : ""}${r.action ? `#${r.action}` : ""}`;
 }
