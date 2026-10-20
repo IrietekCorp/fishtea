@@ -68,8 +68,9 @@ export function Shell({ views = {}, chrome = {} }: { views?: Views; chrome?: Chr
   );
 }
 
-/** How the layout renderer asks, and what chrome it draws: a crumb up to the section, threads minus the menu. */
-const hostFor = (c: Conversation, pour: Pour): PresentHost => {
+/** How the layout renderer asks, and what chrome it draws: a crumb up to the section, threads minus the menu.
+ *  A page's view that adds to the declared layout rather than replacing it draws `<PresentAnswer host={hostFor(c, pour)} />`. */
+export const hostFor = (c: Conversation, pour: Pour): PresentHost => {
   const shape = shapeOf(pour);
   const up = parentOf(shape);
   return {
