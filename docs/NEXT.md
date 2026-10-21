@@ -3,12 +3,14 @@
 Read `CLAUDE.md` first (commands, layout, rules of the house), then `docs/DESIGN.md` (measured deviations
 from `docs/BLUEPRINT.md`). This file is what is left.
 
-Updated 2026-10-20, at **1.7.0** (tiles, a working rewind, social links, /admin → Data, view `forms`, a hero's contact line); before that, 1.6.0, after the work ChicDuJour needed — the layout
+Updated 2026-10-21, at **1.7.1** (the classifier pool answers one at a time, on a worker bound to the persona); 1.7.0 (tiles, a working rewind, social links, /admin → Data, view `forms`, a hero's contact line); before that, 1.6.0, after the work ChicDuJour needed — the layout
 language (`rules.present`), the `sections` shell, operator sign-in at `/admin`, the breadcrumb, streamed
 parts and per-call budgets.
 
 ## State
 
+- **1.7.1.** 316 tests, 308 passing, 8 skipped, 0 failing; the pool's own 8 tests pass. With
+  `budgetMs` 1000 and up to 4 visitors at once, 0 of 20 classifies missed (p50 0.19 / 0.53 / 0.72 s at 1 / 3 / 4).
 - **1.7.0.** 316 tests, 308 passing, 8 skipped, 0 failing across 22 files (`bun test packages scripts site`);
   `tsc` clean; the menu's 14 browser tests pass. Schema changes are additive again (`rules.site.social`, an
   entity's `admin`, a molecule's `quotes`, a hero's `contact`), so an application pinned `^1.6.0` runs under it.
