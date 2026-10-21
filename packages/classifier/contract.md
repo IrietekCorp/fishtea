@@ -20,6 +20,7 @@ the core starts its abort timer before the request leaves: a pool given the *who
 mid-reply every time, and even its "timed out" answer is thrown away.
 
 `NEEDLE_WORKERS` ≥ the number of distinct persona subsets** (core logs it at start; 3 for both samples). Each worker holds ~160 MB. |
+| Workers side by side | One completion already spreads across every core. Measured on 16 cores with three workers: one classify alone 200 ms, two at once **1.6 s** each, three at once past **4 s**. Pinning each worker to its own third of the cores was worse still (single classifies past 8 s): the engine keeps a thread per core whichever cores it is given | Workers compute **one at a time** (`NEEDLE_CONCURRENCY`, 1): queued, the third of three answers in ~650 ms and four at once still mostly inside a 1 s budget. Each worker is bound to one persona's subset at warm-up (round robin), and the dispatcher always prefers the worker already on a subset, even busy, over switching another (~3 s with twenty tools). Measured on shawnstewart.me's server, a warm classify is 200–280 ms; its one switch cost 1.5 s |
 | Compound requests | "quiet and polished, for the office" → two `findAccessories` calls (0.85) | Pour takes the top call and offers the rest as `next[]` (§8). |
 | Off-topic | "what's the weather in Lagos" → `function_calls: []`, confidence 0.94 | Empty list is a confident "no": pour `ask`, record `answered=false`. |
 | Confidence on bare verbs | "check out" → `checkout`, confidence 0.15 | Below the 0.35 floor → `form` for checkout with knowns (correct behaviour). |
@@ -45,4 +46,4 @@ Core-side rules live in `packages/core/src/engine.ts`: hard budget via `AbortCon
 
 ## Environment
 
-`NEEDLE_WORKERS` (3; ≥ distinct persona subsets), `NEEDLE_PORT` (8081), `NEEDLE_REQUEST_TIMEOUT` (5 s), `NEEDLE_MODEL_PATH` (offline `.cact`), `NEEDLE_SYSTEM`, `HF_HOME` / `HOME` decide where weights cache (`~/.cache/cactus-needle/v3/<ver>/needle3.cact`). First start downloads ~35 MB from Hugging Face; the Compose `models` volume keeps it.
+`NEEDLE_WORKERS` (3; ≥ distinct persona subsets), `NEEDLE_CONCURRENCY` (1; how many compute at once), `NEEDLE_PORT` (8081), `NEEDLE_REQUEST_TIMEOUT` (5 s), `NEEDLE_MODEL_PATH` (offline `.cact`), `NEEDLE_SYSTEM`, `HF_HOME` / `HOME` decide where weights cache (`~/.cache/cactus-needle/v3/<ver>/needle3.cact`). First start downloads ~35 MB from Hugging Face; the Compose `models` volume keeps it.

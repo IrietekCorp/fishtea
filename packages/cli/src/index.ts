@@ -220,13 +220,13 @@ export async function buildEngine(app: App, flags: Flags, opts: { log?: (s: stri
       if (process.env.FISHTEA_DEBUG) console.error(pc.dim(`pool reloaded + warmed ${engine.personaSubsets.length} persona subsets in ${Math.round(performance.now() - t0)} ms`));
 
       // Say so while it is still warming. `reload` returns as soon as the pool accepts the tools; the
-      // per-persona agents are built behind it, and binding one costs 0.7–1.2 s against a 400 ms budget.
-      // So the first turn for each persona can pour `ask` on a perfectly healthy stack — which reads as
-      // "it is broken" unless somebody said this would happen.
+      // per-persona agents are bound behind it, one worker each, and a bind costs ~3 s with twenty tools.
+      // Until each persona's worker is bound, its first turn can pour `ask` on a perfectly healthy stack —
+      // which reads as "it is broken" unless somebody said this would happen. Once bound, nobody pays it.
       const after = await classifier.health().catch(() => null);
       if ((after?.detail as any)?.warming) {
         console.error(pc.yellow(`⚠ the classifier is still warming ${engine.personaSubsets.length} persona subsets`));
-        console.error(pc.dim(`  binding one costs ~1 s against a ${app.spec.rules.classify?.budgetMs ?? 400} ms budget, so the first turn for each persona may pour "ask" — ask again and it will answer`));
+        console.error(pc.dim(`  binding one costs ~3 s against a ${app.spec.rules.classify?.budgetMs ?? 400} ms budget, so the first turn for each persona may pour "ask" — ask again and it will answer`));
       }
     }
     else {

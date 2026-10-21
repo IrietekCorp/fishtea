@@ -10,8 +10,10 @@ Fishtea classifier service: a pool of needle3 workers behind one HTTP port (BLUE
 Design notes (measured in Phase 0, see contract.md):
   * needle keeps conversation state between complete() calls → every request resets the agent first and
     context is folded into the request text, never carried implicitly.
-  * needle_init is global per process and switching tool subsets costs ~300 ms, so each worker keeps one
-    agent per tool subset and the dispatcher routes requests to the worker whose active subset matches.
+  * needle_init is global per process and switching tool subsets costs ~3 s with twenty doc-rich tools, so
+    each worker is bound to one persona's subset and the dispatcher routes requests to the worker on it.
+  * one completion already uses every core, so workers compute one at a time (NEEDLE_CONCURRENCY): side
+    by side they only slow each other down.
   * embeddings come from the same model (3072 floats).
 Stdlib only besides cactus-needle. Python ≥ 3.9.
 """
@@ -29,6 +31,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PORT = int(os.environ.get("NEEDLE_PORT", "8081"))
 WORKERS = max(1, int(os.environ.get("NEEDLE_WORKERS", "2")))
 TIMEOUT = float(os.environ.get("NEEDLE_REQUEST_TIMEOUT", "5"))
+# How many workers may compute at once. The engine already spreads one completion across every core, so
+# workers side by side only fight: measured on 16 cores, a classify alone took 200 ms, two at once 1.6 s
+# each, and three at once ran past 4 s. One at a time, the third of three waits ~600 ms instead. The
+# workers still matter, as somewhere to keep each persona's subset bound, so nobody pays a switch.
+CONCURRENCY = max(1, int(os.environ.get("NEEDLE_CONCURRENCY", "1")))
 SYSTEM = os.environ.get("NEEDLE_SYSTEM", "You route what a visitor says to one of the store's tools. Prior turns may be listed; the last line is what the visitor said now.")
 MODEL_PATH = os.environ.get("NEEDLE_MODEL_PATH")  # offline copy of needle3.cact (optional)
 
@@ -135,6 +142,10 @@ class Pool:
         self.last_used: list[float] = [0.0] * n
         self.pending: dict[str, tuple[threading.Event, dict]] = {}
         self.lock = threading.Lock()
+        # a permit per op computing; it is given back when the worker answers, not when the caller stops
+        # waiting, so a classify the caller abandoned still counts until it is really done
+        self.running = threading.BoundedSemaphore(CONCURRENCY)
+        self.permits: set[str] = set()
         self.dim = 0
         self.ready = 0
         self.warming = False
@@ -158,6 +169,10 @@ class Pool:
                 continue
             with self.lock:
                 slot = self.pending.pop(req_id, None)
+                held = req_id in self.permits
+                self.permits.discard(req_id)
+            if held:
+                self.running.release()
             if slot:
                 slot[1].update(out)
                 slot[0].set()
@@ -169,18 +184,18 @@ class Pool:
             # A worker holding another subset pays a needle_init (0.7–1.2 s with rich tool docs) to switch, so:
             # idle worker already on this subset → idle worker never assigned → least-recently-used idle worker
             # → busy worker on this subset (short wait) → least loaded. Size NEEDLE_WORKERS ≥ distinct persona subsets.
-            idle_same = [i for i in range(self.n) if self.active[i] == key and self.inflight[i] == 0]
+            # Workers compute one at a time (CONCURRENCY), so an idle worker on another subset is no faster
+            # than the busy one already bound: the bound one costs a short wait, the other a switch (~3 s
+            # with this many tools). So: a worker on this subset → one never assigned → least recently used.
+            same = [i for i in range(self.n) if self.active[i] == key]
             idle_free = [i for i in range(self.n) if self.active[i] is None and self.inflight[i] == 0]
             idle = [i for i in range(self.n) if self.inflight[i] == 0]
-            same = [i for i in range(self.n) if self.active[i] == key]
-            if idle_same:
-                i = idle_same[0]
+            if same:
+                i = min(same, key=lambda j: (self.inflight[j], self.last_used[j]))
             elif idle_free:
                 i = idle_free[0]
             elif idle:
                 i = min(idle, key=lambda j: self.last_used[j])
-            elif same:
-                i = min(same, key=lambda j: self.inflight[j])
             else:
                 i = min(range(self.n), key=lambda j: self.inflight[j])
             self.active[i] = key
@@ -188,18 +203,29 @@ class Pool:
             self.last_used[i] = time.time()
             return i
 
+    def _admit(self, req_id: str, timeout: float) -> bool:
+        """Wait for a permit to compute; the answer to whether one came in time."""
+        if not self.running.acquire(timeout=max(0.0, timeout)):
+            return False
+        with self.lock:
+            self.permits.add(req_id)
+        return True
+
     def request(self, op: str, payload: dict, timeout: float = TIMEOUT) -> dict:
         key = tuple(sorted(payload.get("tools") or [])) if op == "classify" else None
+        start = time.time()
         if op == "classify":
-            payload = dict(payload, deadline=time.time() + timeout)
-        i = self._pick(key)
+            payload = dict(payload, deadline=start + timeout)
         req_id = uuid.uuid4().hex
+        if not self._admit(req_id, timeout):
+            return {"error": "timeout", "queued": True}
+        i = self._pick(key)
         ev, out = threading.Event(), {}
         with self.lock:
             self.pending[req_id] = (ev, out)
         self.queues[i].put((req_id, op, payload))
         try:
-            if not ev.wait(timeout):
+            if not ev.wait(max(0.0, timeout - (time.time() - start))):
                 with self.lock:
                     self.pending.pop(req_id, None)
                 return {"error": "timeout", "worker": i}
@@ -211,6 +237,8 @@ class Pool:
     def _send_to(self, i: int, op: str, payload: dict, timeout: float) -> dict:
         """Send one op to one specific worker and wait (reload/warm must reach every worker, not the least loaded)."""
         req_id = uuid.uuid4().hex
+        if not self._admit(req_id, timeout):
+            return {"error": f"worker {i} {op} never got a turn"}
         ev, out = threading.Event(), {}
         with self.lock:
             self.pending[req_id] = (ev, out)
@@ -240,13 +268,21 @@ class Pool:
         return {"ok": not errs, "count": len(tools), "errors": errs, "warming": bool(subsets)}
 
     def warm(self, subsets: list[list[str]]) -> dict:
-        """Pre-build an agent per tool subset (one per persona), one worker at a time so live requests keep
-        two workers free and initialisations don't contend for the CPU. Runs in the background after /reload."""
+        """Bind each worker to a persona's subset, round robin, so every subset has a worker already on it
+        and no visitor's first question pays the switch. A worker can hold only one bound at a time, so
+        binding it to more would only leave it on the last. Each bind takes its turn like a classify, so
+        live requests interleave with warming rather than fighting it. Runs in the background after /reload."""
         self.warming = True
         outs = []
         try:
-            for i in range(self.n):
-                outs.append(self._send_to(i, "warm", {"subsets": subsets}, 300))
+            if subsets:
+                for i in range(self.n):
+                    names = subsets[i % len(subsets)]
+                    out = self._send_to(i, "warm", {"subsets": [names]}, 300)
+                    if not out.get("error"):
+                        with self.lock:
+                            self.active[i] = tuple(sorted(names))
+                    outs.append(out)
         finally:
             self.warming = False
         return {"workers": len(outs), "subsets": len(subsets), "errors": [o for o in outs if o.get("error")]}
