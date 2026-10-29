@@ -150,7 +150,16 @@ export function checkCases(app: App, cases: EvalCase[]): string[] {
     if (refusal) { problems.push(`${at(i)}: tagged "${c.tag}" but names the shape "${c.shape}" — those tags mean the right answer is silence`); return; }
 
     const tool = tools.get(c.shape);
-    if (!tool) { problems.push(`${at(i)}: "${c.shape}" is not a shape in this spec`); return; }
+    if (!tool) {
+      // A shape the classifier is never offered is a different mistake from one that does not exist,
+      // and saying "not a shape" about a shape sitting in spec.json sends the reader to the wrong file.
+      // `classify: false` means reachable by chip or next-action only — real, and not the model's to find.
+      const declared = (app.spec.shapes as Record<string, unknown>)[c.shape];
+      problems.push(declared && typeof declared === "object"
+        ? `${at(i)}: "${c.shape}" is declared "classify": false, so the classifier is never offered it — it is reached by a chip, not by what a visitor types`
+        : `${at(i)}: "${c.shape}" is not a shape in this spec`);
+      return;
+    }
     if (!subset.includes(c.shape)) {
       problems.push(`${at(i)}: ${c.persona} may not ask "${c.shape}", so it is never offered — label it null and tag it out-of-subset, or the case asks for something impossible`);
       return;

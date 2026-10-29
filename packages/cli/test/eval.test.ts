@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { loadApp } from "@fishtea/spec";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -81,6 +81,22 @@ describe("the validator refuses a label that cannot mean what it says", () => {
   test("an argument the shape does not take", () => fails(withFirst(cases(), { args: { colour: "red" } }), `has no argument "colour"`));
   test("an unknown tag", () => fails(withFirst(cases(), { tag: "tricky" as never }), `tag "tricky" is not one of`));
   test("no text at all", () => fails(withFirst(cases(), { text: "   " }), "no text"));
+
+  test("a shape that exists but is marked classify: false says so, not \"no such shape\"", () => {
+    // Found by borrowing an archetype's set for a real application: ChicDuJour's freshFinds is a real
+    // shape reached by a chip, and "is not a shape in this spec" sent the reader looking for a typo in
+    // a file where the shape was sitting in plain sight.
+    const dir = mkdtempSync(join(tmpdir(), "fishtea-eval-"));
+    cpSync(join(ROOT, "templates/ecommerce"), dir, { recursive: true, filter: (src) => !src.includes("/.fishtea") });
+    const specPath = join(dir, "spec.json");
+    const spec = JSON.parse(readFileSync(specPath, "utf8"));
+    spec.shapes.trending.classify = false;
+    writeFileSync(specPath, JSON.stringify(spec, null, 2));
+    const app = loadApp(dir);
+    const problems = checkCases(app, loadCases(app).filter((c) => c.shape === "trending"));
+    expect(problems.join("\n")).toContain('"classify": false');
+    expect(problems.join("\n")).not.toContain("is not a shape");
+  });
 
   test("a shape the asking persona is never offered", () => {
     // The single most damaging label, because it looks like a hard case and is an impossible one: the
