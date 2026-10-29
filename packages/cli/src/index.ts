@@ -17,7 +17,7 @@ import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassi
 import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
-import { deriveCorpus, personaSubsets, readManifest as readTuneManifest, staleness, writeCorpus } from "./tune.ts";
+import { deriveCorpus, installModel, MODELS_DIR, modelStaleness, personaSubsets, readManifest as readTuneManifest, readModelRecord, staleness, writeCorpus } from "./tune.ts";
 import { baselinePath, caseDigest, checkCases, compare, coverage, floorSweep, headless, loadCases, readBaseline, recommendFloor, runCases, score, writeBaseline, casesPath, REFUSAL_TAGS } from "./eval.ts";
 import { present } from "./present.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
@@ -504,10 +504,17 @@ async function main() {
       if (app) {
         const t = staleness(app);
         if (t.state === "stale") rows.push(["tuning", false, `the corpus was derived before ${t.moved.join(" and ")} changed — run: fishtea tune data`]);
-        else if (t.state === "fresh") rows.push(["tuning", true, `corpus matches the spec${readTuneManifest(app)?.model ? ", model trained" : ", nothing trained yet"}`]);
+        else if (t.state === "fresh") rows.push(["tuning", true, `corpus matches the spec${readModelRecord(app) ? "" : ", nothing trained yet"}`]);
         // A labelled set is inherited from an archetype and then the spec moves out from under it —
         // onboarding alone can drop a shape a case still names. A set that no longer type-checks against
         // the spec is not a weaker measurement, it is a broken instrument, so say so here.
+        const rec = readModelRecord(app);
+        if (rec) {
+          const ms = modelStaleness(app, rec);
+          if (ms.state === "stale") rows.push(["model", false, `models/${rec.file} was trained before ${ms.moved.join(" and ")} changed — retrain and: fishtea tune install <new.cact>`]);
+          else if (ms.state === "missing") rows.push(["model", false, `models/${rec.file} is recorded in model.json but not on disk`]);
+          else rows.push(["model", true, `models/${rec.file} · ${rec.layers} layers · confidence ${rec.confidence}` + (rec.confidence === "none" ? ", no embeddings (familiarity is off)" : "")]);
+        }
         const cases = loadCases(app);
         if (!cases.length) rows.push(["labels", true, `no labelled set yet — fishtea eval says how to start one`]);
         else {
@@ -533,12 +540,43 @@ async function main() {
         if (state === "none") { console.log(`no corpus yet — run: fishtea tune data`); return; }
         console.log(`  corpus     ${m!.examples} examples  ${Object.entries(m!.counts).map(([k, v]) => `${k}:${v}`).join("  ")}`);
         console.log(`  derived    ${m!.at}`);
-        if (m!.model) console.log(`  model      ${m!.model.path} · ${m!.model.layers} layers · confidence ${m!.model.confidence}`);
+        const rec = readModelRecord(app);
+        if (rec) {
+          const ms = modelStaleness(app, rec);
+          console.log(`  model      ${rec.file} · ${rec.layers} layers · ${(rec.bytes / 1e6).toFixed(1)} MB · confidence ${rec.confidence}`);
+          if (ms.state === "missing") console.log(pc.yellow(`             models/${rec.file} is recorded but not on disk`));
+          else if (ms.state === "stale") console.log(pc.yellow(`             trained before ${ms.moved.join(" and ")} changed — retrain, or it routes to a spec that no longer exists`));
+        }
         if (state === "fresh") console.log(pc.green(`✓ still matches the spec`));
         else { console.log(pc.yellow(`✗ stale: ${moved.join(" and ")} changed since it was derived — run: fishtea tune data`)); process.exit(1); }
         return;
       }
-      if (sub !== "data") throw new Error("usage: fishtea tune [data|status]");
+      if (sub === "install") {
+        // The handoff from the machine that can train to the machine that serves. The pool has always
+        // honoured NEEDLE_MODEL_PATH; what was missing was a place to put a model and a record of what
+        // it is. Everything in that record is read out of the archive, not taken on trust.
+        const src = String(positional[2] ?? "");
+        if (!src) throw new Error('usage: fishtea tune install <model.cact> [--as name.cact]');
+        const { record, dest, trainedAgainst, drifted } = installModel(app, src, { as: typeof flags.as === "string" ? flags.as : undefined, framework: FISHTEA_VERSION });
+        console.log(pc.green(`✓ installed ${record.file}  ${(record.bytes / 1e6).toFixed(1)} MB  ${record.layers} layers`));
+        console.log(`  ${dest}`);
+        console.log(`  trained against shapes:${record.hashes.shapes.slice(0, 8)} personas:${record.hashes.personas.slice(0, 8)}` +
+          pc.dim(trainedAgainst === "corpus" ? "  (from the corpus it was derived from)" : "  (no corpus here, so taken from this spec)"));
+        if (drifted.length) {
+          console.log(pc.yellow(`  ⚠ ${drifted.join(" and ")} changed between deriving that corpus and now, so this model is already stale`));
+          console.log(pc.dim(`    re-derive, retrain and reinstall, or it routes to a spec that no longer exists`));
+        }
+        if (record.confidence === "none") {
+          console.log(pc.yellow(`  no confidence head (${record.probeHeads} probe tensors, a stock archive has 9) — needle build drops it for every LoRA merge`));
+          console.log(pc.dim(`    harmless while rules.classify.floor is 0, which is the default; a non-zero floor would reject every answer`));
+          console.log(pc.yellow(`  no embedding head — familiarity and recall go quiet; the pool reports "embeddings": false`));
+        }
+        console.log(`\n  point the pool at it:  NEEDLE_MODEL_PATH=${join(MODELS_DIR, record.file)}`);
+        console.log(pc.dim(`  compose already does this when models/model.json exists; commit models/ so it reaches the server`));
+        console.log(pc.dim(`  verify it before trusting it: fishtea eval --intent needle`));
+        return;
+      }
+      if (sub !== "data") throw new Error("usage: fishtea tune [data|status|install]");
       let trail: { text: string; shape: string; persona: string | null }[] | undefined;
       let unmet: string[] | undefined;
       if (flags.trail === true) {
@@ -794,7 +832,9 @@ async function main() {
   fishtea doctor              check the spec, the database, the classifier and the binding
   fishtea tune data [--trail] [--per-shape 4]
                               derive a training corpus for this application's own classifier
-  fishtea tune status         is the corpus still about this spec?
+  fishtea tune status         is the corpus, and any installed model, still about this spec?
+  fishtea tune install <model.cact> [--as name.cact]
+                              put a model trained elsewhere where the pool will find it
   fishtea eval [--check] [--intent lexical|needle] [--versus] [--save --label "..."]
                               run the labelled set: accuracy by population, the floor it implies,
                               and the delta against eval/baseline.json

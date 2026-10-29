@@ -103,7 +103,14 @@ bunx tsc -p tsconfig.json --noEmit
 - A tuned classifier is derived from the spec, not written: `fishtea tune data` builds the corpus from
   triggers, inputs, seed values and the trail, and `.fishtea/tune/manifest.json` records the `shapes`
   and `personas` hashes so `doctor` knows when a model has gone stale. Deriving is build-time; training
-  is not (two minutes a step on CPU), and a locally tuned model loses its confidence head. `docs/TUNING.md`.
+  is not — three hours on sixteen CPU cores against five minutes on a desktop GPU, so it happens on a
+  workstation and the result travels. **A trained model lives in the application, at `models/`,
+  committed**, described by `models/model.json`: `fishtea tune install` writes that record from the
+  archive's own header (depth, tensors, and the probe heads that say whether a confidence or embedding
+  head survived — nine in a stock archive, two after any LoRA merge) and takes the spec hashes from the
+  corpus manifest, so they are provenance rather than a claim. The pool discovers it beside the spec,
+  so nothing is configured per environment and `NEEDLE_MODEL_PATH` only overrides. `doctor` fails on a
+  stale model. `docs/TUNING.md`.
 - A plugin is merged at *load* time and never written into `spec.json`; the application always wins a name clash, and two plugins clashing is an error.
 - A `classifier` or `channel` plugin *is* its `module` — the manifest must name one, it is imported when
   something wants the behaviour (never when a manifest is read), and every way of getting it wrong names

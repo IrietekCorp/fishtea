@@ -13,7 +13,9 @@ RUN python -c "import needle; a = needle.Needle(tools=[{'name':'noop','descripti
  && rm -rf /opt/hf
 
 COPY packages/classifier/needle_service.py .
-# /models is optional: mount a fine-tuned .cact there and point NEEDLE_MODEL_PATH at it.
+# A tuned .cact is not mounted here: it travels inside the application, at models/, and the pool
+# discovers it from models/model.json (`fishtea tune install`). /models is only for an offline copy
+# of the stock weights, named by NEEDLE_MODEL_PATH.
 ENV NEEDLE_WORKERS=3 NEEDLE_PORT=8081
 VOLUME ["/models"]
 EXPOSE 8081

@@ -46,7 +46,7 @@ Core-side rules live in `packages/core/src/engine.ts`: hard budget via `AbortCon
 
 ## Environment
 
-`NEEDLE_WORKERS` (3; ≥ distinct persona subsets), `NEEDLE_CONCURRENCY` (1; how many compute at once — see Phase 5 before raising it), `NEEDLE_MAX_NEW_TOKENS` (64; the tail), `NEEDLE_CACHE` (512 answers; 0 disables), `NEEDLE_PORT` (8081), `NEEDLE_REQUEST_TIMEOUT` (5 s), `NEEDLE_MODEL_PATH` (offline `.cact`), `NEEDLE_SYSTEM`, `HF_HOME` / `HOME` decide where weights cache (`~/.cache/cactus-needle/v3/<ver>/needle3.cact`). First start downloads ~35 MB from Hugging Face; the Compose `models` volume keeps it.
+`NEEDLE_WORKERS` (3; ≥ distinct persona subsets), `NEEDLE_CONCURRENCY` (1; how many compute at once — see Phase 5 before raising it), `NEEDLE_MAX_NEW_TOKENS` (64; the tail), `NEEDLE_CACHE` (512 answers; 0 disables), `NEEDLE_PORT` (8081), `NEEDLE_REQUEST_TIMEOUT` (5 s), `NEEDLE_MODEL_PATH` (an explicit `.cact`, which overrides the model the pool otherwise discovers from `models/model.json` beside the spec — see `fishtea tune install`), `NEEDLE_SYSTEM`, `HF_HOME` / `HOME` decide where weights cache (`~/.cache/cactus-needle/v3/<ver>/needle3.cact`). First start downloads ~35 MB from Hugging Face; the Compose `models` volume keeps it.
 
 ## Phase 5 — the cost model, and what is not a lever
 

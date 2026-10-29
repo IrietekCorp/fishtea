@@ -34,7 +34,7 @@
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { deriveTools, type App, type ToolSpec } from "@fishtea/spec";
 
 /** One line of `needle finetune`'s JSONL: the prompt it will see, and the answer it should give. */
@@ -281,8 +281,6 @@ export interface TuneManifest {
   examples: number;
   counts: Record<string, number>;
   corpus: string;
-  /** Set once something has actually been trained from this corpus. */
-  model?: { path: string; layers: number; at: string; confidence: "head" | "none" };
 }
 
 export function writeCorpus(app: App, corpus: Corpus): { corpus: string; manifest: string } {
@@ -292,14 +290,12 @@ export function writeCorpus(app: App, corpus: Corpus): { corpus: string; manifes
   // `source` is ours, not needle's: strip it so the file is exactly what `needle finetune` reads.
   writeFileSync(corpusPath, corpus.examples.map(({ source: _s, ...row }) => JSON.stringify(row)).join("\n") + "\n");
   const manifestPath = join(dir, "manifest.json");
-  const existing = readManifest(app);
   const manifest: TuneManifest = {
     hashes: corpus.hashes,
     at: new Date().toISOString(),
     examples: corpus.examples.length,
     counts: corpus.counts,
     corpus: "corpus.jsonl",
-    ...(existing?.model ? { model: existing.model } : {}),
   };
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
   return { corpus: corpusPath, manifest: manifestPath };
@@ -328,3 +324,140 @@ export function staleness(app: App, manifest = readManifest(app)): { state: "non
 /** A short digest of a corpus, so two runs can be compared without diffing thousands of lines. */
 export const corpusDigest = (c: Corpus) =>
   createHash("sha256").update(c.examples.map((e) => `${e.query}\u0000${JSON.stringify(e.answers)}`).join("\n")).digest("hex").slice(0, 16);
+
+// ── a trained model, installed ──────────────────────────────────────────────
+
+/**
+ * Training happens on a machine with a GPU; serving happens wherever the application runs.
+ *
+ * Those are rarely the same box — a full run is five minutes on an RTX 3060 and about three hours on
+ * sixteen CPU cores, so a production server has no business attempting it. What was missing was the
+ * handoff: the pool has always honoured `NEEDLE_MODEL_PATH`, but nothing put a model where it could
+ * find one, nothing recorded which model that was, and nothing noticed when the spec moved out from
+ * under it. `fishtea tune install` is that handoff.
+ *
+ * The record is deliberately derived from the archive rather than asserted by whoever ran the command.
+ * A `.cact` header is a fixed 48 uint32s and a float, so depth, tensor count and engram-site count are
+ * facts, and the probe heads fall out of them: a stock archive carries nine, and `needle build --lora`
+ * leaves two. Measured across six archives at three depths, that separation is exact — which is how
+ * `install` can tell you, without running anything, that the model you just built has no confidence
+ * head and no embedding head, and what each of those costs you.
+ */
+export const MODELS_DIR = "models";
+export const MODEL_RECORD = "model.json";
+export const modelsDir = (app: App) => join(app.dir, MODELS_DIR);
+export const modelRecordPath = (app: App) => join(modelsDir(app), MODEL_RECORD);
+
+/** The 49-field header every `.cact` opens with. */
+const CACT_TAG = 0x05e12a84;
+const CACT_HEADER_BYTES = 48 * 4 + 4;
+/** Per transformer layer, with the qkv conv taps the needle3 family uses. */
+const PER_LAYER = 27;
+/** embedding + mHC block + final norm + tokenizer: the tensors that are not layers, sites or heads. */
+const FIXED_TENSORS = 1 + 9 + 1 + 1;
+/** A stock archive carries nine probe heads (embedding, confidence, router); a LoRA build leaves two. */
+const STOCK_PROBE_HEADS = 9;
+
+export interface CactFacts {
+  layers: number;
+  tensors: number;
+  engramSites: number;
+  vocab: number;
+  dModel: number;
+  /** Stock is 9. Anything less means `needle build` dropped heads, which it does for every LoRA merge. */
+  probeHeads: number;
+}
+
+/** Read what a `.cact` says about itself. Throws with the path when it is not one. */
+export function readCact(bytes: Buffer | Uint8Array, path = "the file"): CactFacts {
+  if (bytes.length < CACT_HEADER_BYTES) throw new Error(`${path} is too small to be a .cact archive`);
+  const v = new DataView(bytes.buffer, bytes.byteOffset, CACT_HEADER_BYTES);
+  const u32 = (i: number) => v.getUint32(i * 4, true);
+  if (u32(0) !== CACT_TAG) throw new Error(`${path} is not a .cact archive (bad header tag)`);
+  const tensors = u32(1), vocab = u32(5), dModel = u32(7), layers = u32(10), engramSites = u32(31);
+  const structural = FIXED_TENSORS + layers * PER_LAYER + engramSites * 4;
+  return { layers, tensors, engramSites, vocab, dModel, probeHeads: tensors - structural };
+}
+
+export interface ModelRecord {
+  /** Relative to models/, so the record travels with the application. */
+  file: string;
+  sha256: string;
+  bytes: number;
+  layers: number;
+  tensors: number;
+  probeHeads: number;
+  /** Whether the model scores its own answers. A LoRA build never does. */
+  confidence: "head" | "none";
+  /** Whether it can embed. Without this, familiarity and recall go quiet. */
+  embeddings: boolean;
+  /** The spec it was trained against. When these move, the model is answering yesterday's question. */
+  hashes: { shapes: string; personas: string };
+  at: string;
+  framework: string;
+}
+
+export function readModelRecord(app: App): ModelRecord | undefined {
+  const p = modelRecordPath(app);
+  if (!existsSync(p)) return undefined;
+  try { return JSON.parse(readFileSync(p, "utf8")) as ModelRecord; } catch { return undefined; }
+}
+
+/**
+ * Put a trained `.cact` where the pool will find it, and write down what it is.
+ *
+ * `models/` is committed on purpose: the artefact has to reach the server somehow, and a file beside
+ * the spec needs no registry, no credentials and no second deploy path. It is 15–63 MB, so a retrain
+ * every few weeks is comfortable and a retrain every hour is not — at which point the record's `sha256`
+ * is what a build step would verify a fetched copy against instead.
+ */
+export function installModel(app: App, src: string, opts: { as?: string; framework?: string } = {}): { record: ModelRecord; dest: string; trainedAgainst: "corpus" | "spec"; drifted: string[] } {
+  if (!existsSync(src)) throw new Error(`no such model: ${src}`);
+  const bytes = readFileSync(src);
+  const facts = readCact(bytes, src);
+  const file = opts.as ?? basename(src);
+  if (!file.endsWith(".cact")) throw new Error(`a model file is a .cact archive, not ${file}`);
+  const dir = modelsDir(app);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, file), bytes);
+  // Provenance, not an assertion. The corpus manifest records the hashes the examples were derived
+  // from, which is what the model actually learned; recording today's spec instead would quietly claim
+  // a match rather than state a fact, and the staleness check downstream would never fire for a spec
+  // edit made between training and installing. The manifest is only present on the machine that
+  // derived the corpus — normally the one with the GPU, which is also where this runs — so falling
+  // back to the current spec is the honest second best, and the caller is told which it got.
+  const corpus = readManifest(app);
+  const hashes = corpus
+    ? { shapes: corpus.hashes.shapes, personas: corpus.hashes.personas }
+    : { shapes: app.hashes.shapes, personas: app.hashes.personas };
+  const drifted = (["shapes", "personas"] as const).filter((k) => hashes[k] !== app.hashes[k]);
+  const record: ModelRecord = {
+    file,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    bytes: bytes.length,
+    layers: facts.layers,
+    tensors: facts.tensors,
+    probeHeads: facts.probeHeads,
+    confidence: facts.probeHeads >= STOCK_PROBE_HEADS ? "head" : "none",
+    embeddings: facts.probeHeads >= STOCK_PROBE_HEADS,
+    hashes,
+    at: new Date().toISOString(),
+    framework: opts.framework ?? "",
+  };
+  writeFileSync(modelRecordPath(app), JSON.stringify(record, null, 2) + "\n");
+  return { record, dest: join(dir, file), trainedAgainst: corpus ? "corpus" : "spec", drifted };
+}
+
+/**
+ * Is the installed model still about this spec?
+ *
+ * The same two sections the corpus depends on, for the same reason: the tools come from `shapes` and
+ * the subsets from `personas`, and a model trained before either moved is routing to a world that no
+ * longer exists. A call's SQL or a layout cannot make it wrong.
+ */
+export function modelStaleness(app: App, record = readModelRecord(app)): { state: "none" | "fresh" | "stale" | "missing"; moved: string[] } {
+  if (!record) return { state: "none", moved: [] };
+  if (!existsSync(join(modelsDir(app), record.file))) return { state: "missing", moved: [] };
+  const moved = (["shapes", "personas"] as const).filter((k) => record.hashes[k] !== app.hashes[k]);
+  return { state: moved.length ? "stale" : "fresh", moved };
+}

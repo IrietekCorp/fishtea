@@ -106,6 +106,85 @@ $ echo $?
 
 `fishtea doctor` reports the same line, and the non-zero exit is what a cron job or a CI step keys off.
 
+## Train on one machine, serve on another
+
+Training wants a GPU and serving does not, so these are normally different boxes: a production server
+has no business attempting a run that takes three hours on CPU and five minutes on a desktop card. The
+trained archive travels **inside the application**, at `models/`, and the pool finds it by itself.
+
+### On the workstation with the GPU
+
+```bash
+fishtea tune data --app ~/apps/myshop                    # derive the corpus from the spec
+cd ~/apps/myshop
+needle finetune .fishtea/tune/corpus.jsonl \
+  --epochs 12 --batch-size 2 --max-len 768 --val-split 0.15 --out adapter.safetensors
+needle build --lora adapter.safetensors --layers 20 --out tuned.cact
+fishtea tune install tuned.cact                          # into models/, with a record of what it is
+```
+
+`install` reads the archive rather than taking your word for it. A `.cact` header states its depth,
+tensor count and engram sites, and the probe heads fall out of those — nine in a stock archive, two
+after any LoRA merge — so it can tell you, without running anything:
+
+```
+✓ installed tuned.cact  63.4 MB  20 layers
+  models/tuned.cact
+  trained against shapes:b862ce14 personas:a442209c  (from the corpus it was derived from)
+  no confidence head (2 probe tensors, a stock archive has 9) — needle build drops it for every LoRA merge
+    harmless while rules.classify.floor is 0, which is the default; a non-zero floor would reject every answer
+  no embedding head — familiarity and recall go quiet; the pool reports "embeddings": false
+```
+
+Those hashes are **provenance, not a claim**. They come from the corpus manifest — what the model
+actually learned — not from the spec as it stands at install time. Edit the spec between deriving and
+installing and `install` says so instead of absorbing it, because that is the one edit most easily
+forgotten.
+
+Then verify before trusting it. This is what the labelled set is for:
+
+```bash
+fishtea eval --app ~/apps/myshop --intent needle          # the pool picks up models/ automatically
+```
+
+It prints the delta against `eval/baseline.json` per population, so "better" is a measurement rather
+than a feeling. Measured on the ecommerce archetype, a tuned 20-layer rung scored **32/56 against the
+stock 29/56** at a 175 ms median against 234.
+
+### Getting it to the server
+
+Commit `models/`. The archive is 15–63 MB, which is comfortable for a retrain every few weeks and
+uncomfortable for one every hour; if you retrain often, keep `models/model.json` in git and have your
+build step fetch the binary from a bucket, verifying it against the `sha256` the record already carries.
+
+**Nothing needs configuring on the server.** The pool reads `models/model.json` beside the spec and
+loads what it names, so the same mechanism works under `fishtea up`, under `fishtea serve`, and for a
+pool started by hand. `NEEDLE_MODEL_PATH` still overrides it, because an operator naming a file means
+it. `/healthz` reports which weights are serving, so a deploy can be verified from outside:
+
+```bash
+curl -s localhost:8081/healthz | jq '{weights, embeddings}'
+{ "weights": "/app/models/tuned.cact", "embeddings": false }
+```
+
+If the record names a file that is not there, the pool says so and serves the stock weights rather than
+refusing to start — a missing 60 MB binary is a deploy mistake, and an application that answers with a
+worse classifier beats one that does not answer.
+
+### Knowing when it has gone stale
+
+`fishtea doctor` **fails** when the spec's `shapes` or `personas` have moved since the model was
+trained — the same two sections the corpus depends on, for the same reason: the tools come from the
+first and the subsets from the second, so a model trained before either moved is routing to a world
+that no longer exists. A call's SQL, a layout or a notification cannot make it wrong.
+
+```
+✗ model       models/tuned.cact was trained before shapes changed — retrain and: fishtea tune install <new.cact>
+```
+
+Whether that blocks a deploy is your CI's decision; the non-zero exit is there to key off. `fishtea tune
+status` reports the same thing alongside the corpus.
+
 ## What is not solved: confidence
 
 **A locally fine-tuned model has no confidence head.** The toolchain says so, and the built model

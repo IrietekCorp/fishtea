@@ -5,7 +5,7 @@ Fishtea classifier service: a pool of needle3 workers behind one HTTP port (BLUE
   POST /classify  {text, context: [..], tools: [names]}  → {function_calls, reasoning, confidence, embedding, ms, worker}
   POST /embed     {texts: [..]}                           → {embeddings: [[..]]}
   POST /reload    {tools: [ToolSpec..]}                   → {ok, count}
-  GET  /healthz                                           → {ok, model, workers, tools, dim}
+  GET  /healthz                                           → {ok, model, workers, tools, dim, weights}
 
 Design notes (measured in Phase 0, see contract.md):
   * needle keeps conversation state between complete() calls → every request resets the agent first and
@@ -53,7 +53,32 @@ MAX_NEW_TOKENS = max(16, int(os.environ.get("NEEDLE_MAX_NEW_TOKENS", "64")))
 # ("what's trending", "show my cart") repeats are the common case, at 127 ms each.
 CACHE_SIZE = max(0, int(os.environ.get("NEEDLE_CACHE", "512")))
 SYSTEM = os.environ.get("NEEDLE_SYSTEM", "You route what a visitor says to one of the store's tools. Prior turns may be listed; the last line is what the visitor said now.")
-MODEL_PATH = os.environ.get("NEEDLE_MODEL_PATH")  # offline copy of needle3.cact (optional)
+def _installed_model() -> "str | None":
+    """A model `fishtea tune install` left beside the spec.
+
+    Training wants a GPU and serving does not, so the two happen on different machines and the trained
+    archive has to travel. It travels in the application, in `models/`, described by `models/model.json`
+    — which means the pool can find it without anyone wiring an absolute container path into Compose,
+    and the same mechanism works under `fishtea serve`, under `fishtea up`, and for a pool started by
+    hand. An explicit NEEDLE_MODEL_PATH still wins, because an operator naming a file means it.
+    """
+    spec = os.environ.get("FISHTEA_SPEC") or (sys.argv[1] if len(sys.argv) > 1 else None)
+    if not spec:
+        return None
+    models = os.path.join(os.path.dirname(os.path.abspath(spec)), "models")
+    try:
+        with open(os.path.join(models, "model.json")) as fh:
+            name = json.load(fh)["file"]
+    except Exception:
+        return None
+    path = os.path.join(models, name)
+    if not os.path.exists(path):
+        print(f"models/model.json names {name}, which is not there — serving the stock weights", file=sys.stderr)
+        return None
+    return path
+
+
+MODEL_PATH = os.environ.get("NEEDLE_MODEL_PATH") or _installed_model()  # offline or tuned .cact (optional)
 
 
 # ── worker process ──────────────────────────────────────────────────────────
@@ -435,7 +460,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/healthz"):
             p = self.pool
-            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "embeddings": p.dim > 0, "warming": p.warming, "active": [list(a) if a else None for a in p.active], "maxNewTokens": MAX_NEW_TOKENS, "cache": {"size": len(p.cache), "limit": CACHE_SIZE, "hits": p.hits, "misses": p.misses}})
+            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "embeddings": p.dim > 0, "weights": MODEL_PATH or "stock", "warming": p.warming, "active": [list(a) if a else None for a in p.active], "maxNewTokens": MAX_NEW_TOKENS, "cache": {"size": len(p.cache), "limit": CACHE_SIZE, "hits": p.hits, "misses": p.misses}})
         self._json(404, {"error": "not found"})
 
     def do_POST(self):

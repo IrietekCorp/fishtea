@@ -455,7 +455,10 @@ services:
       NEEDLE_WORKERS: "\${NEEDLE_WORKERS:-3}"
       FISHTEA_SPEC: /app/spec.json
     volumes:
-      - models:/models        # optional: a fine-tuned .cact, via NEEDLE_MODEL_PATH
+      # A tuned .cact travels in the application, at models/, and the pool finds it from
+      # models/model.json - see "fishtea tune install". This volume is only an offline copy of
+      # the stock weights, via NEEDLE_MODEL_PATH.
+      - models:/models
       - ./:/app:ro
     ports:
       - "\${FISHTEA_CLASSIFIER_PORT:-8081}:8081"
