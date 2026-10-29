@@ -102,14 +102,14 @@ Every answer then comes back with `confidence: None`, which the core reads as `0
 stop answering altogether. This is the blocker, and it is a gating problem rather than a modelling one —
 the routing was good.
 
-There are two ways through, and they are a real choice:
+Cactus's hosted fine-tuning would solve it — the head is trained with the model and calibrated on your
+tools, and it is the only documented way to keep a calibrated confidence. **It is not an option for the
+framework.** FishTea is meant to be distributed and to run locally; a framework that cannot produce a
+working classifier without someone's API key has moved the dependency it was trying to remove. An
+application may choose the hosted service for itself. The framework may not choose it for everybody.
 
-**Cactus's hosted fine-tuning**, where the head is trained with the model and calibrated on your tools.
-It is the only documented way to keep a calibrated confidence. It needs `NEEDLE_API_KEY` and it sends
-the corpus to Cactus — which is training data and a tool list, not visitor traffic, but it is still a
-decision for a framework that runs classification on-device so that nothing leaves.
-
-**A confidence FishTea computes itself**, from signals it already has and the model cannot fake:
+So the way through is **a confidence FishTea computes itself**, from signals it already has and the
+model cannot fake:
 
 | signal | where it comes from |
 |---|---|
@@ -127,6 +127,69 @@ a head to compare against — over 29 ecommerce cases it admits 0 of 3 wrong rou
 correct ones, where the head needs a 0.8 floor to keep 13. That is a tie on a sample far too small to
 set a threshold from, which is the next piece of work: **a labelled set per archetype**, which is the
 same artefact that re-derives `rules.classify.floor` for a newer engine.
+
+
+## How small it goes, and what the megabytes are
+
+The documented range for needle3 is 8–29 MB, which is a real range but not an obvious one: the published
+`needle3.cact` on disk is **35.34 MB**. Taking the archive apart says why. Its format is a header, a
+nameless tensor directory and 64-byte-aligned blobs, so every tensor can be measured:
+
+| part of the published 20-layer archive | width | MB | share |
+|---|---|---|---|
+| **engram tables** | CQ2 | **20.21** | **57%** |
+| transformer layers | CQ2 | 9.53 | 27% |
+| embedding / vocabulary | CQ4 | 3.24 | 9% |
+| layer norms, gates, Hadamard diagonals | FP16 | 1.22 | 3% |
+| mHC blocks | CQ4 | 0.76 | 2% |
+| tokenizer | RAW | 0.11 | — |
+| probe heads (embedding, confidence, router) | CQ4 | 0.04 | — |
+
+Three things set the size, and only one of them is a flag.
+
+**Depth, which moves more than the layers.** `needle build --layers N` exports any rung from 2 to 20, and
+it takes the engram sites down with it — five sites at 20 layers, two at 8, one at 4. Since the tables
+are the biggest line in the file, depth is the dominant size lever precisely because of what it drags
+along, not because of the transformer.
+
+**Quantisation width, worth about 1.9×.** The published archive puts its two big parts at **two bits**.
+The pip package's exporter writes **four**, and refuses anything else — `WEIGHT_BITS = 4`, with
+`_cq_pack` raising on any other value — although the format defines 1, 2, 3, 4 and ternary, the runtime
+reads them (the published file proves it), and the codebook machinery in `quantize.py` already builds
+2- and 3-bit codebooks. Lifting that one guard locally and exporting at two bits produces archives the
+engine loads and runs correctly:
+
+| rung | as the public tooling builds it (4-bit) | at the published width (2-bit) | peak RSS | accuracy, 24 cases |
+|---|---|---|---|---|
+| 2 layers | — | **7.00 MB** | 36 MB | 11/24 |
+| 4 layers | 15.39 MB | **8.12 MB** | 40 MB | 11/24 |
+| 8 layers | 27.41 MB | **14.44 MB** | 58 MB | 13/24 |
+| 20 layers | (35.34 MB published) | 35.34 MB | 119 MB | 16/24 |
+
+That is the documented 8–29 MB range, reproduced. Two bits costs little or nothing in accuracy here,
+because an untuned shallow rung is limited by its depth rather than its precision. **So everything the
+public toolchain builds is about twice the size it needs to be, and closing that is a question for
+Cactus rather than a thing to engineer around.**
+
+**A floor that depth cannot touch.** The embedding is 8192 × 768 and the tokenizer is a raw blob:
+**3.35 MB** that is there at two layers and at twenty. No rung goes below it.
+
+### What that means for running the router on the client
+
+The browser target is real and small: `needle build --platform wasm` emits `needle.wasm` at **0.93 MB**
+and `needle.js` at 62 KB, beside whichever archive you choose. So a FishTea application could ship its
+own router to the browser for **9–15 MB**, cached once.
+
+The prize is not the download. It is that [the pool's hard ceiling](operating.html) — one classify at a
+time, four to five a second per host, because the engine spins twelve threads and collapses when
+oversubscribed — **is a property of classifying on the server.** A router that runs on the client brings
+its own CPU, and the ceiling stops existing. That is the version of this that can stand in for a
+conventional framework's router and session layer at any scale.
+
+Two things stand between here and there, and both are the same piece of work already described above: a
+shallow rung has to be *tuned* to be worth running (untuned, 4 layers is 11/24), and a tuned rung has no
+confidence head, so FishTea has to supply the gate itself. Neither is a browser problem. The WASM build's
+own speed is unmeasured.
 
 ## Why the floor is not a constant
 

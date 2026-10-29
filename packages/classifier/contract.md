@@ -149,3 +149,17 @@ in 73 ms and co-resides with the classifier in one process at 139 MB with no swi
 shares the engine and collapses under concurrency identically (two at once: 72 ms → 670 ms each), so it
 would compete for the one permit. Speech belongs on the device: `--platform wasm` emits a 0.93 MB engine
 beside the 16.9 MB model, and the Web Speech API costs nothing at all.
+
+**Where the megabytes are, and how small it goes.** The published `needle3.cact` is 35.34 MB, and taking
+the archive apart (header, nameless tensor directory, aligned blobs) says what of: **engram tables
+20.21 MB at CQ2 (57%)**, transformer layers 9.53 MB at CQ2, embedding 3.24 MB at CQ4, FP16 norms and
+gates 1.22 MB, tokenizer 0.11 MB. Depth is the dominant lever because it takes the engram sites with it
+(five at 20 layers, two at 8, one at 4), not because of the transformer. The other 1.9× is width: the
+published archive is two-bit, the pip exporter writes four and refuses anything else (`WEIGHT_BITS = 4`,
+`_cq_pack` raises), though the format defines 1–4 plus ternary, the runtime reads them, and
+`quantize.py` already builds the 2-bit codebook. Lifting that guard locally gives archives the engine
+loads and runs: **2 layers 7.00 MB / 36 MB RSS, 4 layers 8.12 / 40, 8 layers 14.44 / 58**, against 15.39
+and 27.41 MB for the same rungs at four bits — the documented 8–29 MB range, reproduced, with no
+measurable accuracy cost at this depth. A floor of 3.35 MB (embedding 8192×768 plus the tokenizer)
+survives any rung. For the browser, `--platform wasm` emits `needle.wasm` at 0.93 MB and `needle.js` at
+62 KB beside the archive. See docs/TUNING.md.
