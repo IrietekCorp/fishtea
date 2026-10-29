@@ -79,7 +79,14 @@ bunx tsc -p tsconfig.json --noEmit
   Code still never runs from there — never build an import or a subprocess from a path into
   `packages/cli/src`; pass the function in (the `Scaffolder` seam) or re-invoke `selfCommand()`.
   `packages/tui/test/seams.test.ts` enforces that half.
-- Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain.
+- Every classify call has a hard budget; past it the pour is `ask`, never a dumber brain. Latency *is*
+  decode length (`≈110 ms + tokens ÷ 310`), so the pool caps tokens and caches repeats; the engine
+  cannot be oversubscribed at all, so never CPU-limit the classifier. `packages/classifier/contract.md`
+  Phase 5 has the numbers, including what is *not* a lever (tool-list size, concurrency, shallow rungs).
+- A tuned classifier is derived from the spec, not written: `fishtea tune data` builds the corpus from
+  triggers, inputs, seed values and the trail, and `.fishtea/tune/manifest.json` records the `shapes`
+  and `personas` hashes so `doctor` knows when a model has gone stale. Deriving is build-time; training
+  is not (two minutes a step on CPU), and a locally tuned model loses its confidence head. `docs/TUNING.md`.
 - A plugin is merged at *load* time and never written into `spec.json`; the application always wins a name clash, and two plugins clashing is an error.
 - A `classifier` or `channel` plugin *is* its `module` — the manifest must name one, it is imported when
   something wants the behaviour (never when a manifest is read), and every way of getting it wrong names

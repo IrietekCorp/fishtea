@@ -17,6 +17,7 @@ import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassi
 import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
+import { deriveCorpus, readManifest as readTuneManifest, staleness, writeCorpus } from "./tune.ts";
 import { present } from "./present.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
@@ -497,8 +498,57 @@ async function main() {
         rows.push(["classifier", !!j.ok, `${cls} · ${j.model} · ${j.ready}/${j.workers} workers · ${j.tools} tools`]);
       } catch { rows.push(["classifier", false, `${cls} unreachable — text utterances will pour "ask"`]); }
       rows.push(["binding", true, `${bindHost(flags)}:${bindPort(flags)} · other machines dial ${publicUrl(flags)}`]);
+      // A tuned classifier is trained against the shapes and personas of one spec. When those move, the
+      // model is answering yesterday's question, and nothing else in the system would say so.
+      if (app) {
+        const t = staleness(app);
+        if (t.state === "stale") rows.push(["tuning", false, `the corpus was derived before ${t.moved.join(" and ")} changed — run: fishtea tune data`]);
+        else if (t.state === "fresh") rows.push(["tuning", true, `corpus matches the spec${readTuneManifest(app)?.model ? ", model trained" : ", nothing trained yet"}`]);
+      }
       for (const [what, ok, detail] of rows) console.log(`${ok ? pc.green("✓") : pc.red("✗")} ${what.padEnd(11)} ${ok ? detail : pc.red(detail)}`);
       if (rows.some(([, ok]) => !ok)) process.exit(1);
+      return;
+    }
+    case "tune": {
+      // The corpus and the bookkeeping. Training is not here on purpose: `needle finetune` is JAX on
+      // CPU at roughly two minutes a step, and a locally tuned model loses its confidence head, which
+      // FishTea reads as 0 and gates everything away. docs/TUNING.md has the measurements.
+      const app = loadOrDie(resolveAppDir(flags));
+      const sub = String(positional[1] ?? "status");
+      if (sub === "status") {
+        const m = readTuneManifest(app);
+        const { state, moved } = staleness(app, m);
+        if (state === "none") { console.log(`no corpus yet — run: fishtea tune data`); return; }
+        console.log(`  corpus     ${m!.examples} examples  ${Object.entries(m!.counts).map(([k, v]) => `${k}:${v}`).join("  ")}`);
+        console.log(`  derived    ${m!.at}`);
+        if (m!.model) console.log(`  model      ${m!.model.path} · ${m!.model.layers} layers · confidence ${m!.model.confidence}`);
+        if (state === "fresh") console.log(pc.green(`✓ still matches the spec`));
+        else { console.log(pc.yellow(`✗ stale: ${moved.join(" and ")} changed since it was derived — run: fishtea tune data`)); process.exit(1); }
+        return;
+      }
+      if (sub !== "data") throw new Error("usage: fishtea tune [data|status]");
+      let trail: { text: string; shape: string; persona: string | null }[] | undefined;
+      let unmet: string[] | undefined;
+      if (flags.trail === true) {
+        // What visitors really said is the best data an application has, and it is the only part that
+        // needs the database. Without it the corpus is still derivable, just smaller.
+        const db = connect(databaseUrl(flags));
+        try {
+          const { TrailService } = await import("@fishtea/core");
+          const trails = new TrailService(db);
+          trail = await trails.labelled({ since: typeof flags.since === "string" ? flags.since : "90 days" });
+          unmet = (await trails.unmet("90 days")).map((r) => String(r.asked ?? "")).filter((t) => t.length > 1);
+        } finally { await db.end(); }
+      }
+      const corpus = deriveCorpus(app, { perShape: Number(flags["per-shape"] ?? 4), trail, unmet });
+      const { corpus: file, manifest } = writeCorpus(app, corpus);
+      console.log(pc.green(`✓ ${corpus.examples.length} examples  ${Object.entries(corpus.counts).map(([k, v]) => `${k}:${v}`).join("  ")}`));
+      console.log(`  ${file}`);
+      console.log(`  ${manifest}  (shapes:${corpus.hashes.shapes.slice(0, 8)} personas:${corpus.hashes.personas.slice(0, 8)})`);
+      if (!flags.trail) console.log(pc.dim(`  --trail adds what visitors actually said, which is the half this cannot invent`));
+      console.log(`\n  next, on a machine with a GPU (see docs/TUNING.md — it is not yet a one-liner):`);
+      console.log(`    needle finetune ${file} --epochs 10 --out adapter.safetensors`);
+      console.log(`    needle build --lora adapter.safetensors --layers 8 --out tuned.cact`);
       return;
     }
     case "derive": {
@@ -621,6 +671,9 @@ async function main() {
   fishtea visitors prune      visitors only tooling produced (headless, present, tests); --yes deletes them
   fishtea present [shape…]    how each answer is laid out (rules.present, or derived); --live asks a running core
   fishtea doctor              check the spec, the database, the classifier and the binding
+  fishtea tune data [--trail] [--per-shape 4]
+                              derive a training corpus for this application's own classifier
+  fishtea tune status         is the corpus still about this spec?
   fishtea derive [--ddl|--tools|--forms]
   fishtea migrate [--allow-destructive]
   fishtea seed                load seed/*.json

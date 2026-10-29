@@ -219,6 +219,44 @@ export class TrailService {
   }
 
   /**
+   * What visitors actually said, paired with the shape it resolved to: an application's own
+   * labelled data, which it accumulates simply by being used.
+   *
+   * Only turns that *worked* count as labels — answered, above the floor the engine applied at the
+   * time, and carrying a shape. A turn the gate refused or the classifier gave up on is not a label
+   * for the shape it guessed; it is a label for nothing, which is why `unmet()` is the other half and
+   * is read separately as negatives.
+   *
+   * Confirmed writes are the strongest label in the trail. The visitor was shown what was about to
+   * happen and said yes, so the shape is right by construction rather than by the classifier's
+   * opinion of itself.
+   */
+  async labelled(o: { since?: string; limit?: number; minConfidence?: number } = {}): Promise<{ text: string; shape: string; persona: string | null; confidence: number | null; confirmed: boolean }[]> {
+    const m = (o.since ?? "90 days").match(/^(\d+)\s*(d|h|m|days?|hours?|minutes?)$/);
+    const interval = m ? `${m[1]} ${({ d: "days", h: "hours", m: "minutes" } as any)[m[2][0]]}` : (o.since ?? "90 days");
+    const limit = Math.min(Math.max(Number(o.limit ?? 2000), 1), 20000);
+    const floor = Number(o.minConfidence ?? 0);
+    return this.db.unsafe(
+      `SELECT DISTINCT ON (lower(t.utterance->>'text'), t.shape)
+              t.utterance->>'text'            AS text,
+              t.shape                         AS shape,
+              t.utterance->>'persona'         AS persona,
+              t.confidence                    AS confidence,
+              (t.kind = 'confirm-write')      AS confirmed
+         FROM conversation.turn t
+        WHERE t.at > now() - $1::interval
+          AND t.shape IS NOT NULL
+          AND t.answered
+          AND t.utterance->>'text' IS NOT NULL
+          AND length(trim(t.utterance->>'text')) > 1
+          AND coalesce(t.confidence, 1) >= $2
+        ORDER BY lower(t.utterance->>'text'), t.shape, (t.kind = 'confirm-write') DESC, t.at DESC
+        LIMIT $3`,
+      [interval, floor, limit],
+    ) as any;
+  }
+
+  /**
    * The action log: every turn, newest first, with what it did and whether it worked.
    *
    * Borrowed in spirit from json-render's devtools, which log the actions a spec fires. The difference

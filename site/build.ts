@@ -723,6 +723,7 @@ async function pages(): Promise<Page[]> {
     { slug: "addresses", title: "Addresses and the timeline", nav: "Addresses & the timeline", group: "Design", body: () => fromMarkdown("docs/ADDRESSES.md", "Addresses and the timeline") },
     { slug: "generative-ui", title: "Generative UI: what to take from json-render", nav: "Generative UI", group: "Design", body: () => fromMarkdown("docs/GENERATIVE-UI.md", "Generative UI") },
     { slug: "access", title: "Access control", nav: "Access control", group: "Operating", body: () => fromMarkdown("docs/ACCESS.md", "Access control") },
+    { slug: "tuning", title: "A classifier for one business", nav: "Tuning the classifier", group: "Operating", body: () => fromMarkdown("docs/TUNING.md", "A classifier for one business") },
 
     { slug: "beta", title: "Join the beta", nav: "Join the beta", group: "Project", body: beta },
     { slug: "blog", title: "Blog", nav: "Blog", group: "Project", body: blogIndex },
