@@ -14,6 +14,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { RUNTIME_FILES } from "./build-release.ts";
+import { check, currentVersion, lockSites, versionSites } from "./release.ts";
 
 const HOME = resolve(import.meta.dir, "..");
 const DOCKERFILES = ["Dockerfile.core", "Dockerfile.classifier"];
@@ -71,5 +72,32 @@ describe("a release contains what its Dockerfiles copy", () => {
     for (const f of ["package.json", "bun.lock", "tsconfig.json"]) {
       expect({ file: f, staged: RUNTIME_FILES.includes(f) }).toEqual({ file: f, staged: true });
     }
+  });
+});
+
+/**
+ * bun.lock repeats every workspace member's version and nothing used to rewrite it, so the committed
+ * lockfile said 1.1.0 while the tree said 1.7.1 and `bun install` dirtied a clean clone every time.
+ */
+describe("every version site agrees, bun.lock included", () => {
+  test("--check passes on this tree", () => {
+    const r = check();
+    expect({ ok: r.ok, disagree: r.disagree }).toEqual({ ok: true, disagree: [] });
+  });
+
+  test("bun.lock is one of the sites", () => {
+    const sites = versionSites();
+    expect(sites.filter((s) => s.where.startsWith("bun.lock")).length).toBeGreaterThan(0);
+  });
+
+  test("a lockfile left at the old version is a disagreement, not a silent pass", () => {
+    const stale = readFileSync(join(HOME, "bun.lock"), "utf8").replace(/"version": "\d+\.\d+\.\d+"/g, '"version": "1.1.0"');
+    expect(lockSites(stale).map((s) => s.version)).toEqual(lockSites(stale).map(() => "1.1.0"));
+    expect(lockSites(stale).every((s) => s.version !== currentVersion())).toBe(true);
+  });
+
+  test("a member missing from the lockfile is loud", () => {
+    // The regex finding nothing must throw rather than drop that site from the check.
+    expect(() => lockSites('{"workspaces":{"":{"name":"fishtea"}}}')).toThrow(/no version for the workspace member/);
   });
 });

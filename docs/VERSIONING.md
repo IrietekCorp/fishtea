@@ -188,8 +188,11 @@ bun run release --check       # assert they all agree (the test suite runs this)
 bun run build-release --install --tarball
 ```
 
-`release` rewrites the literal in `packages/spec/src/release.ts` and every workspace `package.json` in one
-move. `build-release` compiles the binary and stages the runtime files beside it — `--compile` embeds
+`release` rewrites the literal in `packages/spec/src/release.ts`, every workspace `package.json`, and
+`bun.lock` — which repeats each member's version, and which nothing regenerated until 1.7.1, so the
+committed lockfile said 1.1.0 for six releases and dirtied every clean clone's first `bun install`. It is
+regenerated with `bun install --lockfile-only`, and `--check` now reads it as a version site like any
+other. `build-release` compiles the binary and stages the runtime files beside it — `--compile` embeds
 code, not data directories, so `templates/`, `plugins/` and `packages/ui` ship alongside it.
 
 Publishing is deliberately not automated:
