@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { loadApp, deriveDDL, deriveTools, deriveTables, inferVessel, vesselFor, renderPhrase, parseTypeString, topo, validateSpec, SpecError, deriveForm, inputSchema, answerSchema, shapes, getShape, bumpVersion } from "../src/index.ts";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { loadApp, checkTriggers, deriveDDL, deriveTools, deriveTables, inferVessel, vesselFor, renderPhrase, parseTypeString, topo, validateSpec, SpecError, deriveForm, inputSchema, answerSchema, shapes, getShape, bumpVersion } from "../src/index.ts";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../../..");
+const HERE = import.meta.dir;
 const chic = loadApp(resolve(ROOT, "templates/ecommerce"));
 const camp = loadApp(resolve(ROOT, "templates/program"));
 
@@ -104,5 +107,60 @@ describe("validation refuses bad specs", () => {
   test("bumpVersion", () => {
     expect(bumpVersion("2026.09.21-1", new Date("2026-09-21T12:00:00Z"))).toBe("2026.09.21-2");
     expect(bumpVersion("2026.09.20-4", new Date("2026-09-21T12:00:00Z"))).toBe("2026.09.21-1");
+  });
+});
+
+/**
+ * Two shapes claiming the same words is not a style problem. Against the live pool, `viewCart`'s
+ * trigger "my cart" — which sits inside `addToCart`'s "add to my cart" — sent four of seven cart
+ * utterances to `viewCart`, including "remove p_pearl_drop from my cart" at confidence 1.00. That
+ * clears the floor and the persona gate, so the visitor asks to remove something and is shown their
+ * cart. Deleting the one trigger took that suite from 3/8 to 8/8.
+ */
+describe("two shapes may not claim the same words", () => {
+  const spec = (shapes: Record<string, string[]>) => ({
+    shapes: Object.fromEntries(Object.entries(shapes).map(([name, triggers]) => [name, { triggers }])),
+  }) as never;
+
+  test("an exact duplicate is named, once, with both shapes", () => {
+    const p = checkTriggers(spec({ attest: ["attest", "deny"], pendingAttestations: ["pending", "attest"] }));
+    expect(p).toHaveLength(1);
+    expect(p[0]).toContain("shapes.attest and shapes.pendingAttestations");
+    expect(p[0]).toContain('"attest"');
+  });
+
+  test("a trigger contained in another shape's is named with both sides", () => {
+    const p = checkTriggers(spec({ viewCart: ["my cart"], addToCart: ["add to my cart"] }));
+    expect(p).toEqual([
+      `shapes.viewCart: the trigger "my cart" is contained in shapes.addToCart's "add to my cart", so it captures those utterances too`,
+    ]);
+  });
+
+  test("containment is by word, not by character", () => {
+    // "ratio" sits inside "my registration" and means nothing at all.
+    expect(checkTriggers(spec({ askAboutCamp: ["ratio"], registrationStatus: ["my registration"] }))).toEqual([]);
+  });
+
+  test("case and surrounding space do not hide a clash", () => {
+    expect(checkTriggers(spec({ a: ["  My Cart "], b: ["add to my cart"] }))).toHaveLength(1);
+    expect(checkTriggers(spec({ a: ["Consent"], b: ["consent"] }))).toHaveLength(1);
+  });
+
+  test("a shape may narrow its own trigger", () => {
+    expect(checkTriggers(spec({ howItWorks: ["how does", "how does consent work"] }))).toEqual([]);
+  });
+
+  test("shapes with no triggers, and an empty one, are quiet", () => {
+    expect(checkTriggers({ shapes: { a: {}, b: { triggers: [] }, c: { triggers: ["  "] }, version: "1" } } as never)).toEqual([]);
+  });
+
+  test("every shipped archetype passes, and loading one that does not is refused", () => {
+    for (const t of readdirSync(join(HERE, "../../../templates"))) {
+      const raw = JSON.parse(readFileSync(join(HERE, `../../../templates/${t}/spec.json`), "utf8"));
+      expect({ t, problems: checkTriggers(raw) }).toEqual({ t, problems: [] });
+    }
+    const raw = JSON.parse(readFileSync(join(HERE, "../../../templates/ecommerce/spec.json"), "utf8"));
+    raw.shapes.viewCart.triggers = ["my cart"];
+    expect(() => validateSpec(raw)).toThrow(/is contained in shapes.addToCart/);
   });
 });

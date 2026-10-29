@@ -84,6 +84,46 @@ export function loadApp(target: string, opts: { fishteaHome?: string } = {}): Ap
   };
 }
 
+/**
+ * Two shapes must not claim the same words.
+ *
+ * A trigger is a hint the classifier reads, and a hint that belongs to two shapes picks one of them.
+ * Measured against the live pool with the ecommerce archetype: `viewCart` declared the trigger
+ * `my cart`, which is contained in `addToCart`'s `add to my cart` and `removeFromCart`'s
+ * `take out of my cart`, and the result was that four of seven cart utterances routed to `viewCart` —
+ * `remove p_pearl_drop from my cart` among them, at **confidence 1.00**. That clears the floor and the
+ * persona gate, so nothing downstream can catch it: the visitor asks to remove something and is shown
+ * their cart instead. Deleting the one trigger took cart routing from 3/7 to 7/7, changing nothing else.
+ *
+ * So this is an error rather than a warning. Containment is compared word by word, not character by
+ * character, because `ratio` sits inside `my registration` and means nothing at all.
+ */
+export function checkTriggers(spec: SpecLike): string[] {
+  const words = (t: string) => t.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const declared: { shape: string; trigger: string; words: string[] }[] = [];
+  for (const [shape, def] of Object.entries((spec as any).shapes ?? {})) {
+    if (!def || typeof def !== "object") continue;
+    for (const t of ((def as any).triggers ?? []) as string[]) {
+      const w = words(String(t));
+      if (w.length) declared.push({ shape, trigger: String(t), words: w });
+    }
+  }
+  const inside = (a: string[], b: string[]) =>
+    a.length < b.length && b.some((_, i) => b.slice(i, i + a.length).join(" ") === a.join(" "));
+  const problems = new Set<string>();
+  for (const a of declared) {
+    for (const b of declared) {
+      if (a.shape === b.shape) continue;
+      if (a.words.join(" ") === b.words.join(" ")) {
+        problems.add(`shapes.${[a.shape, b.shape].sort().join(" and shapes.")}: both trigger on "${a.words.join(" ")}" — a trigger two shapes claim picks one of them`);
+      } else if (inside(a.words, b.words)) {
+        problems.add(`shapes.${a.shape}: the trigger "${a.trigger}" is contained in shapes.${b.shape}'s "${b.trigger}", so it captures those utterances too`);
+      }
+    }
+  }
+  return [...problems].sort();
+}
+
 /** Parse + validate + freeze. Throws SpecError listing every problem found. */
 export function validateSpec(raw: unknown, opts: { dir?: string } = {}): Spec {
   const problems: string[] = [];
@@ -93,7 +133,7 @@ export function validateSpec(raw: unknown, opts: { dir?: string } = {}): Spec {
   }
   const spec = raw as Spec;
   structural(spec, opts.dir, problems);
-  problems.push(...checkPresent(spec as unknown as SpecLike), ...checkSite(spec as unknown as SpecLike));
+  problems.push(...checkPresent(spec as unknown as SpecLike), ...checkSite(spec as unknown as SpecLike), ...checkTriggers(spec as unknown as SpecLike));
   if (problems.length) throw new SpecError(problems);
   return deepFreeze(spec);
 }

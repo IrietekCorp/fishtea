@@ -3,7 +3,7 @@
   "business": {
     "id": "verification",
     "name": "Example Verify",
-    "doc": "Employee engagement verification: employers, lenders and background checkers confirm that a person worked (or works) somewhere, in what role, over what period \u2014 with the employee's consent, an auditable trail and no more data than the request needs.",
+    "doc": "Employee engagement verification: employers, lenders and background checkers confirm that a person worked (or works) somewhere, in what role, over what period — with the employee's consent, an auditable trail and no more data than the request needs.",
     "locale": "en-US",
     "currency": "USD",
     "version": "2026.09.21-1"
@@ -155,7 +155,7 @@
       ]
     },
     "verificationRequest": {
-      "doc": "A request walks: requested \u2192 consent-pending \u2192 attesting \u2192 verified | declined | expired.",
+      "doc": "A request walks: requested → consent-pending → attesting → verified | declined | expired.",
       "fields": {
         "id": {
           "type": "id"
@@ -202,7 +202,7 @@
         "result": {
           "type": "json",
           "optional": true,
-          "doc": "{ titleMatches, datesMatch, note } \u2014 only what the request asked"
+          "doc": "{ titleMatches, datesMatch, note } — only what the request asked"
         },
         "events": {
           "type": "json"
@@ -518,7 +518,7 @@
         "what do you disclose",
         "how long",
         "is it legal",
-        "consent"
+        "how does consent work"
       ],
       "next": [
         {
@@ -709,7 +709,8 @@
       ],
       "phrase": "Consent recorded",
       "triggers": [
-        "consent",
+        "i consent",
+        "give consent",
         "I agree",
         "I allow",
         "revoke"
@@ -747,7 +748,7 @@
       "triggers": [
         "waiting for me",
         "pending",
-        "attest"
+        "requests for me"
       ],
       "next": [
         {
@@ -845,9 +846,9 @@
         "result": "$v.result"
       },
       "triggers": [
-        "confirm",
+        "attest",
         "deny",
-        "attest"
+        "they did work here"
       ]
     }
   },

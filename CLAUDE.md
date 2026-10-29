@@ -62,6 +62,11 @@ bunx tsc -p tsconfig.json --noEmit
   cookie, a first password that must be changed before anything else opens, lockout, and
   `x-fishtea-admin` on any cookie'd change. Scripts use `FISHTEA_OPERATOR_TOKEN`. A shell never shows
   operator data; `/debug` moved into `/admin` for that reason.
+- **Two shapes may not claim the same words.** A trigger is a hint the classifier reads, and one that
+  belongs to two shapes picks one of them: `viewCart`'s `my cart`, which sits inside `addToCart`'s
+  `add to my cart`, sent five of eight cart utterances to `viewCart` — `remove … from my cart` at
+  confidence **1.00**, past the floor and the gate. `checkTriggers` refuses an exact duplicate or a
+  word-level containment at load, which is why it is an error and not a warning.
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - A port nobody chose may move: `serve` and `up` probe first and step to the next free one, saying so. A

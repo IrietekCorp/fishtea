@@ -54,7 +54,7 @@
       }
     },
     "product": {
-      "doc": "One sellable thing. The description is the knowledge pool the classifier extracts against; tags and attributes carry whatever this business sells by (mood, material, size, colour\u2026).",
+      "doc": "One sellable thing. The description is the knowledge pool the classifier extracts against; tags and attributes carry whatever this business sells by (mood, material, size, colour…).",
       "fields": {
         "id": {
           "type": "id"
@@ -88,7 +88,7 @@
         "attributes": {
           "type": "json",
           "optional": true,
-          "doc": "{ colour, material, size, \u2026 } \u2014 anything structured"
+          "doc": "{ colour, material, size, … } — anything structured"
         },
         "price": {
           "type": "money",
@@ -520,7 +520,7 @@
       "shipToRequired": true
     },
     "inventory": {
-      "doc": "How vendor feeds are pulled. Adapters read credentials from env (EBAY_APP_ID, AMAZON_ACCESS_KEY, \u2026), never from the spec.",
+      "doc": "How vendor feeds are pulled. Adapters read credentials from env (EBAY_APP_ID, AMAZON_ACCESS_KEY, …), never from the spec.",
       "syncEveryHours": 24,
       "maxItemsPerVendor": 200,
       "affiliateBuysOffsite": true
@@ -901,9 +901,9 @@
       ],
       "phrase": "Your cart",
       "triggers": [
-        "my cart",
         "view cart",
-        "in the cart"
+        "show my cart",
+        "what's in my cart"
       ],
       "next": [
         {
@@ -980,7 +980,7 @@
       "assemble": {
         "ok": true,
         "order": "$o",
-        "summary": "Order $o.id \u2014 $$t.total incl. $$t.tax tax ($t.jurisdiction)"
+        "summary": "Order $o.id — $$t.total incl. $$t.tax tax ($t.jurisdiction)"
       },
       "triggers": [
         "check out",
@@ -1103,7 +1103,7 @@
     "greeting": {
       "stranger": {
         "shape": "findProducts",
-        "hint": "Tell us what you're looking for \u2014 or what it's for.",
+        "hint": "Tell us what you're looking for — or what it's for.",
         "offer": [
           "trending",
           "becomeKnown"

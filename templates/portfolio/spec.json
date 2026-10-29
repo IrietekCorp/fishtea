@@ -1,91 +1,897 @@
 {
   "fishtea": "1.0",
-  "business": { "id": "portfolio", "name": "Example Person", "doc": "A professional portfolio you can interview. Visitors ask about capabilities, projects and experience; the conversation runs a dynamic interview instead of a resume page.", "locale": "en-US", "currency": "USD", "version": "2026.09.21-1" },
-
+  "business": {
+    "id": "portfolio",
+    "name": "Example Person",
+    "doc": "A professional portfolio you can interview. Visitors ask about capabilities, projects and experience; the conversation runs a dynamic interview instead of a resume page.",
+    "locale": "en-US",
+    "currency": "USD",
+    "version": "2026.09.21-1"
+  },
   "entities": {
     "version": "2026.09.21-1",
-    "person": { "doc": "The subject. One row.", "fields": { "id": { "type": "id" }, "name": { "type": "string" }, "headline": { "type": "string" }, "summary": { "type": "text" }, "location": { "type": "string", "optional": true }, "availability": { "type": "enum", "values": ["open", "selective", "unavailable"], "default": "selective" }, "links": { "type": "json", "optional": true } } },
-    "skill": { "fields": { "id": { "type": "id" }, "name": { "type": "string" }, "level": { "type": "enum", "values": ["familiar", "working", "strong", "expert"] }, "years": { "type": "int", "optional": true }, "category": { "type": "string" }, "evidence": { "type": "text", "doc": "What proves it: projects, outcomes, numbers." } }, "index": ["category", "level"], "embed": ["name", "category", "evidence"] },
-    "project": { "fields": { "id": { "type": "id" }, "name": { "type": "string" }, "role": { "type": "string" }, "summary": { "type": "text" }, "outcome": { "type": "text", "doc": "The measurable result." }, "skills": { "type": "string[]" }, "year": { "type": "int" }, "url": { "type": "url", "optional": true }, "imageUrl": { "type": "url", "optional": true }, "featured": { "type": "boolean", "default": false } }, "index": ["skills", "year"], "embed": ["name", "role", "summary", "outcome", "skills"] },
-    "experience": { "fields": { "id": { "type": "id" }, "organization": { "type": "string" }, "title": { "type": "string" }, "startDate": { "type": "date" }, "endDate": { "type": "date", "optional": true }, "summary": { "type": "text" }, "highlights": { "type": "string[]" } }, "index": ["startDate"], "embed": ["organization", "title", "summary", "highlights"] },
-    "question": { "doc": "The interview bank: questions people ask, with the person's own answer. The classifier extracts against these; `followUps` drive the dynamic interview.", "fields": { "id": { "type": "id" }, "topic": { "type": "string" }, "question": { "type": "string" }, "answer": { "type": "text" }, "followUps": { "type": "id[]", "doc": "question ids worth asking next" }, "order": { "type": "int", "default": 0 } }, "index": ["topic"], "embed": ["topic", "question", "answer"] },
-    "contact": { "fields": { "id": { "type": "id" }, "email": { "type": "email" }, "name": { "type": "string", "optional": true }, "organization": { "type": "string", "optional": true }, "intent": { "type": "enum", "values": ["hire", "collaborate", "speak", "other"], "default": "other" }, "message": { "type": "text", "optional": true }, "createdAt": { "type": "timestamp" } }, "unique": ["email"] }
+    "person": {
+      "doc": "The subject. One row.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "text"
+        },
+        "location": {
+          "type": "string",
+          "optional": true
+        },
+        "availability": {
+          "type": "enum",
+          "values": [
+            "open",
+            "selective",
+            "unavailable"
+          ],
+          "default": "selective"
+        },
+        "links": {
+          "type": "json",
+          "optional": true
+        }
+      }
+    },
+    "skill": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "level": {
+          "type": "enum",
+          "values": [
+            "familiar",
+            "working",
+            "strong",
+            "expert"
+          ]
+        },
+        "years": {
+          "type": "int",
+          "optional": true
+        },
+        "category": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "text",
+          "doc": "What proves it: projects, outcomes, numbers."
+        }
+      },
+      "index": [
+        "category",
+        "level"
+      ],
+      "embed": [
+        "name",
+        "category",
+        "evidence"
+      ]
+    },
+    "project": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "text"
+        },
+        "outcome": {
+          "type": "text",
+          "doc": "The measurable result."
+        },
+        "skills": {
+          "type": "string[]"
+        },
+        "year": {
+          "type": "int"
+        },
+        "url": {
+          "type": "url",
+          "optional": true
+        },
+        "imageUrl": {
+          "type": "url",
+          "optional": true
+        },
+        "featured": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "index": [
+        "skills",
+        "year"
+      ],
+      "embed": [
+        "name",
+        "role",
+        "summary",
+        "outcome",
+        "skills"
+      ]
+    },
+    "experience": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "organization": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "date"
+        },
+        "endDate": {
+          "type": "date",
+          "optional": true
+        },
+        "summary": {
+          "type": "text"
+        },
+        "highlights": {
+          "type": "string[]"
+        }
+      },
+      "index": [
+        "startDate"
+      ],
+      "embed": [
+        "organization",
+        "title",
+        "summary",
+        "highlights"
+      ]
+    },
+    "question": {
+      "doc": "The interview bank: questions people ask, with the person's own answer. The classifier extracts against these; `followUps` drive the dynamic interview.",
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "text"
+        },
+        "followUps": {
+          "type": "id[]",
+          "doc": "question ids worth asking next"
+        },
+        "order": {
+          "type": "int",
+          "default": 0
+        }
+      },
+      "index": [
+        "topic"
+      ],
+      "embed": [
+        "topic",
+        "question",
+        "answer"
+      ]
+    },
+    "contact": {
+      "fields": {
+        "id": {
+          "type": "id"
+        },
+        "email": {
+          "type": "email"
+        },
+        "name": {
+          "type": "string",
+          "optional": true
+        },
+        "organization": {
+          "type": "string",
+          "optional": true
+        },
+        "intent": {
+          "type": "enum",
+          "values": [
+            "hire",
+            "collaborate",
+            "speak",
+            "other"
+          ],
+          "default": "other"
+        },
+        "message": {
+          "type": "text",
+          "optional": true
+        },
+        "createdAt": {
+          "type": "timestamp"
+        }
+      },
+      "unique": [
+        "email"
+      ]
+    }
   },
-
   "calls": {
     "version": "2026.09.21-1",
-    "person.get":       { "kind": "query", "in": {}, "out": "person", "impl": { "sql": "person_get.sql" } },
-    "questions.search": { "kind": "query", "in": { "text": "string", "limit": "int=3" }, "out": "question[]", "impl": { "sql": "questions_search.sql" } },
-    "questions.byIds":  { "kind": "query", "in": { "ids": "id[]" }, "out": "question[]", "impl": { "sql": "questions_by_ids.sql" } },
-    "questions.next":   { "kind": "query", "in": { "askedIds": "id[]", "topic": "string?" }, "out": "question[]", "impl": { "sql": "questions_next.sql", "doc": "Unasked questions, the given topic first, in bank order." } },
-    "skills.search":    { "kind": "query", "in": { "text": "string?", "category": "string?", "minLevel": "string?" }, "out": "skill[]", "impl": { "sql": "skills_search.sql" } },
-    "projects.search":  { "kind": "query", "in": { "text": "string?", "skill": "string?", "limit": "int=6" }, "out": "project[]", "impl": { "sql": "projects_search.sql" } },
-    "experience.list":  { "kind": "query", "in": {}, "out": "experience[]", "impl": { "sql": "experience_list.sql" } },
-    "contact.upsert":   { "kind": "mutation", "in": { "email": "email", "visitorId": "id", "name": "string?", "organization": "string?", "intent": "string=other", "message": "string?" }, "out": "contact", "impl": { "sql": "contact_upsert.sql" } },
-    "fit.assess":       { "kind": "compute", "doc": "Given a role description, match it against skills and projects and say where the fit is strong and where it is not. Rules, not the model, decide the verdict.", "in": { "role": "string", "skills": "skill[]", "projects": "project[]" }, "out": { "verdict": "string", "strong": "json", "gaps": "json", "askNext": "string" }, "impl": { "module": "fit_assess.ts" } }
+    "person.get": {
+      "kind": "query",
+      "in": {},
+      "out": "person",
+      "impl": {
+        "sql": "person_get.sql"
+      }
+    },
+    "questions.search": {
+      "kind": "query",
+      "in": {
+        "text": "string",
+        "limit": "int=3"
+      },
+      "out": "question[]",
+      "impl": {
+        "sql": "questions_search.sql"
+      }
+    },
+    "questions.byIds": {
+      "kind": "query",
+      "in": {
+        "ids": "id[]"
+      },
+      "out": "question[]",
+      "impl": {
+        "sql": "questions_by_ids.sql"
+      }
+    },
+    "questions.next": {
+      "kind": "query",
+      "in": {
+        "askedIds": "id[]",
+        "topic": "string?"
+      },
+      "out": "question[]",
+      "impl": {
+        "sql": "questions_next.sql",
+        "doc": "Unasked questions, the given topic first, in bank order."
+      }
+    },
+    "skills.search": {
+      "kind": "query",
+      "in": {
+        "text": "string?",
+        "category": "string?",
+        "minLevel": "string?"
+      },
+      "out": "skill[]",
+      "impl": {
+        "sql": "skills_search.sql"
+      }
+    },
+    "projects.search": {
+      "kind": "query",
+      "in": {
+        "text": "string?",
+        "skill": "string?",
+        "limit": "int=6"
+      },
+      "out": "project[]",
+      "impl": {
+        "sql": "projects_search.sql"
+      }
+    },
+    "experience.list": {
+      "kind": "query",
+      "in": {},
+      "out": "experience[]",
+      "impl": {
+        "sql": "experience_list.sql"
+      }
+    },
+    "contact.upsert": {
+      "kind": "mutation",
+      "in": {
+        "email": "email",
+        "visitorId": "id",
+        "name": "string?",
+        "organization": "string?",
+        "intent": "string=other",
+        "message": "string?"
+      },
+      "out": "contact",
+      "impl": {
+        "sql": "contact_upsert.sql"
+      }
+    },
+    "fit.assess": {
+      "kind": "compute",
+      "doc": "Given a role description, match it against skills and projects and say where the fit is strong and where it is not. Rules, not the model, decide the verdict.",
+      "in": {
+        "role": "string",
+        "skills": "skill[]",
+        "projects": "project[]"
+      },
+      "out": {
+        "verdict": "string",
+        "strong": "json",
+        "gaps": "json",
+        "askNext": "string"
+      },
+      "impl": {
+        "module": "fit_assess.ts"
+      }
+    }
   },
-
   "rules": {
     "version": "2026.09.21-1",
-    "interview": { "maxFollowUps": 3, "honesty": "gaps are stated, never hidden" },
-    "fit": { "strongLevels": ["strong", "expert"], "minStrongForGoodFit": 3 },
-    "contact": { "requires": ["email"], "replyWithinDays": 2 },
-    "writes": { "confirmAlways": true, "minConfidence": 0.85 },
-    "classify": { "budgetMs": 1000, "floor": 0.35, "contextTurns": 6 },
-    "calls": { "timeoutMs": 250 },
-    "familiarity": { "threshold": 0.96 },
-    "trail": { "sessionGapHours": 4 }
+    "interview": {
+      "maxFollowUps": 3,
+      "honesty": "gaps are stated, never hidden"
+    },
+    "fit": {
+      "strongLevels": [
+        "strong",
+        "expert"
+      ],
+      "minStrongForGoodFit": 3
+    },
+    "contact": {
+      "requires": [
+        "email"
+      ],
+      "replyWithinDays": 2
+    },
+    "writes": {
+      "confirmAlways": true,
+      "minConfidence": 0.85
+    },
+    "classify": {
+      "budgetMs": 1000,
+      "floor": 0.35,
+      "contextTurns": 6
+    },
+    "calls": {
+      "timeoutMs": 250
+    },
+    "familiarity": {
+      "threshold": 0.96
+    },
+    "trail": {
+      "sessionGapHours": 4
+    }
   },
-
   "shapes": {
     "version": "2026.09.21-1",
-    "askAbout": { "asks": "Ask anything about this person: how they work, what they've built, what they're like to work with", "input": { "question": { "type": "string", "doc": "the visitor's question, verbatim" } }, "answer": { "answers": "question[]", "followUps": "question[]" }, "effect": "read", "allow": ["stranger", "known", "recruiter"],
-      "plan": [ { "id": "a", "call": "questions.search", "with": { "text": "$question" } }, { "id": "f", "call": "questions.next", "with": { "askedIds": "[$a.0.id]", "topic": "$a.0.topic" }, "after": ["a"] } ], "assemble": { "answers": "$a", "followUps": "$f" }, "vessel": "detail",
-      "phrase": "You asked: $question", "triggers": ["tell me about", "how do you", "what is your", "why did you", "describe"],
-      "next": [ { "label": "{item.question}", "shape": "askAbout", "args": { "question": "$item.question" }, "each": "answer.followUps" }, { "label": "Show projects", "shape": "projects" } ] },
-    "skills": { "asks": "What skills and capabilities this person has, by area or level", "input": { "area": { "type": "string?", "doc": "e.g. backend, data, leadership, design" }, "text": "string?" }, "answer": "skill[]", "effect": "read", "allow": ["stranger", "known", "recruiter"], "plan": [ { "call": "skills.search", "with": { "text": "$text", "category": "$area" } } ], "phrase": "Skills {area? in $area}", "triggers": ["skills", "capabilities", "good at", "experience with", "know"],
-      "next": [ { "label": "Projects using {item.name}", "shape": "projects", "args": { "skill": "$item.name" }, "each": "answer" } ] },
-    "projects": { "asks": "Projects and work samples, optionally for a skill or topic", "input": { "skill": "string?", "text": "string?" }, "answer": "project[]", "effect": "read", "allow": ["stranger", "known", "recruiter"], "plan": [ { "call": "projects.search", "with": { "text": "$text", "skill": "$skill" } } ], "phrase": "Projects {skill? using $skill} {text? about $text}", "triggers": ["projects", "portfolio", "work samples", "built", "shipped"],
-      "next": [ { "label": "Ask about {item.name}", "shape": "askAbout", "args": { "question": "Tell me about $item.name" }, "each": "answer" } ] },
-    "experience": { "asks": "Work history and roles", "input": {}, "answer": { "events": "experience[]" }, "effect": "read", "allow": ["stranger", "known", "recruiter"], "plan": [ { "id": "e", "call": "experience.list", "with": {} } ], "assemble": { "events": "$e" }, "vessel": "timeline", "phrase": "Experience", "triggers": ["experience", "work history", "resume", "cv", "career"] },
-    "interview": { "asks": "Run an interview: get the next best question to ask, given what's been covered", "input": { "topic": { "type": "string?", "doc": "an area to steer toward" } }, "answer": { "next": "question[]" }, "effect": "read", "allow": ["stranger", "known", "recruiter"],
-      "plan": [ { "id": "n", "call": "questions.next", "with": { "askedIds": [], "topic": "$topic" } } ], "assemble": { "next": "$n" }, "vessel": "detail", "phrase": "Interview {topic? on $topic}", "triggers": ["interview", "what should I ask", "start"],
-      "next": [ { "label": "{item.question}", "shape": "askAbout", "args": { "question": "$item.question" }, "each": "answer.next" } ] },
-    "fitFor": { "asks": "How well this person fits a role or need you describe", "input": { "role": { "type": "text", "doc": "the role, need or job description, in the visitor's words" } }, "answer": { "verdict": "string", "strong": "json", "gaps": "json", "askNext": "string" }, "effect": "read", "allow": ["known", "recruiter"],
-      "plan": [ { "id": "s", "call": "skills.search", "with": { "text": "$role" } }, { "id": "p", "call": "projects.search", "with": { "text": "$role", "limit": 5 } }, { "id": "f", "call": "fit.assess", "with": { "role": "$role", "skills": "$s", "projects": "$p" }, "after": ["s", "p"] } ], "assemble": "$f", "vessel": "detail",
-      "phrase": "Fit for: $role", "triggers": ["fit", "would you be good for", "we're hiring", "looking for someone"],
-      "next": [ { "label": "Get in touch", "shape": "getInTouch" } ] },
-    "becomeKnown": { "asks": "Leave your email so the conversation can continue", "input": { "email": "email", "name": "string?", "organization": "string?" }, "answer": { "ok": "boolean", "email": "string" }, "effect": "write", "allow": ["stranger", "known"], "plan": [ { "id": "c", "call": "contact.upsert", "with": { "email": "$email", "visitorId": "$visitor.id", "name": "$name", "organization": "$organization" } } ], "assemble": { "ok": true, "email": "$c.email" }, "triggers": ["my email is", "remember me", "I'm from"], "next": [ { "label": "Assess fit for a role", "shape": "fitFor" } ] },
-    "getInTouch": { "asks": "Send a message: hire, collaborate, invite to speak", "input": { "email": "email", "intent": "enum:hire|collaborate|speak|other", "message": "text" }, "answer": { "ok": "boolean", "email": "string" }, "effect": "write", "allow": ["stranger", "known", "recruiter"], "plan": [ { "id": "c", "call": "contact.upsert", "with": { "email": "$email", "visitorId": "$visitor.id", "intent": "$intent", "message": "$message" } } ], "assemble": { "ok": true, "email": "$c.email" }, "phrase": "Message sent", "triggers": ["get in touch", "contact", "hire", "reach out", "schedule"] }
+    "askAbout": {
+      "asks": "Ask anything about this person: how they work, what they've built, what they're like to work with",
+      "input": {
+        "question": {
+          "type": "string",
+          "doc": "the visitor's question, verbatim"
+        }
+      },
+      "answer": {
+        "answers": "question[]",
+        "followUps": "question[]"
+      },
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "id": "a",
+          "call": "questions.search",
+          "with": {
+            "text": "$question"
+          }
+        },
+        {
+          "id": "f",
+          "call": "questions.next",
+          "with": {
+            "askedIds": "[$a.0.id]",
+            "topic": "$a.0.topic"
+          },
+          "after": [
+            "a"
+          ]
+        }
+      ],
+      "assemble": {
+        "answers": "$a",
+        "followUps": "$f"
+      },
+      "vessel": "detail",
+      "phrase": "You asked: $question",
+      "triggers": [
+        "tell me about",
+        "how do you",
+        "what is your",
+        "why did you",
+        "describe"
+      ],
+      "next": [
+        {
+          "label": "{item.question}",
+          "shape": "askAbout",
+          "args": {
+            "question": "$item.question"
+          },
+          "each": "answer.followUps"
+        },
+        {
+          "label": "Show projects",
+          "shape": "projects"
+        }
+      ]
+    },
+    "skills": {
+      "asks": "What skills and capabilities this person has, by area or level",
+      "input": {
+        "area": {
+          "type": "string?",
+          "doc": "e.g. backend, data, leadership, design"
+        },
+        "text": "string?"
+      },
+      "answer": "skill[]",
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "call": "skills.search",
+          "with": {
+            "text": "$text",
+            "category": "$area"
+          }
+        }
+      ],
+      "phrase": "Skills {area? in $area}",
+      "triggers": [
+        "skills",
+        "capabilities",
+        "good at",
+        "experience with",
+        "know"
+      ],
+      "next": [
+        {
+          "label": "Projects using {item.name}",
+          "shape": "projects",
+          "args": {
+            "skill": "$item.name"
+          },
+          "each": "answer"
+        }
+      ]
+    },
+    "projects": {
+      "asks": "Projects and work samples, optionally for a skill or topic",
+      "input": {
+        "skill": "string?",
+        "text": "string?"
+      },
+      "answer": "project[]",
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "call": "projects.search",
+          "with": {
+            "text": "$text",
+            "skill": "$skill"
+          }
+        }
+      ],
+      "phrase": "Projects {skill? using $skill} {text? about $text}",
+      "triggers": [
+        "projects",
+        "portfolio",
+        "work samples",
+        "built",
+        "shipped"
+      ],
+      "next": [
+        {
+          "label": "Ask about {item.name}",
+          "shape": "askAbout",
+          "args": {
+            "question": "Tell me about $item.name"
+          },
+          "each": "answer"
+        }
+      ]
+    },
+    "experience": {
+      "asks": "Work history and roles",
+      "input": {},
+      "answer": {
+        "events": "experience[]"
+      },
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "id": "e",
+          "call": "experience.list",
+          "with": {}
+        }
+      ],
+      "assemble": {
+        "events": "$e"
+      },
+      "vessel": "timeline",
+      "phrase": "Experience",
+      "triggers": [
+        "work experience",
+        "work history",
+        "resume",
+        "cv",
+        "career"
+      ]
+    },
+    "interview": {
+      "asks": "Run an interview: get the next best question to ask, given what's been covered",
+      "input": {
+        "topic": {
+          "type": "string?",
+          "doc": "an area to steer toward"
+        }
+      },
+      "answer": {
+        "next": "question[]"
+      },
+      "effect": "read",
+      "allow": [
+        "stranger",
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "id": "n",
+          "call": "questions.next",
+          "with": {
+            "askedIds": [],
+            "topic": "$topic"
+          }
+        }
+      ],
+      "assemble": {
+        "next": "$n"
+      },
+      "vessel": "detail",
+      "phrase": "Interview {topic? on $topic}",
+      "triggers": [
+        "interview",
+        "what should I ask",
+        "start"
+      ],
+      "next": [
+        {
+          "label": "{item.question}",
+          "shape": "askAbout",
+          "args": {
+            "question": "$item.question"
+          },
+          "each": "answer.next"
+        }
+      ]
+    },
+    "fitFor": {
+      "asks": "How well this person fits a role or need you describe",
+      "input": {
+        "role": {
+          "type": "text",
+          "doc": "the role, need or job description, in the visitor's words"
+        }
+      },
+      "answer": {
+        "verdict": "string",
+        "strong": "json",
+        "gaps": "json",
+        "askNext": "string"
+      },
+      "effect": "read",
+      "allow": [
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "id": "s",
+          "call": "skills.search",
+          "with": {
+            "text": "$role"
+          }
+        },
+        {
+          "id": "p",
+          "call": "projects.search",
+          "with": {
+            "text": "$role",
+            "limit": 5
+          }
+        },
+        {
+          "id": "f",
+          "call": "fit.assess",
+          "with": {
+            "role": "$role",
+            "skills": "$s",
+            "projects": "$p"
+          },
+          "after": [
+            "s",
+            "p"
+          ]
+        }
+      ],
+      "assemble": "$f",
+      "vessel": "detail",
+      "phrase": "Fit for: $role",
+      "triggers": [
+        "fit",
+        "would you be good for",
+        "we're hiring",
+        "looking for someone"
+      ],
+      "next": [
+        {
+          "label": "Get in touch",
+          "shape": "getInTouch"
+        }
+      ]
+    },
+    "becomeKnown": {
+      "asks": "Leave your email so the conversation can continue",
+      "input": {
+        "email": "email",
+        "name": "string?",
+        "organization": "string?"
+      },
+      "answer": {
+        "ok": "boolean",
+        "email": "string"
+      },
+      "effect": "write",
+      "allow": [
+        "stranger",
+        "known"
+      ],
+      "plan": [
+        {
+          "id": "c",
+          "call": "contact.upsert",
+          "with": {
+            "email": "$email",
+            "visitorId": "$visitor.id",
+            "name": "$name",
+            "organization": "$organization"
+          }
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "email": "$c.email"
+      },
+      "triggers": [
+        "my email is",
+        "remember me",
+        "I'm from"
+      ],
+      "next": [
+        {
+          "label": "Assess fit for a role",
+          "shape": "fitFor"
+        }
+      ]
+    },
+    "getInTouch": {
+      "asks": "Send a message: hire, collaborate, invite to speak",
+      "input": {
+        "email": "email",
+        "intent": "enum:hire|collaborate|speak|other",
+        "message": "text"
+      },
+      "answer": {
+        "ok": "boolean",
+        "email": "string"
+      },
+      "effect": "write",
+      "allow": [
+        "stranger",
+        "known",
+        "recruiter"
+      ],
+      "plan": [
+        {
+          "id": "c",
+          "call": "contact.upsert",
+          "with": {
+            "email": "$email",
+            "visitorId": "$visitor.id",
+            "intent": "$intent",
+            "message": "$message"
+          }
+        }
+      ],
+      "assemble": {
+        "ok": true,
+        "email": "$c.email"
+      },
+      "phrase": "Message sent",
+      "triggers": [
+        "get in touch",
+        "contact",
+        "hire",
+        "reach out",
+        "schedule"
+      ]
+    }
   },
-
   "personas": {
     "version": "2026.09.21-1",
-    "recruiter": { "when": "identity.email != null" },
-    "known":     { "when": "identity.cookie != null || identity.issuedUrl != null" },
-    "stranger":  { "when": "true" }
+    "recruiter": {
+      "when": "identity.email != null"
+    },
+    "known": {
+      "when": "identity.cookie != null || identity.issuedUrl != null"
+    },
+    "stranger": {
+      "when": "true"
+    }
   },
   "envelope": {
     "version": "2026.09.21-1",
-    "accept": ["referrer", "utm_source", "utm_campaign", "cookie", "issuedUrl", "userAgent", "locale"],
+    "accept": [
+      "referrer",
+      "utm_source",
+      "utm_campaign",
+      "cookie",
+      "issuedUrl",
+      "userAgent",
+      "locale"
+    ],
     "greeting": {
-      "stranger":  { "shape": "askAbout", "hint": "Ask me anything — or let me run the interview.", "offer": ["interview", "skills", "projects", "becomeKnown"] },
-      "known":     { "resume": true, "offer": ["interview", "projects"] },
-      "recruiter": { "resume": true, "offer": ["fitFor", "getInTouch"] }
+      "stranger": {
+        "shape": "askAbout",
+        "hint": "Ask me anything — or let me run the interview.",
+        "offer": [
+          "interview",
+          "skills",
+          "projects",
+          "becomeKnown"
+        ]
+      },
+      "known": {
+        "resume": true,
+        "offer": [
+          "interview",
+          "projects"
+        ]
+      },
+      "recruiter": {
+        "resume": true,
+        "offer": [
+          "fitFor",
+          "getInTouch"
+        ]
+      }
     }
   },
   "notifications": {
     "version": "2026.09.21-1",
-    "contact.received": { "to": "operator", "text": "{name} ({email}) wants to {intent}." },
-    "unmet.daily": { "to": "operator", "text": "{count} questions had no answer in the bank.", "next": [ { "shape": "op.unmetReport" } ] }
+    "contact.received": {
+      "to": "operator",
+      "text": "{name} ({email}) wants to {intent}."
+    },
+    "unmet.daily": {
+      "to": "operator",
+      "text": "{count} questions had no answer in the bank.",
+      "next": [
+        {
+          "shape": "op.unmetReport"
+        }
+      ]
+    }
   },
   "operator": {
     "version": "2026.09.21-1",
     "shapes": {
-      "op.unmetReport": { "asks": "What did people ask that the bank couldn't answer?", "input": { "since": "string=7d" }, "answer": "json", "effect": "read", "allow": ["operator"], "vessel": "list" },
-      "op.editSection": { "asks": "Edit a section of the spec", "input": { "section": "enum:business|entities|calls|rules|shapes|personas|envelope|notifications|operator", "patch": "json" }, "answer": { "ok": "boolean", "version": "string" }, "effect": "write", "allow": ["operator"] },
-      "op.restart": { "asks": "Restart the core", "input": {}, "answer": { "ok": "boolean" }, "effect": "write", "allow": ["operator"] },
-      "op.notify": { "asks": "Send a notification to a visitor", "input": { "visitorId": "id", "text": "string" }, "answer": { "ok": "boolean" }, "effect": "write", "allow": ["operator"] }
+      "op.unmetReport": {
+        "asks": "What did people ask that the bank couldn't answer?",
+        "input": {
+          "since": "string=7d"
+        },
+        "answer": "json",
+        "effect": "read",
+        "allow": [
+          "operator"
+        ],
+        "vessel": "list"
+      },
+      "op.editSection": {
+        "asks": "Edit a section of the spec",
+        "input": {
+          "section": "enum:business|entities|calls|rules|shapes|personas|envelope|notifications|operator",
+          "patch": "json"
+        },
+        "answer": {
+          "ok": "boolean",
+          "version": "string"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      },
+      "op.restart": {
+        "asks": "Restart the core",
+        "input": {},
+        "answer": {
+          "ok": "boolean"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      },
+      "op.notify": {
+        "asks": "Send a notification to a visitor",
+        "input": {
+          "visitorId": "id",
+          "text": "string"
+        },
+        "answer": {
+          "ok": "boolean"
+        },
+        "effect": "write",
+        "allow": [
+          "operator"
+        ]
+      }
     }
   }
 }
