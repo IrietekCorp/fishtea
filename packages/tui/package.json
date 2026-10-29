@@ -1,6 +1,6 @@
 {
   "name": "@fishtea/tui",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "type": "module",
   "main": "src/index.tsx",
   "exports": {
