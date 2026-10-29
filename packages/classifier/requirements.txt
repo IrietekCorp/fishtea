@@ -1,2 +1,2 @@
-cactus-needle==3.0.4
+cactus-needle==3.2.8
 huggingface_hub>=0.25

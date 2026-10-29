@@ -539,7 +539,7 @@
     },
     "classify": {
       "budgetMs": 1000,
-      "floor": 0.35,
+      "floor": 0,
       "contextTurns": 6
     },
     "calls": {

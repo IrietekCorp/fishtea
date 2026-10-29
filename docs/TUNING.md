@@ -399,18 +399,40 @@ phone has neither these cores nor this memory bandwidth, so treat 4.7× as the s
 constant. And the archive fetch above is from localhost — over a real network the 8 MB is a download,
 cached after the first visit.
 
-## Why the floor is not a constant
+## Why the floor is 0
 
-Worth knowing before changing anything here. `needle3.cact` is byte-identical between `cactus-needle`
-3.0.4 and 3.2.8 — only the engine differs — and latency is identical at every percentile. Confidence is
-not:
+`needle3.cact` is byte-identical between `cactus-needle` 3.0.4 and 3.2.8 — only the engine differs — and
+latency is identical at every percentile. Confidence is not, and the difference is not a rescaling that
+a new threshold would fix.
 
-| | median confidence on correct routes | clearing the 0.35 floor | wrong routes offered |
-|---|---|---|---|
-| 3.0.4 (pinned) | 0.79 | 13/16 | **6**, one at **1.00** |
-| 3.2.8 | 0.07 | 4/14 | **2** |
+Over the whole labelled set on **3.2.8**, the engine this framework now pins:
 
-So `rules.classify.floor` is a property of an engine's calibration, not a universal number, and 3.0.4's
-apparent advantage is an illusion: its floor admits six wrong routes out of six, so it filters nothing.
-Any move — to a newer engine, or to a tuned model with a derived confidence — has to re-derive the floor
-from a labelled set rather than inherit 0.35.
+| | confidences, sorted |
+|---|---|
+| correct routes (18) | 0.002 0.003 0.004 0.015 0.018 0.024 0.025 0.038 0.047 0.048 0.094 0.106 0.148 0.348 0.363 0.407 0.429 0.456 |
+| wrong routes (3) | **0.085 0.125 0.138** |
+
+**The wrong routes sit inside the correct distribution, with ten of the eighteen correct ones below
+them.** There is no threshold. A floor above 0.138 excludes the wrong answers and thirteen of the right
+ones with them; a floor below 0.085 excludes nothing. Every archetype shows the same shape — the sweep
+that `fishtea eval` prints loses a third to a half of correct routes at the very first non-zero step.
+
+So `rules.classify.floor` ships at **0**, and the templates set it explicitly. That is not giving up on
+safety; it is declining to pretend. A number that discards correct answers without excluding wrong ones
+is not a safety valve, it is a tax that looks like one. What actually protects a turn is the machinery
+that was always doing the work:
+
+- **the gate** — permission is checked after classification, so a shape this persona may not ask is
+  refused no matter how confident the model was;
+- **`missingRequired`** — an incomplete call pours a form that collects the rest instead of acting;
+- **`confirm-write`** — every write is shown to the visitor before it happens, and they say yes;
+- **the model itself**, on this engine: 3.2.8 declines rather than substituting (69–92% of the cases
+  where silence is correct, against 13–62% on 3.0.4), and a refusal needs no threshold.
+
+A floor of 0 also admits a locally tuned rung, whose head is dropped at build time and reports 0 on
+every answer — so the one measured lever on accuracy stops being gated away by a number that was never
+measuring anything.
+
+**Raise it only from your own measurement.** `fishtea eval` prints the sweep and names the best
+separation for *your* cases and *your* classifier; a hosted or tuned classifier with a calibrated head
+is exactly the case where a real floor exists. Inheriting one is how an application ends up mute.

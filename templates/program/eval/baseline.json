@@ -1,33 +1,33 @@
 {
-  "at": "2026-10-29T14:05:23.870Z",
+  "at": "2026-10-29T14:45:01.766Z",
   "framework": "1.7.1",
   "classifier": "needle3",
-  "label": "needle3 stock L20 · engine 3.0.4 (pinned)",
+  "label": "needle3 stock L20 · engine 3.2.8 · floor 0",
   "cases": 46,
   "digest": "1bb069e2f8b58223",
   "score": {
     "n": 46,
-    "correct": 23,
+    "correct": 26,
     "positives": {
       "n": 34,
-      "correct": 19
+      "correct": 16
     },
     "refusals": {
       "n": 12,
-      "correct": 4
+      "correct": 10
     },
     "args": {
       "n": 6,
-      "correct": 2
+      "correct": 1
     },
     "byTag": {
       "plain": {
         "n": 11,
-        "correct": 9
+        "correct": 8
       },
       "paraphrase": {
         "n": 9,
-        "correct": 2
+        "correct": 0
       },
       "collision": {
         "n": 4,
@@ -43,25 +43,25 @@
       },
       "out-of-subset": {
         "n": 4,
-        "correct": 0
+        "correct": 3
       },
       "unsupported": {
         "n": 3,
-        "correct": 1
+        "correct": 3
       },
       "off-topic": {
         "n": 5,
-        "correct": 3
+        "correct": 4
       }
     },
-    "medianMs": 244
+    "medianMs": 223
   },
   "floor": {
-    "floor": 0.7,
-    "kept": 11,
-    "admitted": 6,
-    "right": 19,
-    "wrong": 16,
-    "note": "keeps 11/19 correct routes and admits 6/16 wrong ones"
+    "floor": 0.15,
+    "kept": 5,
+    "admitted": 0,
+    "right": 16,
+    "wrong": 3,
+    "note": "keeps 5/16 correct routes and admits 0/3 wrong ones"
   }
 }

@@ -115,7 +115,8 @@
               "type": "integer"
             },
             "floor": {
-              "type": "number"
+              "type": "number",
+              "description": "Confidence below which a classified call is not acted on and the pour is `ask`. Defaults to 0, which accepts anything the classifier is willing to name: measured over a labelled set, needle3's confidence does not separate right routes from wrong ones, so a non-zero floor discards correct answers without excluding wrong ones. Derive one for your own classifier with `fishtea eval` before raising it."
             },
             "contextTurns": {
               "type": "integer"

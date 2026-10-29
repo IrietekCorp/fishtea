@@ -243,3 +243,33 @@ every signal available without a trained head.
 blocked by the missing confidence head; at a 24–44% error rate on offered answers, no threshold helps,
 and tuning is the only measured lever on accuracy. Tune first, re-run `fishtea eval`, then ask what gates
 it. The labelled set is the held-out twin of the derived corpus and is never fed to `fishtea tune data`.
+
+## Phase 8 — the engine moved, and the floor went to 0
+
+`requirements.txt` now pins **cactus-needle 3.2.8**. Measured on a quiet machine over the four labelled
+sets, it is better on every one:
+
+| | 3.0.4 (was pinned) | 3.2.8 (now) |
+|---|---|---|
+| ecommerce | 25–26/56 | **29/56** |
+| portfolio | 20/45 | **26/45** |
+| program | 23–24/46 | **26/46** |
+| verification | 23–25/47 | **26/47** |
+| cases where silence is correct | 13–62% | **69–92%** |
+
+Latency is unchanged (medians 215–234 ms against 217–249 ms). The gain is mostly refusals: 3.0.4
+substitutes a tool it was offered when it cannot serve the request — "check out" with only a stranger's
+five tools came back as `trending` at 0.57, reasoning "User wants to check out. Use trending to see
+what's popular" — and 3.2.8 declines instead, which is the failure mode the budget rule already asks
+for.
+
+**`rules.classify.floor` ships at 0.** The two populations overlap almost completely on this engine:
+wrong routes land at 0.085, 0.125 and 0.138, while correct ones run 0.002 → 0.456 with ten of eighteen
+*below* the wrong ones. No threshold separates them. Any non-zero floor discards correct answers without
+excluding wrong ones, and the sweep loses a third to a half of correct routes at the first non-zero step.
+The engine default moved from 0.35 to 0 with the templates, so an application that omits the field is not
+muted. Protection comes from the gate, `missingRequired`, `confirm-write` and the model's own refusals —
+all of which were doing the work already. A floor of 0 additionally admits a locally tuned rung, whose
+head `needle build --lora` drops.
+
+Raise it only from a measurement of your own classifier: `fishtea eval` prints the sweep.

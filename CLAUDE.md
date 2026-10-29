@@ -67,7 +67,14 @@ bunx tsc -p tsconfig.json --noEmit
   `add to my cart`, sent five of eight cart utterances to `viewCart` — `remove … from my cart` at
   confidence **1.00**, past the floor and the gate. `checkTriggers` refuses an exact duplicate or a
   word-level containment at load, which is why it is an error and not a warning.
-- The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool.
+- The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool,
+  pinned at `cactus-needle 3.2.8` in `packages/classifier/requirements.txt`.
+- **`rules.classify.floor` is 0, and that is a measurement rather than a shrug.** On the pinned engine
+  the wrong routes land at 0.085–0.138 while correct ones span 0.002–0.456, ten of eighteen *below* the
+  wrong ones: no threshold separates them, so a non-zero floor discards correct answers without
+  excluding wrong ones. The gate, `missingRequired`, `confirm-write` and the model's own refusals are
+  what protect a turn. A floor of 0 also admits a locally tuned rung, whose head `needle build --lora`
+  drops. Raise it only from `fishtea eval` on your own classifier. contract.md Phase 8.
 - Nothing assumes localhost. Host and port come from `packages/cli/src/env.ts` (flag, then env, then default); the core binds `0.0.0.0`. A missing database is a `SetupError` with fixes, not a stack trace.
 - A port nobody chose may move: `serve` and `up` probe first and step to the next free one, saying so. A
   port somebody named (`--port`, `PORT`, `FISHTEA_*_PORT`) never moves — it is a `SetupError`, because

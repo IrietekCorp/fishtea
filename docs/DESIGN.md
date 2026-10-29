@@ -1,6 +1,6 @@
 # FishTea — what the build measured and changed
 
-This file records where the implementation deviates from `BLUEPRINT.md`, and why. Every deviation is backed by a measurement taken during the build on 2026-09-21 (Linux x86-64, CPU only, `cactus-needle 3.0.4`).
+This file records where the implementation deviates from `BLUEPRINT.md`, and why. Every deviation is backed by a measurement taken during the build on 2026-09-21 (Linux x86-64, CPU only, `cactus-needle 3.0.4`). The classifier engine has since moved to 3.2.8 and the confidence floor to 0; `packages/classifier/contract.md` Phases 5–8 carry the later measurements, and where they contradict a note here, they are newer.
 
 ## Phase 0 findings (classifier)
 
@@ -138,5 +138,5 @@ The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector
 
 1. Per-keystroke classification load at scale: measured single-stream only. The pool is CPU-bound; `NEEDLE_WORKERS` ≈ cores/2 is a guess.
 2. Familiarity threshold 0.82: untuned. The needle test asserts a recall happens, not that it is well-calibrated.
-3. Small-model quirks: bare verbs ("check out") return low confidence or a hallucinated argument; "my email is …" as a customer maps to whichever visible shape has an email field. Persona filtering and the confidence floor absorb most of it; `triggers` and input `doc` strings help. Fine-tuning needle on the spec's own utterances is the next lever (needle supports LoRA).
+3. Small-model quirks: bare verbs ("check out") return low confidence or a hallucinated argument; "my email is …" as a customer maps to whichever visible shape has an email field. Persona filtering helps, `triggers` and input `doc` strings help, and fine-tuning on the spec's own utterances turned out to be the one lever that moves accuracy and latency together (+5 of 56, `docs/TUNING.md`). The confidence floor does *not* absorb any of it — measured against a labelled set, wrong routes sit inside the distribution of correct ones, so the floor now ships at 0 (contract.md Phase 8).
 4. Playwright + axe walkthrough of the UI is written as a manual checklist in `packages/ui/e2e/README.md`; no browser was available in the build environment.

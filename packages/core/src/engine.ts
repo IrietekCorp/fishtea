@@ -287,7 +287,15 @@ export class Engine {
       // on the pool, p90 falls 625 → 316 ms and the worst case 2163 → 413 at 64 tokens, with the median
       // and the accuracy unchanged. Undefined lets the pool keep its own default.
       const maxTokens = this.app.spec.rules.classify?.maxTokens === undefined ? undefined : Number(this.app.spec.rules.classify.maxTokens);
-      const floor = Number(this.app.spec.rules.classify?.floor ?? 0.35);
+      // 0, not 0.35. Measured over 194 labelled cases on the engine this framework pins, the two
+      // populations overlap almost completely: wrong routes land at 0.085-0.138 while correct ones
+      // span 0.002-0.456, with ten of eighteen *below* the wrong ones. No threshold separates them, so
+      // any non-zero floor discards correct answers without excluding wrong ones — it only looks like a
+      // safety valve. What actually protects a turn is the gate, `missingRequired` pouring a form, and
+      // `confirm-write` showing the visitor the write before it happens. A floor of 0 also admits a
+      // locally tuned rung, whose head is dropped at build time and reports 0 on every answer.
+      // docs/TUNING.md, packages/classifier/contract.md Phase 8.
+      const floor = Number(this.app.spec.rules.classify?.floor ?? 0);
       const k = Number(this.app.spec.rules.classify?.contextTurns ?? 6);
       // Context policy (measured in Phase 0/4, see classifier/contract.md): summaries of prior turns confuse
       // needle and lengthen prefill, so context is (a) recalled turns from other trails, when they resonate,

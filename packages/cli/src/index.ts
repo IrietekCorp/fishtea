@@ -638,7 +638,7 @@ async function main() {
           console.log(`    ${r.floor.toFixed(2)}    ${String(r.kept).padStart(7)}/${right}      ${String(r.admitted).padStart(8)}/${wrong}`);
         }
         if (advice) {
-          const current = Number(app.spec.rules.classify?.floor ?? 0.35);
+          const current = Number(app.spec.rules.classify?.floor ?? 0);
           console.log(`\n  best separation at ${pc.bold(advice.floor.toFixed(2))} — ${advice.note}`);
           if (Math.abs(current - advice.floor) > 1e-9) {
             const row = rows.find((r) => Math.abs(r.floor - current) < 1e-9);
