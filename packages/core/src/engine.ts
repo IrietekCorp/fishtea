@@ -283,6 +283,10 @@ export class Engine {
       const text = utterance.text.trim().slice(0, 500);
       const tools = this.tools.filter((t) => allowed.includes(t.name));
       const budgetMs = Number(this.app.spec.rules.classify?.budgetMs ?? 400);
+      // Latency is decode length and nothing else, so the token cap is the budget's real lever: measured
+      // on the pool, p90 falls 625 → 316 ms and the worst case 2163 → 413 at 64 tokens, with the median
+      // and the accuracy unchanged. Undefined lets the pool keep its own default.
+      const maxTokens = this.app.spec.rules.classify?.maxTokens === undefined ? undefined : Number(this.app.spec.rules.classify.maxTokens);
       const floor = Number(this.app.spec.rules.classify?.floor ?? 0.35);
       const k = Number(this.app.spec.rules.classify?.contextTurns ?? 6);
       // Context policy (measured in Phase 0/4, see classifier/contract.md): summaries of prior turns confuse
@@ -297,7 +301,7 @@ export class Engine {
         result = { calls: [], confidence: 0, ms: 0, classifier: this.classifier.name, error: "pool unhealthy" };
         pour = { kind: "notification", author: "system", text: "One moment — getting things ready.", next: [{ label: "Try again", shape: "__retry", args: { text } }] };
       } else {
-        result = await this.classifier.classify({ text, context, tools, budgetMs });
+        result = await this.classifier.classify({ text, context, tools, budgetMs, maxTokens });
         embedding = result.embedding;
         // familiarity: recall this visitor's other trails with the embedding the classifier returned; when the
         // first pass was weak and something resonates, classify once more with the recalled turns as context
@@ -312,10 +316,23 @@ export class Engine {
             recalledCount = recalled.length;
             const weak = !result.calls.length || result.confidence < floor || this.missingRequired(result.calls[0]);
             if (recalled.length && weak) {
-              const recallCtx = recalled.map((r) => `earlier this visitor asked: ${escapeContext(String((r.utterance as any).text ?? ""))}${r.shape ? ` → ${r.shape} ${this.argsLine((r.utterance as any).known)}` : ""}`);
-              const again = await this.classifier.classify({ text, context: [...recallCtx, ...context], tools, budgetMs });
-              classifyMs += result.ms;
-              if (!again.timedOut && !again.error && (again.calls.length || !result.calls.length)) result = { ...again, reasoning: `[recall ×${recalled.length}] ${again.reasoning ?? ""}` };
+              // Recalled turns are named as *settled facts about this visitor*, never as questions.
+              // Phrased as "earlier this visitor asked: X → shape args", needle answered X instead of
+              // what was actually said: over eight anaphoric queries it returned the recalled shape for
+              // all eight, with the right answer absent from the call list entirely. A prior request in
+              // the prompt reads as a pending request. Only what the visitor is known to *like* survives,
+              // which is the part recall was for. See packages/classifier/contract.md.
+              const recallCtx = recalled
+                .map((r) => this.argsLine((r.utterance as any).known))
+                .filter((line) => line.trim().length > 0)
+                .map((line) => `this visitor has previously been interested in ${escapeContext(line)}`);
+              // Nothing recallable to say about them is the common case, and a second identical pass
+              // would spend another budget to get the same answer.
+              if (recallCtx.length) {
+                const again = await this.classifier.classify({ text, context: [...recallCtx, ...context], tools, budgetMs, maxTokens });
+                classifyMs += result.ms;
+                if (!again.timedOut && !again.error && (again.calls.length || !result.calls.length)) result = { ...again, reasoning: `[recall ×${recalled.length}] ${again.reasoning ?? ""}` };
+              }
             }
           } catch (e) { this.log(`recall skipped: ${(e as Error).message}`); }
         }

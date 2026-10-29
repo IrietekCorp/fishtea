@@ -16,7 +16,7 @@ export class NeedleClient implements Classifier {
     try {
       const res = await fetch(`${this.baseUrl}/classify`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: req.text, context: req.context, tools: req.tools.map((t) => t.name), budgetMs: req.budgetMs }),
+        body: JSON.stringify({ text: req.text, context: req.context, tools: req.tools.map((t) => t.name), budgetMs: req.budgetMs, maxTokens: req.maxTokens }),
         signal: ctl.signal,
       });
       if (!res.ok) return { calls: [], confidence: 0, ms: performance.now() - t0, classifier: this.name, error: `pool ${res.status}` };

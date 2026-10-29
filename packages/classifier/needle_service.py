@@ -26,6 +26,7 @@ import threading
 import time
 import uuid
 import multiprocessing as mp
+from collections import OrderedDict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("NEEDLE_PORT", "8081"))
@@ -36,6 +37,21 @@ TIMEOUT = float(os.environ.get("NEEDLE_REQUEST_TIMEOUT", "5"))
 # each, and three at once ran past 4 s. One at a time, the third of three waits ~600 ms instead. The
 # workers still matter, as somewhere to keep each persona's subset bound, so nobody pays a switch.
 CONCURRENCY = max(1, int(os.environ.get("NEEDLE_CONCURRENCY", "1")))
+# A classify costs a fixed prefill plus one token at a time, and nothing else: measured per query on 16
+# cores, "what's trending" (no arguments) is 127 ms ± 1, "where is my order" (one) 146, "i love these"
+# (two) 188, and "compare x and y" — which emits the call *twice* — 613. Latency is decode length, so the
+# cap is the tail. The library's default is 512 tokens, far past anything a routing decision needs: at 64
+# the median is unchanged (189 vs 192 ms) while p90 falls 625 → 316 and the worst case 2163 → 413, with
+# the same accuracy over a 24-case set. Deriving it from the widest tool in the subset was tried and was
+# worse than the measured constant (136 → p90 476), because the model does not emit every argument it
+# could. What a cap costs is a long compare, which blew the budget anyway, and a free-text checkout whose
+# uncapped answer was already nonsense. rules.classify.maxTokens overrides per request.
+MAX_NEW_TOKENS = max(16, int(os.environ.get("NEEDLE_MAX_NEW_TOKENS", "64")))
+# Classification is a pure function of (subset, text, cap): verified by asking the same question five
+# times, interleaved with others, and getting a byte-identical answer and confidence every time. So a
+# repeat need not take a turn on the one permit — and in a conversation driven by chips and stock phrases
+# ("what's trending", "show my cart") repeats are the common case, at 127 ms each.
+CACHE_SIZE = max(0, int(os.environ.get("NEEDLE_CACHE", "512")))
 SYSTEM = os.environ.get("NEEDLE_SYSTEM", "You route what a visitor says to one of the store's tools. Prior turns may be listed; the last line is what the visitor said now.")
 MODEL_PATH = os.environ.get("NEEDLE_MODEL_PATH")  # offline copy of needle3.cact (optional)
 
@@ -99,7 +115,7 @@ def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str
                 a.reset()
                 t_b = time.time()
                 text = _fold(payload["text"], payload.get("context") or [])
-                r = a.complete(text)
+                r = a.complete(text, max_new_tokens=int(payload.get("maxTokens") or MAX_NEW_TOKENS))
                 t_c = time.time()
                 emb = a.embed(payload["text"]) if payload.get("embed", True) else None
                 out = {
@@ -149,6 +165,11 @@ class Pool:
         self.dim = 0
         self.ready = 0
         self.warming = False
+        # (subset, text, context, cap) → the answer. Classification is deterministic, so a hit is the
+        # answer the engine would have computed; the point is that it does not take a turn on the permit.
+        self.cache: "OrderedDict[tuple, dict]" = OrderedDict()
+        self.hits = 0
+        self.misses = 0
         for i in range(n):
             q: mp.Queue = mp.Queue()
             p = mp.Process(target=worker_main, args=(i, q, self.results, json.dumps(tools)), daemon=True)
@@ -211,9 +232,25 @@ class Pool:
             self.permits.add(req_id)
         return True
 
+    def _cache_key(self, payload: dict, key: tuple | None) -> tuple:
+        return (key, payload["text"], tuple(payload.get("context") or []),
+                int(payload.get("maxTokens") or MAX_NEW_TOKENS), bool(payload.get("embed", True)))
+
     def request(self, op: str, payload: dict, timeout: float = TIMEOUT) -> dict:
         key = tuple(sorted(payload.get("tools") or [])) if op == "classify" else None
         start = time.time()
+        if op == "classify" and CACHE_SIZE:
+            ck = self._cache_key(payload, key)
+            with self.lock:
+                hit = self.cache.get(ck)
+                if hit is not None:
+                    self.cache.move_to_end(ck)
+                    self.hits += 1
+            if hit is not None:
+                # A hit must not look like a 0 ms classify in the operator's timings, so say what it was.
+                return dict(hit, ms=round((time.time() - start) * 1000, 1), cached=True)
+            with self.lock:
+                self.misses += 1
         if op == "classify":
             payload = dict(payload, deadline=start + timeout)
         req_id = uuid.uuid4().hex
@@ -229,6 +266,11 @@ class Pool:
                 with self.lock:
                     self.pending.pop(req_id, None)
                 return {"error": "timeout", "worker": i}
+            if op == "classify" and CACHE_SIZE and not out.get("error") and not out.get("skipped"):
+                with self.lock:
+                    self.cache[self._cache_key(payload, key)] = out
+                    while len(self.cache) > CACHE_SIZE:
+                        self.cache.popitem(last=False)
             return out
         finally:
             with self.lock:
@@ -262,6 +304,7 @@ class Pool:
         outs = self._all("reload", {"tools": tools}, 300)
         with self.lock:
             self.active = [None] * self.n
+            self.cache.clear()      # the answers were about a different tool list
         if subsets:
             threading.Thread(target=self.warm, args=(subsets,), daemon=True).start()
         errs = [o for o in outs if o.get("error")]
@@ -373,7 +416,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/healthz"):
             p = self.pool
-            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "warming": p.warming, "active": [list(a) if a else None for a in p.active]})
+            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "warming": p.warming, "active": [list(a) if a else None for a in p.active], "maxNewTokens": MAX_NEW_TOKENS, "cache": {"size": len(p.cache), "limit": CACHE_SIZE, "hits": p.hits, "misses": p.misses}})
         self._json(404, {"error": "not found"})
 
     def do_POST(self):
@@ -394,7 +437,7 @@ class Handler(BaseHTTPRequestHandler):
             # comes back as a result the core can log rather than as a dropped connection.
             asked = float(body.get("budgetMs") or 0) / 1000 or TIMEOUT
             budget = max(0.2, asked - min(0.05, asked * 0.1))
-            out = p.request("classify", {"text": str(body["text"])[:1000], "context": [str(c)[:200] for c in (body.get("context") or [])][:8], "tools": body.get("tools"), "embed": body.get("embed", True)}, timeout=budget)
+            out = p.request("classify", {"text": str(body["text"])[:1000], "context": [str(c)[:200] for c in (body.get("context") or [])][:8], "tools": body.get("tools"), "embed": body.get("embed", True), "maxTokens": body.get("maxTokens")}, timeout=budget)
             return self._json(503 if out.get("error") else 200, out)
         if self.path == "/embed":
             out = p.request("embed", {"texts": [str(t)[:1000] for t in (body.get("texts") or [])][:32]})

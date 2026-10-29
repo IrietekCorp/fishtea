@@ -6,6 +6,8 @@ export interface ClassifyRequest {
   context: string[];
   tools: ToolSpec[];
   budgetMs: number;
+  /** Cap on tokens the classifier may emit. Latency is decode length, so this is the tail. */
+  maxTokens?: number;
 }
 
 export interface FunctionCall { name: string; arguments: Record<string, unknown> }

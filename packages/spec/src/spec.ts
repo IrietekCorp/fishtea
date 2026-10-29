@@ -98,7 +98,7 @@ export interface Spec {
     version: string;
     doc?: string;
     writes?: { confirmAlways?: boolean; minConfidence?: number };
-    classify?: { budgetMs?: number; floor?: number; contextTurns?: number };
+    classify?: { budgetMs?: number; floor?: number; contextTurns?: number; maxTokens?: number };
     calls?: { timeoutMs?: number };
     familiarity?: { threshold?: number };
     /** how answers are laid out: molecules per entity, organisms per shape (see present.ts) */

@@ -51,6 +51,23 @@ default.
 Every classify call has a hard budget (`rules.classify.budgetMs`). Past it the pour is `ask` — never a
 dumber brain.
 
+**Never put a CPU limit on the classifier.** The engine starts twelve threads and keeps them, reads no
+environment variables, and ignores the affinity mask it is given, so a limit does not make it use fewer
+threads — it makes twelve spinning threads fight over fewer cores. Measured, one classify that takes
+238 ms on sixteen cores takes **9.9 s** pinned to eight and **92.7 s** pinned to one. A `--cpus` setting
+or a Kubernetes quota on this container is the difference between working and not.
+
+For the same reason workers compute one at a time: two classifies side by side are 6.5× worse *total*
+throughput than two in a row. Capacity is about **four to five classifies a second per host**, and the
+only way to scale out is more hosts.
+
+What does move the needle is how much the model has to say. Latency is decode length — `latency ≈ 110 ms
++ tokens ÷ 310` — so the pool caps it at 64 tokens (`NEEDLE_MAX_NEW_TOKENS`, or `rules.classify.maxTokens`
+per application), which cuts p90 by 61% and the worst case by 79% without costing accuracy. Repeats are
+cached (`NEEDLE_CACHE`, 512 entries, cleared on reload), because classification is a pure function of the
+tool subset, the text and the cap: a repeat answers in 11 ms and spends no turn in the queue.
+`GET /healthz` reports the cap and the cache's hits and misses.
+
 Warm-up matters: a cold worker switching subsets costs 0.7–3.7 s depending on load. `/reload` warms in the
 background, one worker at a time, deliberately sequential — parallel inits thrashed to 48 s.
 
@@ -121,6 +138,8 @@ from a person is kept.
 - Tests reset the `business`, `conversation` and `fishtea` schemas, and default to port **5434**. Never
   point `FISHTEA_TEST_DATABASE_URL` at a stack you care about.
 - The needle test must run alone, with the pool up and warm (`GET /healthz` → `warming: false`).
+- Classifier accuracy varies between process instances on identical inputs — 15 to 18 of the same 24
+  cases. One run is an anecdote; measure repeatedly before concluding anything about accuracy.
 - jsonb parameters are passed as JS values; pre-stringifying double-encodes them.
 - All DDL identifiers are quoted, so a field named `order` works — and your SQL must quote it too
   (`f."order"`).

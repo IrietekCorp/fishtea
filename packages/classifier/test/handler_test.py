@@ -90,6 +90,7 @@ def pool(n, concurrency=1):
     p.active, p.inflight, p.last_used = [None] * n, [0] * n, [0.0] * n
     p.pending, p.lock = {}, threading.Lock()
     p.running, p.permits = threading.BoundedSemaphore(concurrency), set()
+    p.cache, p.hits, p.misses = __import__("collections").OrderedDict(), 0, 0
     threading.Thread(target=p._collect, daemon=True).start()
     return p
 
@@ -142,6 +143,131 @@ class TestBinding(unittest.TestCase):
         self.assertEqual(sent, [(0, [["b", "a"]]), (1, [["c"]]), (2, [["b", "a"]])])
         self.assertEqual(p.active, [("a", "b"), ("c",), ("a", "b")])
         self.assertFalse(p.warming)
+
+
+
+class TestTokenCap(unittest.TestCase):
+    """Latency is decode length: per query on 16 cores, no arguments is 127 ms, one is 146, two 188, and a
+    call emitted twice 613. The library's 512-token default is the tail; 64 halves p90 and leaves the
+    median and the accuracy where they were."""
+
+    def test_the_default_is_far_below_the_library_default(self):
+        self.assertLessEqual(needle_service.MAX_NEW_TOKENS, 128)
+        self.assertGreaterEqual(needle_service.MAX_NEW_TOKENS, 16)
+
+    def test_a_request_may_name_its_own_cap(self):
+        p = pool(1)
+        p.request("classify", {"text": "a", "tools": ["x"], "maxTokens": 96}, timeout=0.05)
+        _, _, payload = p.queues[0].get(timeout=1)
+        self.assertEqual(payload["maxTokens"], 96)
+
+    def test_the_cap_reaches_the_worker_even_when_the_request_omits_it(self):
+        # The worker, not the dispatcher, applies the default, so an omitted cap must stay omitted
+        # rather than arrive as 0 and mean "no tokens at all".
+        p = pool(1)
+        p.request("classify", {"text": "a", "tools": ["x"]}, timeout=0.05)
+        _, _, payload = p.queues[0].get(timeout=1)
+        self.assertIsNone(payload.get("maxTokens"))
+        self.assertEqual(int(payload.get("maxTokens") or needle_service.MAX_NEW_TOKENS),
+                         needle_service.MAX_NEW_TOKENS)
+
+
+class TestCache(unittest.TestCase):
+    """Classification is a pure function of (subset, text, cap) — the same question asked five times,
+    interleaved with others, gave a byte-identical answer every time. So a repeat need not spend the one
+    permit, which is the whole scarce resource: two classifies at once cost 6.5x the throughput of two in
+    a row."""
+
+    def answer(self, p, text, tools, **kw):
+        import threading
+        out = {}
+        t = threading.Thread(target=lambda: out.update(p.request("classify", dict({"text": text, "tools": tools}, **kw), timeout=2)))
+        t.start()
+        req_id, _, _ = p.queues[0].get(timeout=1)
+        p.results.put((req_id, {"function_calls": [{"name": "trending", "arguments": {}}], "confidence": 0.9}))
+        t.join(2)
+        return out
+
+    def test_a_repeat_is_answered_without_reaching_a_worker(self):
+        p = pool(1)
+        self.answer(p, "what's trending", ["trending"])
+        again = p.request("classify", {"text": "what's trending", "tools": ["trending"]}, timeout=0.2)
+        self.assertEqual([c["name"] for c in again["function_calls"]], ["trending"])
+        self.assertTrue(again["cached"])
+        self.assertTrue(all(q.empty() for q in p.queues), "a cache hit was still sent to a worker")
+        self.assertEqual((p.hits, p.misses), (1, 1))
+
+    def test_a_hit_does_not_spend_the_permit(self):
+        # The point of the cache is the permit, not the milliseconds: a hit must not queue behind a
+        # classify that is already computing.
+        import threading
+        p = pool(1)
+        self.answer(p, "what's trending", ["trending"])
+        busy = threading.Thread(target=lambda: p.request("classify", {"text": "something else", "tools": ["trending"]}, timeout=2))
+        busy.start()
+        req_id, _, _ = p.queues[0].get(timeout=1)             # the permit is held
+        hit = p.request("classify", {"text": "what's trending", "tools": ["trending"]}, timeout=0.2)
+        self.assertTrue(hit.get("cached"), "the hit waited for the permit instead of answering")
+        p.results.put((req_id, {"ok": True}))
+        busy.join(2)
+
+    def test_a_different_subset_is_a_different_question(self):
+        p = pool(1)
+        self.answer(p, "what's trending", ["trending"])
+        out = p.request("classify", {"text": "what's trending", "tools": ["trending", "viewCart"]}, timeout=0.05)
+        self.assertEqual(out, {"error": "timeout", "worker": 0})   # a miss: it went looking for a worker
+
+    def test_a_different_cap_is_a_different_question(self):
+        p = pool(1)
+        self.answer(p, "what's trending", ["trending"])
+        out = p.request("classify", {"text": "what's trending", "tools": ["trending"], "maxTokens": 256}, timeout=0.05)
+        self.assertEqual(out, {"error": "timeout", "worker": 0})
+
+    def test_reload_forgets_everything(self):
+        # The tools changed, so every cached answer is about a different question. This drives the real
+        # reload rather than clearing the dict itself, which would only prove that OrderedDict works.
+        import threading
+        p = pool(1)
+        self.answer(p, "what's trending", ["trending"])
+        self.assertEqual(len(p.cache), 1)
+        done = {}
+        t = threading.Thread(target=lambda: done.update(p.reload([{"name": "other"}])))
+        t.start()
+        req_id, op, _ = p.queues[0].get(timeout=2)
+        self.assertEqual(op, "reload")
+        p.results.put((req_id, {"ok": True}))
+        t.join(5)
+        self.assertEqual(len(p.cache), 0, "a reload left answers about the old tool list in the cache")
+
+    def test_a_timeout_is_never_cached(self):
+        p = pool(1)
+        self.assertEqual(p.request("classify", {"text": "a", "tools": ["x"]}, timeout=0.05), {"error": "timeout", "worker": 0})
+        self.assertEqual(len(p.cache), 0, "a timeout was cached and would be served forever")
+
+    def test_a_worker_that_answers_with_an_error_is_never_cached(self):
+        # This one reaches the caching path, where a timeout returns before it.
+        import threading
+        p = pool(1)
+        out = {}
+        t = threading.Thread(target=lambda: out.update(p.request("classify", {"text": "a", "tools": ["x"]}, timeout=2)))
+        t.start()
+        req_id, _, _ = p.queues[0].get(timeout=1)
+        p.results.put((req_id, {"error": "needle_init failed"}))
+        t.join(2)
+        self.assertEqual(out.get("error"), "needle_init failed")
+        self.assertEqual(len(p.cache), 0, "a failure was cached and would be served forever")
+
+    def test_it_is_bounded(self):
+        p = pool(1)
+        limit = needle_service.CACHE_SIZE
+        self.assertGreater(limit, 0)
+        for i in range(limit + 10):
+            with p.lock:
+                p.cache[("k", str(i), (), 64, True)] = {"n": i}
+                while len(p.cache) > limit:
+                    p.cache.popitem(last=False)
+        self.assertEqual(len(p.cache), limit)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

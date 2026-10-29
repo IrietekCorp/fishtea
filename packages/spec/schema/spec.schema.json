@@ -119,6 +119,9 @@
             },
             "contextTurns": {
               "type": "integer"
+            },
+            "maxTokens": {
+              "type": "integer"
             }
           }
         },
