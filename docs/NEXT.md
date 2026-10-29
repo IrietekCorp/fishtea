@@ -409,8 +409,20 @@ Two things fell out of this that are worth knowing:
 ### 7. Later
 - ~~Operator auth beyond `FISHTEA_OPERATOR_TOKEN`~~ — done, see §3c.
 - Offline notification delivery (email) — see the `channel` note above.
-- needle LoRA fine-tune per archetype on its own utterances (`cactus-needle` supports it;
-  `contract.md` lists the bare-verb quirks it would fix).
+- ~~needle LoRA fine-tune per archetype on its own utterances~~ — done, and it is the only lever that
+  moved the accuracy/latency curve rather than sliding along it (+5 of 56 at any depth, no latency
+  cost). `docs/TUNING.md`; `fishtea tune data | install`, `fishtea eval`.
+- **Fetch a trained model from a bucket instead of committing it.** `fishtea tune install` puts the
+  `.cact` in the application's committed `models/`, which is the right default: no storage to own, no
+  credentials, and the artefact reaches the server by the same path as everything else. It stops being
+  comfortable when a 15–63 MB binary changes often — a nightly retrain would put a new one in every
+  commit. The pieces for the alternative are already there: `models/model.json` carries the `sha256`,
+  the byte count and the provenance hashes, so a build step could fetch the binary from S3/GCS/a release
+  asset and verify it against the record, and the pool would not know the difference. What is missing is
+  the *configuration* — where to fetch from, and which credentials — which is a per-deployment concern
+  and so belongs in the application rather than the framework, probably as a `rules.classify.model`
+  block or a plugin seam. Keep `models/` the default either way: a framework whose classifier needs a
+  bucket before it works has moved the dependency it was trying to remove.
 
 ## Things that will bite you
 
