@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-29T14:04:50.557Z",
+  "framework": "1.7.1",
+  "classifier": "needle3",
+  "label": "needle3 stock L20 · engine 3.0.4 (pinned)",
+  "cases": 56,
+  "digest": "2f0c17e79834c732",
+  "score": {
+    "n": 56,
+    "correct": 25,
+    "positives": {
+      "n": 41,
+      "correct": 20
+    },
+    "refusals": {
+      "n": 15,
+      "correct": 5
+    },
+    "args": {
+      "n": 18,
+      "correct": 7
+    },
+    "byTag": {
+      "plain": {
+        "n": 11,
+        "correct": 5
+      },
+      "paraphrase": {
+        "n": 13,
+        "correct": 5
+      },
+      "collision": {
+        "n": 6,
+        "correct": 6
+      },
+      "bare": {
+        "n": 6,
+        "correct": 2
+      },
+      "anaphora": {
+        "n": 5,
+        "correct": 2
+      },
+      "out-of-subset": {
+        "n": 5,
+        "correct": 1
+      },
+      "unsupported": {
+        "n": 5,
+        "correct": 2
+      },
+      "off-topic": {
+        "n": 5,
+        "correct": 2
+      }
+    },
+    "medianMs": 269
+  },
+  "floor": {
+    "floor": 0.6,
+    "kept": 17,
+    "admitted": 8,
+    "right": 20,
+    "wrong": 14,
+    "note": "keeps 17/20 correct routes and admits 8/14 wrong ones"
+  }
+}

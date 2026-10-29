@@ -18,7 +18,7 @@ import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
 import { deriveCorpus, personaSubsets, readManifest as readTuneManifest, staleness, writeCorpus } from "./tune.ts";
-import { checkCases, coverage, floorSweep, loadCases, recommendFloor, runCases, score, casesPath, REFUSAL_TAGS } from "./eval.ts";
+import { baselinePath, caseDigest, checkCases, compare, coverage, floorSweep, headless, loadCases, readBaseline, recommendFloor, runCases, score, writeBaseline, casesPath, REFUSAL_TAGS } from "./eval.ts";
 import { present } from "./present.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
@@ -622,23 +622,54 @@ async function main() {
         console.log(pc.dim(`  on paraphrases alone — the population a dictionary cannot do — ${mine}/${para.length} against ${theirs}/${para.length}`));
       }
 
-      const { rows, right, wrong } = floorSweep(results);
-      console.log(`\n  rules.classify.floor, swept over ${right} correct and ${wrong} wrong routes:`);
-      console.log(pc.dim(`    floor   correct kept   wrong admitted`));
-      for (const r of rows) {
-        if (r.floor && r.kept === 0 && r.admitted === 0) continue;
-        console.log(`    ${r.floor.toFixed(2)}    ${String(r.kept).padStart(7)}/${right}      ${String(r.admitted).padStart(8)}/${wrong}`);
-      }
+      // A model with no confidence head reports 0 on every answer, which a floor sweep would render as
+      // a tidy table saying nothing. Say what happened instead: it is the expected state for a locally
+      // tuned rung, and the reason the floor is not the lever people reach for.
       const advice = recommendFloor(results);
-      if (advice) {
-        const current = Number(app.spec.rules.classify?.floor ?? 0.35);
-        console.log(`\n  best separation at ${pc.bold(advice.floor.toFixed(2))} — ${advice.note}`);
-        if (Math.abs(current - advice.floor) > 1e-9) {
-          const row = rows.find((r) => Math.abs(r.floor - current) < 1e-9);
-          console.log(pc.yellow(`  the spec says ${current}` + (row ? `, which keeps ${row.kept}/${right} and admits ${row.admitted}/${wrong}` : "")));
+      if (headless(results)) {
+        console.log(pc.yellow(`\n  no confidence on any answer — this model has no head, so rules.classify.floor cannot gate it`));
+        console.log(pc.dim(`  expected for a locally tuned rung; the routing numbers above are the measurement that matters`));
+      } else {
+        const { rows, right, wrong } = floorSweep(results);
+        console.log(`\n  rules.classify.floor, swept over ${right} correct and ${wrong} wrong routes:`);
+        console.log(pc.dim(`    floor   correct kept   wrong admitted`));
+        for (const r of rows) {
+          if (r.floor && r.kept === 0 && r.admitted === 0) continue;
+          console.log(`    ${r.floor.toFixed(2)}    ${String(r.kept).padStart(7)}/${right}      ${String(r.admitted).padStart(8)}/${wrong}`);
+        }
+        if (advice) {
+          const current = Number(app.spec.rules.classify?.floor ?? 0.35);
+          console.log(`\n  best separation at ${pc.bold(advice.floor.toFixed(2))} — ${advice.note}`);
+          if (Math.abs(current - advice.floor) > 1e-9) {
+            const row = rows.find((r) => Math.abs(r.floor - current) < 1e-9);
+            console.log(pc.yellow(`  the spec says ${current}` + (row ? `, which keeps ${row.kept}/${right} and admits ${row.admitted}/${wrong}` : "")));
+          }
         }
       }
-      if (flags.json) await Bun.write(String(flags.json), JSON.stringify({ score: s, results, floor: advice }, null, 2));
+
+      // The loop: one run is a number with nothing to lean on, so compare against the saved one.
+      const digest = caseDigest(cases);
+      const base = readBaseline(app);
+      if (base && base.digest !== digest) {
+        console.log(pc.yellow(`\n  the baseline was measured on a different set of cases, so it is not compared`));
+        console.log(pc.dim(`    saved ${base.cases} cases (${base.digest}) on ${base.at}; this run has ${cases.length} (${digest})`));
+        console.log(pc.dim(`    re-save once you trust this run: fishtea eval --save --label "..."`));
+      } else if (base) {
+        const sign = (d: number) => (d > 0 ? pc.green(`+${d}`) : d < 0 ? pc.red(String(d)) : pc.dim("±0"));
+        console.log(`\n  against the baseline — ${base.label ?? base.classifier}, ${base.at.slice(0, 10)}:`);
+        for (const r of compare(base.score, s)) {
+          console.log(`    ${r.what.padEnd(14)} ${String(r.then).padStart(3)} → ${String(r.now).padStart(3)} / ${String(r.of).padEnd(3)} ${sign(r.now - r.then)}`);
+        }
+      }
+      if (flags.save) {
+        const b = { at: new Date().toISOString(), framework: FISHTEA_VERSION, classifier: classifier.name,
+                    label: typeof flags.label === "string" ? flags.label : undefined,
+                    cases: cases.length, digest, score: s, floor: advice };
+        console.log(pc.green(`\n✓ baseline saved to ${writeBaseline(app, b)}`));
+      } else if (!base) {
+        console.log(pc.dim(`\n  save this as the baseline to compare against later: fishtea eval --save --label "..."`));
+      }
+      if (flags.json) await Bun.write(String(flags.json), JSON.stringify({ score: s, results, floor: advice, digest }, null, 2));
       return;
     }
     case "derive": {
@@ -764,8 +795,9 @@ async function main() {
   fishtea tune data [--trail] [--per-shape 4]
                               derive a training corpus for this application's own classifier
   fishtea tune status         is the corpus still about this spec?
-  fishtea eval [--check] [--intent lexical|needle] [--versus]
-                              run the labelled set: accuracy by population, and the floor it implies
+  fishtea eval [--check] [--intent lexical|needle] [--versus] [--save --label "..."]
+                              run the labelled set: accuracy by population, the floor it implies,
+                              and the delta against eval/baseline.json
   fishtea derive [--ddl|--tools|--forms]
   fishtea migrate [--allow-destructive]
   fishtea seed                load seed/*.json

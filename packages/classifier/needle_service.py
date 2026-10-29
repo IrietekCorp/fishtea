@@ -73,6 +73,17 @@ def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str
     agents: dict[tuple, "needle.Needle"] = {}
     active_key: tuple | None = None
 
+    dims: list[int | None] = [None]
+
+    def embed_dim() -> int:
+        """The embedding width, or 0 when there is no head. Probed once: a tuned build raises every time."""
+        if dims[0] is None:
+            try:
+                dims[0] = len(agent_for(None).embed("hello"))
+            except Exception:
+                dims[0] = 0
+        return dims[0]
+
     def agent_for(names: list[str] | None):
         nonlocal active_key
         key = tuple(sorted(names)) if names is not None else tuple(sorted(by_name))
@@ -86,13 +97,18 @@ def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str
         return a
 
     # warm up: load weights and the full toolset
+    #
+    # The embedding head is optional, and a locally tuned model is exactly the case where it is absent:
+    # `needle build --lora` drops the probe heads, so `needle_embed` raises and only `complete` works.
+    # Refusing to start would make every tuned model unloadable, which would put the one measured lever
+    # on accuracy permanently out of reach. So routing is required and embedding is not; what the pool
+    # loses is familiarity/recall, and it says so rather than failing.
     try:
         agent_for(None).complete("hello")
-        dim = len(agent_for(None).embed("hello"))
     except Exception as exc:  # pragma: no cover
         results.put((f"init-{idx}", {"error": f"worker {idx} failed to load: {exc}"}))
         return
-    results.put((f"init-{idx}", {"ok": True, "dim": dim}))
+    results.put((f"init-{idx}", {"ok": True, "dim": embed_dim()}))
 
     while True:
         item = requests.get()
@@ -117,7 +133,7 @@ def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str
                 text = _fold(payload["text"], payload.get("context") or [])
                 r = a.complete(text, max_new_tokens=int(payload.get("maxTokens") or MAX_NEW_TOKENS))
                 t_c = time.time()
-                emb = a.embed(payload["text"]) if payload.get("embed", True) else None
+                emb = a.embed(payload["text"]) if (payload.get("embed", True) and embed_dim()) else None
                 out = {
                     "timings": {"bind": round((t_b - t_a) * 1000, 1), "complete": round((t_c - t_b) * 1000, 1), "embed": round((time.time() - t_c) * 1000, 1)},
                     "function_calls": [{"name": c.get("name"), "arguments": c.get("arguments") or {}} for c in (r.get("function_calls") or []) if c.get("name") in by_name],
@@ -129,8 +145,11 @@ def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str
                     "active": list(active_key or ()),
                 }
             elif op == "embed":
-                a = agent_for(None)
-                out = {"embeddings": [a.embed(t) for t in payload["texts"]], "ms": round((time.time() - t0) * 1000, 1)}
+                if not embed_dim():
+                    out = {"error": "this model has no embedding head (a locally tuned build drops it)"}
+                else:
+                    a = agent_for(None)
+                    out = {"embeddings": [a.embed(t) for t in payload["texts"]], "ms": round((time.time() - t0) * 1000, 1)}
             elif op == "reload":
                 tools = payload["tools"]
                 by_name = {t["name"]: t for t in tools}
@@ -416,7 +435,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/healthz"):
             p = self.pool
-            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "warming": p.warming, "active": [list(a) if a else None for a in p.active], "maxNewTokens": MAX_NEW_TOKENS, "cache": {"size": len(p.cache), "limit": CACHE_SIZE, "hits": p.hits, "misses": p.misses}})
+            return self._json(200 if p.healthy() else 503, {"ok": p.healthy(), "model": "needle3", "workers": p.n, "ready": p.ready, "tools": len(p.tools), "dim": p.dim, "embeddings": p.dim > 0, "warming": p.warming, "active": [list(a) if a else None for a in p.active], "maxNewTokens": MAX_NEW_TOKENS, "cache": {"size": len(p.cache), "limit": CACHE_SIZE, "hits": p.hits, "misses": p.misses}})
         self._json(404, {"error": "not found"})
 
     def do_POST(self):

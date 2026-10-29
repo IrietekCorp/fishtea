@@ -11,6 +11,7 @@ outside is timing-dependent and the point is the handler's behaviour, not the ke
 """
 import io
 import json
+import queue
 import sys
 import unittest
 from pathlib import Path
@@ -268,6 +269,116 @@ class TestCache(unittest.TestCase):
                     p.cache.popitem(last=False)
         self.assertEqual(len(p.cache), limit)
 
+
+
+class Tuned:
+    """A locally tuned rung: it routes, and `needle build --lora` dropped its probe heads.
+
+    Not hypothetical. The adapter built from an archetype's own derived corpus produces an archive with
+    seven tensors fewer than the stock one, and `needle_embed` raises on every call while `complete`
+    works normally.
+    """
+
+    def __init__(self, *a, **k):
+        pass
+
+    def reset(self):
+        pass
+
+    def complete(self, text, max_new_tokens=64):
+        return {"function_calls": [{"name": "trending", "arguments": {}}], "confidence": None}
+
+    def embed(self, _t):
+        raise RuntimeError("needle_embed failed (code -1)")
+
+
+class Whole:
+    """A stock model, which embeds."""
+
+    def __init__(self, *a, **k):
+        pass
+
+    def reset(self):
+        pass
+
+    def complete(self, text, max_new_tokens=64):
+        return {"function_calls": [{"name": "trending", "arguments": {}}], "confidence": 0.5}
+
+    def embed(self, _t):
+        return [0.1, 0.2, 0.3]
+
+
+def run_worker(cls, items):
+    """Drive the real worker_main with a given model class and collect what it queued."""
+    reqs, res = queue.Queue(), queue.Queue()
+    for it in items:
+        reqs.put(it)
+    reqs.put(None)
+    tools = json.dumps([{"name": "trending", "description": "what is popular",
+                         "parameters": {"type": "object", "properties": {}}}])
+    with mock.patch.dict("sys.modules", {"needle": mock.MagicMock(Needle=cls)}):
+        needle_service.worker_main(0, reqs, res, tools)
+    out = []
+    while not res.empty():
+        out.append(res.get())
+    return dict(out)
+
+
+class TestAModelWithNoEmbeddingHead(unittest.TestCase):
+    """
+    A tuned rung is the only measured lever on routing accuracy, and `needle build --lora` strips the
+    probe heads to get it. The warm-up used to compute `dim` unguarded and report the exception as a
+    failure to load, so every tuned model was unloadable and that lever was out of reach. Routing is
+    required; embedding is not.
+    """
+
+    def test_a_tuned_model_loads_and_says_it_cannot_embed(self):
+        out = run_worker(Tuned, [])
+        self.assertEqual(out["init-0"], {"ok": True, "dim": 0})
+
+    def test_a_stock_model_still_reports_its_dimension(self):
+        out = run_worker(Whole, [])
+        self.assertEqual(out["init-0"], {"ok": True, "dim": 3})
+
+    def test_a_model_that_cannot_route_at_all_still_fails_to_load(self):
+        # The guard must not have turned a broken archive into a healthy worker.
+        class Broken(Tuned):
+            def complete(self, text, max_new_tokens=64):
+                raise RuntimeError("needle_load failed (code -1)")
+
+        out = run_worker(Broken, [])
+        self.assertIn("error", out["init-0"])
+        self.assertIn("failed to load", out["init-0"]["error"])
+
+    def test_classify_answers_without_an_embedding(self):
+        # The engine already treats a missing embedding as "no recall this turn", so the turn is
+        # answered and only familiarity is lost.
+        out = run_worker(Tuned, [("r1", "classify", {"text": "what's hot", "tools": ["trending"]})])
+        self.assertEqual([c["name"] for c in out["r1"]["function_calls"]], ["trending"])
+        self.assertIsNone(out["r1"]["embedding"])
+        self.assertIsNone(out["r1"]["confidence"])
+
+    def test_classify_still_embeds_when_the_model_can(self):
+        out = run_worker(Whole, [("r1", "classify", {"text": "what's hot", "tools": ["trending"]})])
+        self.assertEqual(out["r1"]["embedding"], [0.1, 0.2, 0.3])
+
+    def test_an_explicit_embed_request_is_an_error_and_not_a_crash(self):
+        # /embed is how the core builds recall vectors. It has to come back as a refusal the caller can
+        # read, not as a dead worker.
+        out = run_worker(Tuned, [("r1", "embed", {"texts": ["hello"]})])
+        self.assertIn("no embedding head", out["r1"]["error"])
+
+    def test_the_head_is_probed_once_and_not_per_request(self):
+        # A raising embed on every classify would be a per-turn exception in the hot path.
+        calls = []
+
+        class Counting(Tuned):
+            def embed(self, _t):
+                calls.append(1)
+                raise RuntimeError("needle_embed failed (code -1)")
+
+        run_worker(Counting, [("r%d" % i, "classify", {"text": "x", "tools": ["trending"]}) for i in range(5)])
+        self.assertEqual(len(calls), 1)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -9,10 +9,13 @@
  */
 import { describe, expect, test } from "bun:test";
 import { loadApp } from "@fishtea/spec";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
-  checkCases, coverage, floorSweep, loadCases, recommendFloor, REFUSAL_TAGS,
-  runCases, score, type CaseResult, type EvalCase, type EvalClassifier,
+  caseDigest, checkCases, compare, coverage, floorSweep, headless, loadCases, readBaseline,
+  recommendFloor, REFUSAL_TAGS, runCases, score, writeBaseline,
+  type CaseResult, type EvalCase, type EvalClassifier,
 } from "../src/eval.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
@@ -263,5 +266,89 @@ describe("the score separates populations that answer different questions", () =
     expect(s.versus).toBeDefined();
     const total = s.versus!.agree + s.versus!.onlyPrimary + s.versus!.onlySecond + s.versus!.neither;
     expect(total).toBe(6);
+  });
+});
+
+describe("the baseline, which is what makes a run mean something", () => {
+  // Skips .fishtea/ and any baseline a local run left behind, so the fixture is the archetype as
+  // shipped rather than as the developer last used it.
+  const dir = () => {
+    const d = mkdtempSync(join(tmpdir(), "fishtea-eval-"));
+    cpSync(join(ROOT, "templates/ecommerce"), d, { recursive: true, filter: (src) => !src.includes("/.fishtea") && !src.endsWith("baseline.json") });
+    return d;
+  };
+  const scoreOf = async (answer: Parameters<typeof canned>[0], app = shop, cs = shopCases) => score(await runCases(app, canned(answer), cs));
+
+  test("a digest identifies the questions, not the answers", () => {
+    // Two runs of the same set must compare; a set that gained a case must not.
+    expect(caseDigest(shopCases)).toBe(caseDigest([...shopCases].reverse()));
+    expect(caseDigest(shopCases.slice(0, -1))).not.toBe(caseDigest(shopCases));
+  });
+
+  test("a changed label changes the digest, because it changed the question", () => {
+    const moved = withFirst(structuredClone(shopCases), { shape: "trending" });
+    expect(caseDigest(moved)).not.toBe(caseDigest(shopCases));
+  });
+
+  test("saved and read back", async () => {
+    const d = dir();
+    const app = loadApp(d);
+    const s = await scoreOf(() => ({ name: "trending", confidence: 0.5 }), app, loadCases(app));
+    const b = { at: new Date().toISOString(), framework: "test", classifier: "canned", label: "a label", cases: 56, digest: "abc", score: s, floor: null };
+    expect(writeBaseline(app, b)).toBe(join(d, "eval", "baseline.json"));
+    expect(readBaseline(loadApp(d))).toEqual(b);
+  });
+
+  test("no baseline is not an error", () => {
+    const d = dir();
+    rmSync(join(d, "eval", "baseline.json"), { force: true });
+    expect(readBaseline(loadApp(d))).toBeNull();
+  });
+
+  test("a corrupt baseline is not an error either, because it must never fail a measurement", () => {
+    const d = dir();
+    mkdirSync(join(d, "eval"), { recursive: true });
+    writeFileSync(join(d, "eval", "baseline.json"), "{ not json");
+    expect(readBaseline(loadApp(d))).toBeNull();
+  });
+
+  test("the comparison reports every population, including the ones that did not move", async () => {
+    // "Nothing changed" is the result a refactor is supposed to produce, so it has to be visible.
+    const before = await scoreOf(() => null);
+    const after = await scoreOf((t) => (t.includes("cart") ? { name: "viewCart", confidence: 0.9 } : null));
+    const rows = compare(before, after);
+    const by = Object.fromEntries(rows.map((r) => [r.what, r]));
+    // It gained routes and lost refusals in the same step, because "what's in my cart" asked by a
+    // stranger is an out-of-subset case and this classifier answers anything with "cart" in it. One
+    // aggregate would have hidden both halves.
+    expect(by["routed"].now).toBeGreaterThan(by["routed"].then);
+    expect(by["refused"].now).toBeLessThan(by["refused"].then);
+    expect(by["out-of-subset"].then - by["out-of-subset"].now).toBe(2);
+    for (const tag of Object.keys(after.byTag)) expect(by[tag]).toBeDefined();
+  });
+
+  test("a gain in one population and a loss in another is not reported as a wash", async () => {
+    // The aggregate is the least informative number here: three paraphrases gained for three refusals
+    // lost is a different classifier, not the same one.
+    const a = await scoreOf((t, tools) => (tools.includes("trending") ? { name: "trending", confidence: 0.5 } : null));
+    const b = await scoreOf(() => null);
+    const rows = compare(a, b);
+    const by = Object.fromEntries(rows.map((r) => [r.what, r]));
+    expect(by["refused"].now).toBeGreaterThan(by["refused"].then);
+    expect(by["routed"].now).toBeLessThan(by["routed"].then);
+  });
+
+  test("a model with no confidence head is recognised, not swept", async () => {
+    // A locally tuned rung reports None on every answer, which the core reads as 0. Sweeping that
+    // produces a tidy table that means nothing, so it has to be detected instead.
+    const noHead = await runCases(shop, canned(() => ({ name: "trending", confidence: 0 })), shopCases);
+    expect(headless(noHead)).toBe(true);
+    const withHead = await runCases(shop, canned(() => ({ name: "trending", confidence: 0.4 })), shopCases);
+    expect(headless(withHead)).toBe(false);
+  });
+
+  test("a classifier that answers nothing at all is not mistaken for a missing head", async () => {
+    // Silence everywhere is a mute classifier, which is a different diagnosis from a dropped head.
+    expect(headless(await runCases(shop, canned(() => null), shopCases))).toBe(false);
   });
 });

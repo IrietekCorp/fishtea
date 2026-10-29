@@ -16,10 +16,16 @@ import { TUNE_SYSTEM, corpusDigest, deriveCorpus, personaSubsets, readManifest, 
 const ROOT = resolve(import.meta.dir, "../../..");
 const shop = loadApp(join(ROOT, "templates/ecommerce"));
 
-/** A throwaway copy of an archetype, so a test may edit its spec. */
+/**
+ * A throwaway copy of an archetype, so a test may edit its spec.
+ *
+ * `.fishtea/` is skipped deliberately: it is derived, git-ignored, and present on the disk of anyone who
+ * has run `fishtea tune data` against a template. Copying it would make these tests pass or fail
+ * depending on what the developer did last, which is the opposite of a fixture.
+ */
 function copy(template = "ecommerce") {
   const dir = mkdtempSync(join(tmpdir(), "fishtea-tune-"));
-  cpSync(join(ROOT, "templates", template), dir, { recursive: true });
+  cpSync(join(ROOT, "templates", template), dir, { recursive: true, filter: (src) => !src.includes("/.fishtea") });
   return dir;
 }
 

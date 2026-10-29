@@ -65,9 +65,30 @@ Deriving is milliseconds, so it belongs wherever the spec changes. Training is n
 **Derive at build time.** `fishtea tune data` reads files and writes one. Put it beside `fishtea derive`
 in CI, or run it after any spec edit.
 
-**Train on a schedule, elsewhere.** `needle finetune` is JAX, and on sixteen CPU cores here it is roughly
-**two minutes a step** — a thousand-example run at ten epochs is the better part of a day. It wants a GPU
-box or Cactus's hosted service, on a cadence (nightly, weekly) rather than in `fishtea up`.
+**Train on a GPU, and then it is minutes rather than a day.** `needle finetune` is JAX, and the
+difference between its two backends decides whether tuning is a scheduled job or part of the loop:
+
+| | 16 CPU cores | one RTX 3060 (12 GB) |
+|---|---|---|
+| throughput | ~7 examples/minute | ~240 examples/minute |
+| the 120-example ecommerce corpus, 12 epochs | ~3 hours (extrapolated) | **~5 minutes** |
+
+That is about **30×**, and it is a consumer desktop card rather than a datacentre one. It does need
+`pip install "jax[cuda12]"` — the plain `cactus-needle` install is CPU-only and says so in one line at
+startup, which is easy to miss — plus `sentencepiece`, `flax`, `optax` and `orbax-checkpoint`, which the
+base package does not pull in. And it wants `--batch-size 2 --max-len 768`: the default batch exhausts
+12 GB and fails with `RESOURCE_EXHAUSTED` partway through the first step.
+
+So the earlier advice here — a nightly or weekly job on a GPU box, or the hosted service — understated
+what a developer machine can do. At five minutes a run, tuning on a spec change is reasonable, and the
+build-time/schedule split below is about *where it is appropriate*, not about what is affordable.
+
+**Never train on the box that is serving.** The CPU run saturated all sixteen cores and the classifier
+pool degraded with it: the same labelled set that scores a 227 ms median on a quiet machine scored
+**951 ms** and lost eight points of accuracy while training ran beside it. That is the concurrency
+collapse in `contract.md` Phase 5 arriving by a side door, and it means a benchmark taken during a
+training run is not a benchmark. `fishtea eval` records its median latency in the baseline for exactly
+this reason — a baseline whose median is four times the expected one was measured under load.
 
 **Staleness is the trigger.** `.fishtea/tune/manifest.json` records the `shapes` and `personas` hashes
 the corpus was derived from — the only two sections that can make a model wrong, since the first is what
@@ -216,6 +237,57 @@ what gates it — because a classifier that is right 90% of the time can be gate
 useless at 60%, and `fishtea eval` is now the instrument that will say so. It also means the labelled
 set is the training set's held-out twin, and the two must not be allowed to merge: `fishtea tune data`
 derives from triggers, inputs, seed and trail, and nothing in `eval/classify.jsonl` is ever fed to it.
+
+## What tuning actually bought
+
+The first end-to-end run: `fishtea tune data` on the ecommerce archetype (120 derived examples),
+`needle finetune --epochs 12 --batch-size 2 --max-len 768` on an RTX 3060 (~7 minutes, validation loss
+0.0895, 11 of 18 held-out calls exact), `needle build --lora` at three depths, each served through the
+real pool and scored with `fishtea eval` on a quiet machine.
+
+| configuration | overall | routed | refused | paraphrase | median | archive |
+|---|---|---|---|---|---|---|
+| stock L20, engine 3.0.4 *(what ships)* | 26/56 | 23/41 | 3/15 | 5/13 | 249 ms | 35.3 MB |
+| **tuned L20** | **31/56** | **27/41** | 4/15 | **7/13** | **203 ms** | 63.4 MB |
+| stock L8 | 18/56 | 15/41 | 3/15 | 1/13 | 89 ms | 27.4 MB |
+| **tuned L8** | **23/56** | 18/41 | **5/15** | 2/13 | **78 ms** | 27.4 MB |
+| tuned L4 | 19/56 | 18/41 | 1/15 | 3/13 | 42 ms | 15.4 MB |
+
+**Tuning is worth +5 of 56 at full depth and +5 at eight layers, and it costs nothing.** Same archive
+size at the same depth, same or better latency. Against a run-to-run variance of ±1–2 on identical
+configurations (measured: the same stock run scored 26 then 25), +5 is a real effect.
+
+**This is the first thing measured here that moves the curve rather than sliding along it.** Tuned L8
+answers in **78 ms against stock L20's 249** — 3.2× faster — and loses three correct answers doing it.
+Every other lever traded accuracy for latency at roughly par; this one buys both at once, which is what
+the whole document predicted and had not until now demonstrated.
+
+**The shallow rungs fail in different ways, and only the labelled set shows it.** Tuned L4 routes as
+well as tuned L8 (18/41 each) but refuses almost nothing (1/15 against 5/15): it answers everything.
+That is invisible in an overall score — 19 against 23 looks like "a bit worse" — and decisive in
+practice, because a router that never declines is one that confidently mis-answers. The paraphrase
+column tells the other half: 7/13 at full depth, 2/13 at eight layers. Depth is what carries
+generalisation; the corpus cannot put it back.
+
+**Do not read the L8 drop as the corpus overfitting to triggers.** That was the obvious hypothesis — a
+corpus derived from triggers teaching the model to be a dictionary — and the control refutes it. The
+same adapter at full depth *gains* paraphrases (5 → 7) and takes collisions to 6/6. The corpus is fine;
+eight layers cannot carry it.
+
+### Two things the toolchain does that nothing documented
+
+**`needle build --lora` drops the embedding head, not just the confidence head.** The tuned archive has
+seven tensors fewer than the stock one, and `needle_embed` raises `RuntimeError: needle_embed failed
+(code -1)` on every call. The pool computed its vector width during warm-up, so it reported *every*
+tuned model as a worker that failed to load — the one measured lever on accuracy was unloadable. The
+pool now requires routing and treats embedding as optional, reports `"embeddings": false` in
+`/healthz`, and answers `/embed` with a refusal rather than dying. What is actually lost is
+familiarity/recall, which needs those vectors; the turn itself is answered normally.
+
+**A locally tuned archive is 1.8× the published size.** Tuned L20 is 63.4 MB against the published
+35.3 MB, entirely because the exporter writes CQ4 where the published file is CQ2 — the same
+`WEIGHT_BITS = 4` guard described below. So the edge arithmetic in that section applies to the stock
+archive, and a tuned one is twice the download until that guard lifts.
 
 ## How small it goes, and what the megabytes are
 

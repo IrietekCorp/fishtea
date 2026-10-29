@@ -53,8 +53,9 @@
  * of positives only cannot tell a floor that keeps good answers from a floor that admits bad ones, which
  * is the entire question a floor exists to settle.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { deriveTools, type App, type ToolSpec } from "@fishtea/spec";
 import { personaShapes } from "./tune.ts";
 
@@ -264,7 +265,7 @@ export function score(results: CaseResult[]): Score {
   const s: Score = {
     n: results.length, correct: 0,
     positives: { n: 0, correct: 0 }, refusals: { n: 0, correct: 0 }, args: { n: 0, correct: 0 },
-    byTag: {}, medianMs: median(results.map((r) => r.ms)),
+    byTag: {}, medianMs: Math.round(median(results.map((r) => r.ms))),
   };
   for (const r of results) {
     const tag = (s.byTag[r.case.tag] ??= { n: 0, correct: 0 });
@@ -338,3 +339,80 @@ export function recommendFloor(results: CaseResult[], floors: number[] = FLOORS)
       : `keeps ${best.kept}/${right} correct routes and admits ${best.admitted}/${wrong} wrong ones`;
   return { floor: best.floor, kept: best.kept, admitted: best.admitted, right, wrong, note };
 }
+
+// ── a baseline to measure against ───────────────────────────────────────────
+
+/**
+ * Performance tuning is a loop, and a loop needs a fixed point.
+ *
+ * A single run says 27/56, which is a number with nothing to lean on: is the shallow rung better than
+ * the stock one, did the upgrade help, did a trigger edit cost anything? So one run is saved as
+ * `eval/baseline.json` and every later run reports the delta against it, per population — because the
+ * aggregate is the least informative number in the set, and a change that gains three paraphrases while
+ * losing three refusals is not a wash.
+ *
+ * The case digest is the safety catch. Comparing today's score against a baseline measured on a
+ * different set of cases is the most comfortable way to be wrong about progress, so the digest is
+ * stored and a changed set is reported rather than compared.
+ */
+export interface Baseline {
+  at: string;
+  framework: string;
+  /** What was measured — the classifier's name plus whatever the operator called this configuration. */
+  classifier: string;
+  label?: string;
+  cases: number;
+  digest: string;
+  score: Score;
+  floor?: FloorAdvice | null;
+}
+
+export const BASELINE_FILE = join("eval", "baseline.json");
+export const baselinePath = (app: App) => join(app.dir, BASELINE_FILE);
+
+/** Identifies the set, so a baseline is never compared against different questions. */
+export function caseDigest(cases: EvalCase[]): string {
+  const h = createHash("sha256");
+  for (const c of [...cases].sort((a, b) => (a.persona + a.text).localeCompare(b.persona + b.text))) {
+    h.update(`${c.persona}\u0000${c.text}\u0000${c.shape ?? ""}\u0000${c.tag}\u0000${JSON.stringify(c.args ?? {})}\n`);
+  }
+  return h.digest("hex").slice(0, 16);
+}
+
+export function readBaseline(app: App): Baseline | null {
+  const p = baselinePath(app);
+  if (!existsSync(p)) return null;
+  try { return JSON.parse(readFileSync(p, "utf8")) as Baseline; } catch { return null; }
+}
+
+export function writeBaseline(app: App, b: Baseline): string {
+  const p = baselinePath(app);
+  mkdirSync(dirname(p), { recursive: true });
+  writeFileSync(p, JSON.stringify(b, null, 2) + "\n");
+  return p;
+}
+
+export interface Delta { what: string; then: number; now: number; of: number }
+
+/**
+ * What moved, population by population.
+ *
+ * Returns every row, including the unchanged ones, because "nothing moved" is a result: it is what a
+ * refactor is supposed to produce and what a tuning run is not.
+ */
+export function compare(then: Score, now: Score): Delta[] {
+  const rows: Delta[] = [
+    { what: "overall", then: then.correct, now: now.correct, of: now.n },
+    { what: "routed", then: then.positives.correct, now: now.positives.correct, of: now.positives.n },
+    { what: "refused", then: then.refusals.correct, now: now.refusals.correct, of: now.refusals.n },
+  ];
+  if (now.args.n || then.args.n) rows.push({ what: "arguments", then: then.args.correct, now: now.args.correct, of: now.args.n });
+  for (const tag of new Set([...Object.keys(then.byTag), ...Object.keys(now.byTag)])) {
+    rows.push({ what: tag, then: then.byTag[tag]?.correct ?? 0, now: now.byTag[tag]?.correct ?? 0, of: now.byTag[tag]?.n ?? then.byTag[tag]?.n ?? 0 });
+  }
+  return rows;
+}
+
+/** True when every answer came back with no confidence at all — a locally tuned rung, whose head is gone. */
+export const headless = (results: CaseResult[]) =>
+  results.some((r) => r.got !== null) && results.every((r) => !r.confidence);
