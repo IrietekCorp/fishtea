@@ -201,3 +201,45 @@ depth and **0 of 13** at four layers. Anyone shipping the browser target must re
 a derived confidence first; inheriting 0.35 ships an application that answers nothing.
 
 Harness: `wasm-bench/{index.html,worker.js,drive.ts,block.ts,native.py}` in the session scratchpad.
+
+## Phase 7 — what 194 labelled cases say
+
+`fishtea eval` over `templates/*/eval/classify.jsonl`: 56 ecommerce, 45 portfolio, 46 program, 47
+verification, each case naming the asking persona (which decides the tool subset), the shape it must
+reach or `null` for silence, the arguments that must be extracted, and a population tag. About a third
+of every set is a refusal, because a set of positives cannot separate the populations a floor exists to
+separate.
+
+| | 3.0.4 (pinned) | 3.2.8 |
+|---|---|---|
+| overall | 48 / 47 / 54 / 49 % | 46 / 56 / 61 / 51 % |
+| cases that should route | 61 / 56 / 59 / 44 % | 37 / 50 / 53 / 41 % |
+| cases that should stay silent | 13 / 23 / 42 / 62 % | **73 / 69 / 83 / 77 %** |
+| answers offered, and wrong | 134, **59 wrong** | 83, **20 wrong** |
+
+**3.0.4 substitutes rather than declines.** `out-of-subset` is 0 on every archetype: given a stranger's
+five tools, "check out" returns `trending` at 0.57 with the reasoning "User wants to check out. Use
+trending to see what's popular." The subset was correctly restricted — the pool received five tool names
+and the model picked one of them anyway. 3.2.8 declines instead, which is the failure mode the budget
+rule already asks for, and is a stronger argument for the upgrade than the calibration difference.
+
+**No gate separates right from wrong routes on either engine.** Over all 194 cases:
+
+| gate | 3.0.4 keeps / admits | 3.2.8 keeps / admits | model-only wins kept |
+|---|---|---|---|
+| `head ≥ 0.35` | 66/75 · 45/59 | 17/63 · 0/20 | 11/12 · 2/7 |
+| `head ≥ 0.20` | 70/75 · 53/59 | 23/63 · 9/20 | 11/12 · 4/7 |
+| required arguments present | 71/75 · 58/59 | 59/63 · 20/20 | 12/12 · 7/7 |
+| arguments present **and** lexical agrees | 59/75 · 2/59 | 52/63 · 2/20 | **0/12 · 0/7** |
+| arguments present, lexical not contradicting | 67/75 · 51/59 | 55/63 · 18/20 | 8/12 · 3/7 |
+
+The last column is the finding. The only derived gate that filters discards every answer the model got
+and the lexical router missed — a gate requiring the dictionary's agreement is the dictionary. Its
+aggregate score flatters it because most correct answers are ones the dictionary also finds. Everything
+else admits 17–58 of the wrong routes, so the wrong answers are indistinguishable from the right ones on
+every signal available without a trained head.
+
+**Therefore accuracy blocks confidence, not the reverse.** Phase 5 and docs/TUNING.md recorded tuning as
+blocked by the missing confidence head; at a 24–44% error rate on offered answers, no threshold helps,
+and tuning is the only measured lever on accuracy. Tune first, re-run `fishtea eval`, then ask what gates
+it. The labelled set is the held-out twin of the derived corpus and is never fed to `fishtea tune data`.

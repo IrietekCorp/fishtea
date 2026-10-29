@@ -1,0 +1,49 @@
+// Ground truth for this verification service's classifier. See packages/cli/src/eval.ts for the tags.
+// Emails and organisations come from seed/employee.json and seed/organization.json.
+{"text": "how does this work", "persona": "stranger", "shape": "howItWorks", "tag": "plain"}
+{"text": "what do you disclose", "persona": "stranger", "shape": "howItWorks", "tag": "plain"}
+{"text": "is it legal", "persona": "stranger", "shape": "howItWorks", "tag": "plain"}
+{"text": "verify that jane@example.com worked at Acme Corp", "persona": "requester", "shape": "requestVerification", "args": {"employeeEmail": "jane@example.com", "organizationName": "Acme Corp"}, "tag": "plain"}
+{"text": "my requests", "persona": "requester", "shape": "myRequests", "tag": "plain"}
+{"text": "what's waiting for me", "persona": "requester", "shape": "pendingAttestations", "tag": "plain"}
+{"text": "they did work here", "persona": "requester", "shape": "attest", "tag": "plain"}
+{"text": "i consent", "persona": "stranger", "shape": "giveConsent", "tag": "plain"}
+{"text": "my email is lee@globex.com", "persona": "stranger", "shape": "becomeKnown", "args": {"email": "lee@globex.com"}, "tag": "plain"}
+{"text": "i'm from Northwind, doing a background check", "persona": "known", "shape": "becomeKnown", "tag": "plain"}
+{"text": "does the person find out i asked", "persona": "stranger", "shape": "howItWorks", "tag": "paraphrase"}
+{"text": "is this going to take weeks", "persona": "stranger", "shape": "howItWorks", "tag": "paraphrase"}
+{"text": "what exactly ends up in the report", "persona": "stranger", "shape": "howItWorks", "tag": "paraphrase"}
+{"text": "i need to check someone's employment history at Globex", "persona": "requester", "shape": "requestVerification", "args": {"organizationName": "Globex"}, "tag": "paraphrase"}
+{"text": "any movement on the ones i sent", "persona": "requester", "shape": "myRequests", "tag": "paraphrase"}
+{"text": "is there anything i need to sign off on", "persona": "requester", "shape": "pendingAttestations", "tag": "paraphrase"}
+{"text": "yes, you can share my dates with them", "persona": "stranger", "shape": "giveConsent", "args": {"granted": true}, "tag": "paraphrase", "why": "consent given in the words people actually use, and the boolean has to come out as true"}
+{"text": "actually i'd rather you didn't share anything", "persona": "stranger", "shape": "giveConsent", "args": {"granted": false}, "tag": "paraphrase", "why": "the same shape with the opposite boolean, and no \"revoke\" in sight"}
+{"text": "no, she never worked in that team", "persona": "requester", "shape": "attest", "args": {"confirms": false}, "tag": "paraphrase"}
+{"text": "we're a lender and we need to run a check", "persona": "known", "shape": "becomeKnown", "tag": "paraphrase"}
+{"text": "status", "persona": "requester", "shape": "myRequests", "tag": "collision", "why": "myRequests owns \"status\" and \"my requests\" while pendingAttestations owns \"pending\" and \"requests for me\" — the word request belongs to both"}
+{"text": "pending", "persona": "requester", "shape": "pendingAttestations", "tag": "collision"}
+{"text": "what's the status of the request i filed", "persona": "requester", "shape": "myRequests", "tag": "collision", "why": "mine, so myRequests — the same sentence without \"i filed\" could be either"}
+{"text": "which requests are for me to answer", "persona": "requester", "shape": "pendingAttestations", "tag": "collision"}
+{"text": "revoke my consent", "persona": "requester", "shape": "giveConsent", "args": {"granted": false}, "tag": "collision", "why": "giveConsent's \"revoke\" against attest's \"deny\": two refusals that mean different shapes"}
+{"text": "deny that one", "persona": "requester", "shape": "attest", "args": {"confirms": false}, "tag": "collision"}
+{"text": "attest", "persona": "requester", "shape": "attest", "tag": "bare"}
+{"text": "give consent", "persona": "stranger", "shape": "giveConsent", "tag": "bare"}
+{"text": "we are Northwind Capital", "persona": "stranger", "shape": "becomeKnown", "tag": "bare"}
+{"text": "did they work there", "persona": "requester", "shape": "requestVerification", "tag": "bare"}
+{"text": "revoke", "persona": "stranger", "shape": "giveConsent", "tag": "bare"}
+{"text": "confirm the first one", "persona": "requester", "shape": "attest", "args": {"requestId": "vr_1"}, "context": ["last answer listed: 1. vr_1 Jane Doe at Acme Corp; 2. vr_2 Sam Lee at Globex"], "tag": "anaphora"}
+{"text": "deny the second", "persona": "requester", "shape": "attest", "args": {"requestId": "vr_2"}, "context": ["last answer listed: 1. vr_1 Jane Doe at Acme Corp; 2. vr_2 Sam Lee at Globex"], "tag": "anaphora"}
+{"text": "do the same for Sam Lee at Globex", "persona": "requester", "shape": "requestVerification", "args": {"organizationName": "Globex"}, "context": ["last answer listed: 1. vr_1 Jane Doe at Acme Corp"], "tag": "anaphora"}
+{"text": "verify that jane@example.com worked at Acme Corp", "persona": "stranger", "shape": null, "tag": "out-of-subset", "why": "requesting a verification needs an identified requester; the tool is never offered to a stranger"}
+{"text": "my requests", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "what's waiting for me", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "my email is lee@globex.com", "persona": "requester", "shape": null, "tag": "out-of-subset", "why": "already identified, so becomeKnown is not on offer"}
+{"text": "how much does a verification cost", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "can i get this done by tomorrow", "persona": "requester", "shape": null, "tag": "unsupported"}
+{"text": "can i dispute something that's wrong", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "do you have an api", "persona": "requester", "shape": null, "tag": "unsupported"}
+{"text": "what's the weather in Lagos", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "tell me a joke", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "who is the prime minister", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "what's 17 times 4", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "translate good morning into Dutch", "persona": "requester", "shape": null, "tag": "off-topic"}

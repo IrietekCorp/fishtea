@@ -1,0 +1,61 @@
+// Ground truth for this shop's classifier: what a sentence means, decided by a person.
+// Everything else about the classifier is derived from the spec; this cannot be, which is why it
+// exists. `fishtea eval` runs it to derive rules.classify.floor and to score any gate that replaces
+// the model's own confidence. Tags split the set into populations that answer different questions —
+// see packages/cli/src/eval.ts. Ids and names come from seed/product.json.
+{"text": "show me earrings", "persona": "stranger", "shape": "findProducts", "tag": "plain"}
+{"text": "do you have anything in brass", "persona": "stranger", "shape": "findProducts", "tag": "plain"}
+{"text": "what's trending", "persona": "stranger", "shape": "trending", "tag": "plain"}
+{"text": "best sellers please", "persona": "stranger", "shape": "trending", "tag": "plain"}
+{"text": "compare p_pearl_drop and p_brass_threaders", "persona": "stranger", "shape": "compareProducts", "args": {"leftId": "p_pearl_drop", "rightId": "p_brass_threaders"}, "tag": "plain"}
+{"text": "more like p_pearl_drop", "persona": "stranger", "shape": "relatedProducts", "args": {"productId": "p_pearl_drop"}, "tag": "plain"}
+{"text": "add p_coral_hoops to my cart", "persona": "known", "shape": "addToCart", "args": {"productId": "p_coral_hoops"}, "tag": "plain"}
+{"text": "view cart", "persona": "known", "shape": "viewCart", "tag": "plain"}
+{"text": "order status for o_7731", "persona": "customer", "shape": "orderStatus", "args": {"orderId": "o_7731"}, "tag": "plain"}
+{"text": "my email is sam@weaver.co", "persona": "stranger", "shape": "becomeKnown", "args": {"email": "sam@weaver.co"}, "tag": "plain"}
+{"text": "i'm ready to pay now", "persona": "mid-purchase", "shape": "checkout", "tag": "plain"}
+{"text": "something bold for a wedding under 60", "persona": "stranger", "shape": "findProducts", "args": {"maxPrice": 60}, "tag": "paraphrase", "why": "the price has to come out of \"under 60\" as a number, not a word"}
+{"text": "quiet and polished for the office", "persona": "stranger", "shape": "findProducts", "tag": "paraphrase", "why": "mood words that are real catalogue tags, with no trigger anywhere"}
+{"text": "i need a gift for my sister's birthday", "persona": "stranger", "shape": "findProducts", "tag": "paraphrase"}
+{"text": "earrings that won't look silly on a video call", "persona": "stranger", "shape": "findProducts", "tag": "paraphrase", "why": "the kind of sentence a dictionary cannot route and a person has no trouble with"}
+{"text": "what are people buying this week", "persona": "stranger", "shape": "trending", "tag": "paraphrase"}
+{"text": "what's everyone wearing right now", "persona": "stranger", "shape": "trending", "tag": "paraphrase"}
+{"text": "which is better value, p_pearl_drop or p_brass_threaders", "persona": "stranger", "shape": "compareProducts", "args": {"leftId": "p_pearl_drop", "rightId": "p_brass_threaders"}, "tag": "paraphrase"}
+{"text": "what would go well with p_coral_hoops", "persona": "stranger", "shape": "relatedProducts", "args": {"productId": "p_coral_hoops"}, "tag": "paraphrase", "why": "\"go well with\" is one word off the \"goes with\" trigger, which is where lexical matching starts to fray"}
+{"text": "i'll take the p_chrome_studs", "persona": "known", "shape": "addToCart", "args": {"productId": "p_chrome_studs"}, "tag": "paraphrase"}
+{"text": "how much is in my basket", "persona": "known", "shape": "viewCart", "tag": "paraphrase", "why": "basket, not cart: the trigger vocabulary is one shop's dialect, visitors use their own"}
+{"text": "i'm done, let's finish up", "persona": "customer", "shape": "checkout", "tag": "paraphrase"}
+{"text": "has my parcel shipped yet", "persona": "customer", "shape": "orderStatus", "tag": "paraphrase"}
+{"text": "what have i got so far", "persona": "mid-purchase", "shape": "viewCart", "tag": "paraphrase"}
+{"text": "remove p_pearl_drop from my cart", "persona": "known", "shape": "removeFromCart", "args": {"productId": "p_pearl_drop"}, "tag": "collision", "why": "viewCart's \"my cart\" sits inside this; it once went to viewCart at confidence 1.00, past the floor and the gate"}
+{"text": "take p_brass_threaders out of my cart", "persona": "known", "shape": "removeFromCart", "args": {"productId": "p_brass_threaders"}, "tag": "collision"}
+{"text": "what's in my cart", "persona": "known", "shape": "viewCart", "tag": "collision", "why": "the other side of the same collision: here \"my cart\" really does mean viewCart"}
+{"text": "add p_silk_scarf to my cart", "persona": "known", "shape": "addToCart", "args": {"productId": "p_silk_scarf"}, "tag": "collision"}
+{"text": "i changed my mind about p_chrome_studs, take it out of my cart", "persona": "known", "shape": "removeFromCart", "args": {"productId": "p_chrome_studs"}, "tag": "collision"}
+{"text": "show my cart", "persona": "known", "shape": "viewCart", "tag": "collision"}
+{"text": "check out", "persona": "customer", "shape": "checkout", "tag": "bare", "why": "carries no address, and must route anyway so missingRequired pours the form that collects one"}
+{"text": "place my order", "persona": "customer", "shape": "checkout", "tag": "bare"}
+{"text": "where is my order", "persona": "customer", "shape": "orderStatus", "tag": "bare"}
+{"text": "remember me", "persona": "stranger", "shape": "becomeKnown", "tag": "bare"}
+{"text": "can you add that to the cart", "persona": "known", "shape": "addToCart", "tag": "bare"}
+{"text": "save this one", "persona": "known", "shape": "react", "tag": "bare"}
+{"text": "add the first one to my cart", "persona": "known", "shape": "addToCart", "args": {"productId": "p_coral_hoops"}, "context": ["last answer listed: 1. p_coral_hoops Coral Enamel Hoops; 2. p_pearl_drop Baroque Pearl Drop Earrings; 3. p_brass_threaders Brass Threader Earrings"], "tag": "anaphora"}
+{"text": "i'll take the pearl drops", "persona": "known", "shape": "addToCart", "args": {"productId": "p_pearl_drop"}, "context": ["last answer listed: 1. p_coral_hoops Coral Enamel Hoops; 2. p_pearl_drop Baroque Pearl Drop Earrings; 3. p_brass_threaders Brass Threader Earrings"], "tag": "anaphora", "why": "the id has to come from a name in the prior turn, not from the sentence"}
+{"text": "what goes with the second one", "persona": "stranger", "shape": "relatedProducts", "args": {"productId": "p_pearl_drop"}, "context": ["last answer listed: 1. p_coral_hoops Coral Enamel Hoops; 2. p_pearl_drop Baroque Pearl Drop Earrings; 3. p_brass_threaders Brass Threader Earrings"], "tag": "anaphora"}
+{"text": "compare the first two", "persona": "stranger", "shape": "compareProducts", "args": {"leftId": "p_coral_hoops", "rightId": "p_pearl_drop"}, "context": ["last answer listed: 1. p_coral_hoops Coral Enamel Hoops; 2. p_pearl_drop Baroque Pearl Drop Earrings; 3. p_brass_threaders Brass Threader Earrings"], "tag": "anaphora"}
+{"text": "i love the brass ones", "persona": "known", "shape": "react", "args": {"productId": "p_brass_threaders"}, "context": ["last answer listed: 1. p_coral_hoops Coral Enamel Hoops; 2. p_pearl_drop Baroque Pearl Drop Earrings; 3. p_brass_threaders Brass Threader Earrings"], "tag": "anaphora"}
+{"text": "check out", "persona": "stranger", "shape": null, "tag": "out-of-subset", "why": "checkout is customer-only, so a stranger is never offered the tool; the gate is a separate matter and runs later"}
+{"text": "add p_pearl_drop to my cart", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "what's in my cart", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "where is my order", "persona": "known", "shape": null, "tag": "out-of-subset"}
+{"text": "remember me", "persona": "customer", "shape": null, "tag": "out-of-subset", "why": "already known, so becomeKnown is not on offer"}
+{"text": "do you do gift wrapping", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "what's your returns policy", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "can i speak to a human", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "do you ship to Nigeria", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "can i get these engraved", "persona": "known", "shape": null, "tag": "unsupported"}
+{"text": "what's the weather in Lagos", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "tell me a joke", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "who is the prime minister", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "what's 17 times 4", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "translate good morning into Dutch", "persona": "known", "shape": null, "tag": "off-topic"}

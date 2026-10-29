@@ -82,7 +82,7 @@ const classifiable = (spec: App["spec"]) =>
  * One tool subset per persona, which is what a worker is bound to and therefore what the model must be
  * good at. Training against the whole tool list would teach a prompt that never occurs at inference.
  */
-export function personaSubsets(spec: App["spec"]): Map<string, string[]> {
+export function personaShapes(spec: App["spec"]): Map<string, string[]> {
   const out = new Map<string, string[]>();
   const personas = Object.keys((spec.personas ?? {}) as Record<string, unknown>).filter((p) => p !== "version");
   for (const persona of personas) {
@@ -91,7 +91,19 @@ export function personaSubsets(spec: App["spec"]): Map<string, string[]> {
       .map(([name]) => name);
     if (names.length) out.set(persona, names);
   }
-  // Two personas with the same subset are one subset; the pool binds by subset, not by persona.
+  return out;
+}
+
+/**
+ * The distinct tool lists, keyed by one persona each.
+ *
+ * Two personas allowed exactly the same shapes are one subset, because the pool binds a subset and not
+ * a persona: pre-warming an agent for each would warm the same agent twice. Anything that cares *who is
+ * asking* rather than *what is offered* — the labelled set, for instance — wants `personaShapes`, which
+ * keeps every persona.
+ */
+export function personaSubsets(spec: App["spec"]): Map<string, string[]> {
+  const out = personaShapes(spec);
   const seen = new Map<string, string>();
   for (const [persona, names] of [...out]) {
     const key = [...names].sort().join("\u0000");

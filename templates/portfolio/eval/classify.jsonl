@@ -1,0 +1,47 @@
+// Ground truth for this portfolio's classifier. See packages/cli/src/eval.ts for what the tags mean.
+// Ids and names come from seed/project.json and seed/skill.json.
+{"text": "what are your skills", "persona": "stranger", "shape": "skills", "tag": "plain"}
+{"text": "what are you good at", "persona": "stranger", "shape": "skills", "tag": "plain"}
+{"text": "show me your portfolio", "persona": "stranger", "shape": "projects", "tag": "plain"}
+{"text": "what have you built", "persona": "stranger", "shape": "projects", "tag": "plain"}
+{"text": "what's your work history", "persona": "stranger", "shape": "experience", "tag": "plain"}
+{"text": "tell me about how you make decisions", "persona": "stranger", "shape": "askAbout", "tag": "plain"}
+{"text": "interview me", "persona": "stranger", "shape": "interview", "tag": "plain"}
+{"text": "would you be good for a staff engineer role", "persona": "known", "shape": "fitFor", "tag": "plain"}
+{"text": "my email is dana@northwind.io", "persona": "stranger", "shape": "becomeKnown", "args": {"email": "dana@northwind.io"}, "tag": "plain"}
+{"text": "we're hiring for a platform lead", "persona": "recruiter", "shape": "fitFor", "tag": "plain"}
+{"text": "when a project goes sideways, what do you actually do", "persona": "stranger", "shape": "askAbout", "tag": "paraphrase", "why": "the open question with no trigger in it — the population a dictionary cannot route"}
+{"text": "are you any use with typescript", "persona": "stranger", "shape": "skills", "tag": "paraphrase"}
+{"text": "what's the thing you're proudest of making", "persona": "stranger", "shape": "projects", "tag": "paraphrase"}
+{"text": "where have you worked before", "persona": "stranger", "shape": "experience", "tag": "paraphrase"}
+{"text": "i don't know what to ask you", "persona": "stranger", "shape": "interview", "tag": "paraphrase", "why": "the visitor is asking to be led, which is exactly what interview does"}
+{"text": "we need someone to lead a small platform team", "persona": "recruiter", "shape": "fitFor", "tag": "paraphrase"}
+{"text": "can we set up a call next week", "persona": "recruiter", "shape": "getInTouch", "tag": "paraphrase"}
+{"text": "what's it like working with you", "persona": "stranger", "shape": "askAbout", "tag": "paraphrase"}
+{"text": "how do you keep a codebase from rotting", "persona": "known", "shape": "askAbout", "tag": "paraphrase"}
+{"text": "do you have experience with kubernetes", "persona": "stranger", "shape": "skills", "tag": "collision", "why": "skills owns \"experience with\" while the experience shape owns \"work experience\" — the word belongs to both and means one"}
+{"text": "walk me through your career so far", "persona": "stranger", "shape": "experience", "tag": "collision", "why": "the other side: career is experience, not a skill"}
+{"text": "can i see your cv", "persona": "stranger", "shape": "experience", "tag": "collision"}
+{"text": "what are you capable of", "persona": "stranger", "shape": "skills", "tag": "collision"}
+{"text": "any work samples i could look at", "persona": "stranger", "shape": "projects", "tag": "collision", "why": "\"work\" belongs to experience's \"work history\" and projects' \"work samples\" at once"}
+{"text": "remember me", "persona": "stranger", "shape": "becomeKnown", "tag": "bare"}
+{"text": "i want to hire you", "persona": "recruiter", "shape": "getInTouch", "tag": "bare", "why": "no address, no message: it must still route so the form can collect them"}
+{"text": "would you be a fit", "persona": "known", "shape": "fitFor", "tag": "bare"}
+{"text": "get in touch", "persona": "stranger", "shape": "getInTouch", "tag": "bare"}
+{"text": "tell me more about the second one", "persona": "stranger", "shape": "askAbout", "context": ["last answer listed: 1. pr_1 FishTea; 2. pr_2 Mood shopping engine; 3. pr_3 Camp registration"], "tag": "anaphora"}
+{"text": "what did you use to build that one", "persona": "stranger", "shape": "askAbout", "context": ["last answer listed: 1. pr_1 FishTea; 2. pr_2 Mood shopping engine"], "tag": "anaphora"}
+{"text": "anything else like the camp one", "persona": "stranger", "shape": "projects", "context": ["last answer listed: 1. pr_1 FishTea; 2. pr_2 Mood shopping engine; 3. pr_3 Camp registration"], "tag": "anaphora"}
+{"text": "how deep does the postgres go", "persona": "stranger", "shape": "skills", "context": ["last answer listed: 1. sk_1 TypeScript; 2. sk_2 Postgres; 3. sk_3 React"], "tag": "anaphora"}
+{"text": "would you be good for a staff engineer role", "persona": "stranger", "shape": null, "tag": "out-of-subset", "why": "fitFor needs a known or recruiter; a stranger is never offered it"}
+{"text": "we're hiring", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "my email is dana@northwind.io", "persona": "recruiter", "shape": null, "tag": "out-of-subset", "why": "already identified, so becomeKnown is not on offer"}
+{"text": "what's your day rate", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "are you available in March", "persona": "recruiter", "shape": null, "tag": "unsupported"}
+{"text": "do you have a github i can browse", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "what's your notice period", "persona": "recruiter", "shape": null, "tag": "unsupported"}
+{"text": "would you relocate to Berlin", "persona": "known", "shape": null, "tag": "unsupported"}
+{"text": "what's the weather in Lagos", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "tell me a joke", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "who is the prime minister", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "what's 17 times 4", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "translate good morning into Dutch", "persona": "recruiter", "shape": null, "tag": "off-topic"}

@@ -17,7 +17,8 @@ import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassi
 import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
 import { readManifest } from "./manifest.ts";
-import { deriveCorpus, readManifest as readTuneManifest, staleness, writeCorpus } from "./tune.ts";
+import { deriveCorpus, personaSubsets, readManifest as readTuneManifest, staleness, writeCorpus } from "./tune.ts";
+import { checkCases, coverage, floorSweep, loadCases, recommendFloor, runCases, score, casesPath, REFUSAL_TAGS } from "./eval.ts";
 import { present } from "./present.ts";
 import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
@@ -504,6 +505,17 @@ async function main() {
         const t = staleness(app);
         if (t.state === "stale") rows.push(["tuning", false, `the corpus was derived before ${t.moved.join(" and ")} changed — run: fishtea tune data`]);
         else if (t.state === "fresh") rows.push(["tuning", true, `corpus matches the spec${readTuneManifest(app)?.model ? ", model trained" : ", nothing trained yet"}`]);
+        // A labelled set is inherited from an archetype and then the spec moves out from under it —
+        // onboarding alone can drop a shape a case still names. A set that no longer type-checks against
+        // the spec is not a weaker measurement, it is a broken instrument, so say so here.
+        const cases = loadCases(app);
+        if (!cases.length) rows.push(["labels", true, `no labelled set yet — fishtea eval says how to start one`]);
+        else {
+          const problems = checkCases(app, cases);
+          const holes = coverage(app, cases);
+          if (problems.length) rows.push(["labels", false, `${problems.length === 1 ? "1 case no longer matches" : `${problems.length} cases no longer match`} the spec — run: fishtea eval --check`]);
+          else rows.push(["labels", true, `${cases.length} labelled cases` + (holes.shapes.length ? `, but nothing asks for ${holes.shapes.join(", ")}` : "")]);
+        }
       }
       for (const [what, ok, detail] of rows) console.log(`${ok ? pc.green("✓") : pc.red("✗")} ${what.padEnd(11)} ${ok ? detail : pc.red(detail)}`);
       if (rows.some(([, ok]) => !ok)) process.exit(1);
@@ -549,6 +561,84 @@ async function main() {
       console.log(`\n  next, on a machine with a GPU (see docs/TUNING.md — it is not yet a one-liner):`);
       console.log(`    needle finetune ${file} --epochs 10 --out adapter.safetensors`);
       console.log(`    needle build --lora adapter.safetensors --layers 8 --out tuned.cact`);
+      return;
+    }
+    case "eval": {
+      // The labelled set is the only thing here a spec cannot derive, which is why it is the only
+      // thing that can settle a floor. See packages/cli/src/eval.ts.
+      const app = loadOrDie(resolveAppDir(flags));
+      const cases = loadCases(app);
+      if (!cases.length) {
+        console.log(`no labelled set yet — write one at ${casesPath(app)}`);
+        console.log(pc.dim(`  one JSON object a line: {"text","persona","shape"|null,"tag"[,"args","context","why"]}`));
+        console.log(pc.dim(`  the archetypes under templates/*/eval/classify.jsonl are worked examples`));
+        process.exit(1);
+      }
+      const problems = checkCases(app, cases);
+      const holes = coverage(app, cases);
+      for (const p of problems) console.error(pc.red(`✗ ${p}`));
+      if (holes.shapes.length) console.error(pc.yellow(`⚠ no case ever asks for: ${holes.shapes.join(", ")}`));
+      if (holes.personas.length) console.error(pc.yellow(`⚠ no case is asked by: ${holes.personas.join(", ")}`));
+      if (problems.length) process.exit(1);
+      if (flags.check) {
+        console.log(pc.green(`✓ ${cases.length} cases, every label consistent with the spec`));
+        return;
+      }
+
+      const classifier = await classifierFor(flags, app);
+      if (classifier.reload) {
+        const h = await classifier.health();
+        if (!h.ok) throw new SetupError(`the ${classifier.name} classifier is not answering`, [
+          "Start it: fishtea up, or run packages/classifier/needle_service.py",
+          "Or measure the development baseline instead: --intent lexical",
+        ]);
+        // The same tools and the same pre-warmed subsets the pool binds when it serves, so the
+        // measurement is of production and not of a differently-configured pool.
+        await classifier.reload(deriveTools(app.spec), [...personaSubsets(app.spec).values()])
+          .catch((e) => console.error(pc.yellow(`classifier reload failed: ${e.message}`)));
+      }
+      const second = flags.versus ? new LexicalClassifier() : undefined;
+
+      process.stdout.write(`running ${cases.length} cases against ${classifier.name}`);
+      const results = await runCases(app, classifier, cases, { second, onCase: () => process.stdout.write(".") });
+      process.stdout.write("\n\n");
+
+      const s = score(results);
+      const pcs = (a: number, b: number) => `${a}/${b}` + (b ? ` (${Math.round((100 * a) / b)}%)` : "");
+      console.log(`  overall    ${pcs(s.correct, s.n)}   median ${Math.round(s.medianMs)} ms`);
+      console.log(`  routed     ${pcs(s.positives.correct, s.positives.n)} of the cases that should reach a shape`);
+      console.log(`  refused    ${pcs(s.refusals.correct, s.refusals.n)} of the cases that should stay silent`);
+      if (s.args.n) console.log(`  arguments  ${pcs(s.args.correct, s.args.n)} of the cases that demand specific values`);
+      console.log();
+      for (const [tag, v] of Object.entries(s.byTag).sort((a, b) => b[1].n - a[1].n)) {
+        const bar = "█".repeat(Math.round((10 * v.correct) / Math.max(1, v.n))).padEnd(10, "·");
+        console.log(`  ${tag.padEnd(14)} ${bar}  ${pcs(v.correct, v.n)}${REFUSAL_TAGS.includes(tag as never) ? pc.dim("  (silence is correct)") : ""}`);
+      }
+      if (s.versus) {
+        console.log(`\n  against the lexical router: ${s.versus.agree} both right, ` +
+          `${s.versus.onlyPrimary} only ${classifier.name}, ${s.versus.onlySecond} only lexical, ${s.versus.neither} neither`);
+        const para = results.filter((r) => r.case.tag === "paraphrase");
+        const mine = para.filter((r) => r.correct).length, theirs = para.filter((r) => r.lexical === r.case.shape).length;
+        console.log(pc.dim(`  on paraphrases alone — the population a dictionary cannot do — ${mine}/${para.length} against ${theirs}/${para.length}`));
+      }
+
+      const { rows, right, wrong } = floorSweep(results);
+      console.log(`\n  rules.classify.floor, swept over ${right} correct and ${wrong} wrong routes:`);
+      console.log(pc.dim(`    floor   correct kept   wrong admitted`));
+      for (const r of rows) {
+        if (r.floor && r.kept === 0 && r.admitted === 0) continue;
+        console.log(`    ${r.floor.toFixed(2)}    ${String(r.kept).padStart(7)}/${right}      ${String(r.admitted).padStart(8)}/${wrong}`);
+      }
+      const advice = recommendFloor(results);
+      if (advice) {
+        const current = Number(app.spec.rules.classify?.floor ?? 0.35);
+        console.log(`\n  best separation at ${pc.bold(advice.floor.toFixed(2))} — ${advice.note}`);
+        if (Math.abs(current - advice.floor) > 1e-9) {
+          const row = rows.find((r) => Math.abs(r.floor - current) < 1e-9);
+          console.log(pc.yellow(`  the spec says ${current}` + (row ? `, which keeps ${row.kept}/${right} and admits ${row.admitted}/${wrong}` : "")));
+        }
+      }
+      if (flags.json) await Bun.write(String(flags.json), JSON.stringify({ score: s, results, floor: advice }, null, 2));
       return;
     }
     case "derive": {
@@ -674,6 +764,8 @@ async function main() {
   fishtea tune data [--trail] [--per-shape 4]
                               derive a training corpus for this application's own classifier
   fishtea tune status         is the corpus still about this spec?
+  fishtea eval [--check] [--intent lexical|needle] [--versus]
+                              run the labelled set: accuracy by population, and the floor it implies
   fishtea derive [--ddl|--tools|--forms]
   fishtea migrate [--allow-destructive]
   fishtea seed                load seed/*.json

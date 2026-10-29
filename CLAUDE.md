@@ -83,6 +83,16 @@ bunx tsc -p tsconfig.json --noEmit
   decode length (`≈110 ms + tokens ÷ 310`), so the pool caps tokens and caches repeats; the engine
   cannot be oversubscribed at all, so never CPU-limit the classifier. `packages/classifier/contract.md`
   Phase 5 has the numbers, including what is *not* a lever (tool-list size, concurrency, shallow rungs).
+- **The labelled set is ground truth and the only instrument.** `eval/classify.jsonl` per application,
+  run by `fishtea eval`; every other classifier number is derived from a spec and this one cannot be.
+  Tags split it into populations that answer different questions — `paraphrase` carries no trigger and is
+  the only population that justifies a model over the lexical router; a third of each set is a refusal,
+  because positives alone cannot separate a floor that keeps good answers from one that admits bad. A
+  label naming a shape its persona may never be offered is a *wrong label*, not a hard case, so
+  `checkCases` refuses it. It is the training corpus's held-out twin: nothing in it is ever fed to
+  `fishtea tune data`. Measured over 194 cases, no gate separates right routes from wrong ones on either
+  engine, so **accuracy blocks confidence rather than the reverse** — tune, re-measure, then gate.
+  `docs/TUNING.md`, `packages/classifier/contract.md` Phase 7.
 - A tuned classifier is derived from the spec, not written: `fishtea tune data` builds the corpus from
   triggers, inputs, seed values and the trail, and `.fishtea/tune/manifest.json` records the `shapes`
   and `personas` hashes so `doctor` knows when a model has gone stale. Deriving is build-time; training

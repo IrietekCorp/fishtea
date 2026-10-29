@@ -122,12 +122,100 @@ model cannot fake:
 That last one is the interesting one: FishTea carries a *second, independent* router, and two routers
 agreeing is evidence while disagreement is exactly when you want to pour `ask`.
 
-A first cut of this scores competitively with the model's own head on the stock weights, where there is
-a head to compare against — over 29 ecommerce cases it admits 0 of 3 wrong routes while keeping 12 of 23
-correct ones, where the head needs a 0.8 floor to keep 13. That is a tie on a sample far too small to
-set a threshold from, which is the next piece of work: **a labelled set per archetype**, which is the
-same artefact that re-derives `rules.classify.floor` for a newer engine.
+That set now exists — 194 labelled cases across the four archetypes, `fishtea eval` — and it says
+something different from what this section expected. See **What the labelled set found** below: the
+answer is not that a derived confidence rescues the gate, it is that *no* gate rescues this classifier,
+and the order of the work is the other way round from how it is written above.
 
+
+## The labelled set
+
+`fishtea eval` runs a file of hand-labelled utterances — `eval/classify.jsonl`, one JSON object a line —
+and reports accuracy by population, the floor the answers imply, and how the classifier compares with
+the lexical router that ships anyway. The archetypes carry 194 cases between them.
+
+```bash
+fishtea eval --check                      # every label consistent with the spec, nothing run
+fishtea eval --intent needle --versus     # run it, and compare with the lexical baseline
+fishtea eval --json out.json              # the raw answers, for sweeping anything else
+```
+
+This is the only artefact here a spec cannot derive, and that is the point: it is a person saying what a
+sentence means. Which makes a quietly wrong label worse than a missing one, so `checkCases` refuses a
+case naming a persona or shape that does not exist, an argument the shape does not take, a refusal tag
+that names a shape, a bare case demanding arguments, a duplicate, and — the most damaging one — a shape
+the asking persona is never offered, which looks like a hard case and is an impossible one.
+
+**The tags are the design.** Accuracy over a bag of sentences is nearly meaningless, because the
+composition of the bag sets the number:
+
+| tag | what it asks |
+|---|---|
+| `plain` | carries the shape's own trigger — the lexical router gets these free |
+| `paraphrase` | contains no trigger at all, **the population that justifies the model** |
+| `collision` | one shape's trigger inside a sentence that means another |
+| `bare` | a trigger with no arguments, which must still route so a form can be poured |
+| `anaphora` | needs the prior turn, in the exact line `recentContext` builds |
+| `out-of-subset` | a real shape this persona is never offered: silence is the only right answer |
+| `unsupported` | a plausible question about this business with no shape behind it |
+| `off-topic` | nothing to do with the business |
+
+About a third of every set is a refusal, deliberately. A set of positives cannot distinguish a floor
+that keeps good answers from one that admits bad ones, which is the only question a floor exists to
+settle — it would recommend zero every time and look right doing it.
+
+## What the labelled set found
+
+Three things, and the third one reorders the work.
+
+**The model earns its keep exactly where it was supposed to, and only there.** On ecommerce the lexical
+dev harness scores 42/56 against needle's 27/56 — the *dictionary beats the production classifier
+overall* — but split by population the picture inverts where it matters: `plain` 11/11 lexical against
+7/11 needle, and `paraphrase` 3/13 lexical against 7/13 needle. The lexical router wins the aggregate by
+being cautious, and loses the sentences nobody phrased in the shop's own words.
+
+**On engine 3.0.4 the classifier substitutes rather than declines.** Every archetype scores **0** on
+`out-of-subset`. Offered only a stranger's five tools, "check out" comes back as `trending` at
+confidence 0.57, reasoning *"User wants to check out. Use trending to see what's popular."* The gate
+does not catch this, because `trending` is a shape a stranger may ask — the gate is working exactly as
+designed and the wrong answer is a routing error, not an access one. Engine 3.2.8 is far better here
+(refusals 69–83% against 13–62%) and marginally worse at routing, which is the right trade for a
+framework whose rule is that a failed classify pours `ask` and never a worse answer.
+
+**No gate separates right from wrong on either engine.** This is the finding that matters:
+
+| gate | 3.0.4 keeps / admits | 3.2.8 keeps / admits | model-only wins kept |
+|---|---|---|---|
+| `head ≥ 0.35` (shipped) | 66/75 · **45/59** | 17/63 · **0/20** | 11/12 · 2/7 |
+| `head ≥ 0.20` | 70/75 · 53/59 | 23/63 · 9/20 | 11/12 · 4/7 |
+| required arguments all present | 71/75 · 58/59 | 59/63 · 20/20 | 12/12 · 7/7 |
+| arguments present **and** the lexical router agrees | 59/75 · **2/59** | 52/63 · **2/20** | **0/12 · 0/7** |
+| arguments present and lexical does not contradict | 67/75 · 51/59 | 55/63 · 18/20 | 8/12 · 3/7 |
+
+Read the last column. The one derived gate that genuinely filters — arguments complete *and* the second
+router agrees — throws away **every single answer the model got and the dictionary missed**: all twelve
+on 3.0.4, all seven on 3.2.8. "I need a gift for my sister's birthday", "we're free the last week of
+July", "take p_brass_threaders out of my cart". A gate that requires the dictionary to agree *is* the
+dictionary, with a 35 MB model attached for decoration. It scores beautifully in aggregate because most
+correct answers are ones the dictionary also finds, and it deletes the entire reason for the model.
+
+Everything else admits 17 to 58 of the wrong routes. **The wrong answers look exactly like the right
+ones on every signal available without the model's head.**
+
+### So the order of the work is the other way round
+
+This document has said that the tuning path is blocked on confidence: a locally tuned rung reports
+`confidence: None`, so the gate rejects everything, so tuning cannot ship. The labelled set says the
+dependency runs the other way. On 3.0.4 the classifier is wrong on **59 of the 134 answers it offers**,
+and on 3.2.8 on 20 of 83. **No threshold rescues a classifier with that error rate; it only chooses
+which mistakes to make.** Confidence is not blocking tuning — accuracy is blocking confidence, and
+tuning is the only measured lever on accuracy.
+
+That makes the sequence: tune a rung on the derived corpus, re-run `fishtea eval`, and only then ask
+what gates it — because a classifier that is right 90% of the time can be gated by signals that are
+useless at 60%, and `fishtea eval` is now the instrument that will say so. It also means the labelled
+set is the training set's held-out twin, and the two must not be allowed to merge: `fishtea tune data`
+derives from triggers, inputs, seed and trail, and nothing in `eval/classify.jsonl` is ever fed to it.
 
 ## How small it goes, and what the megabytes are
 

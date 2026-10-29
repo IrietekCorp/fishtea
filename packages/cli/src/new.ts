@@ -88,7 +88,9 @@ export async function scaffold(o: ScaffoldOptions): Promise<{ dir: string; templ
   }
   if (existsSync(dir) && readdirSync(dir).length && !o.force) throw new Error(`${dir} exists and is not empty (use --force)`);
   mkdirSync(dir, { recursive: true });
-  for (const sub of ["calls", "seed", "rules", "scripts"]) if (existsSync(join(tpl.dir, sub))) cpSync(join(tpl.dir, sub), join(dir, sub), { recursive: true });
+  // eval/ travels with the archetype because a labelled set is the only classifier artefact a spec
+  // cannot derive: an application that starts without one has no way to settle its own floor.
+  for (const sub of ["calls", "seed", "rules", "scripts", "eval"]) if (existsSync(join(tpl.dir, sub))) cpSync(join(tpl.dir, sub), join(dir, sub), { recursive: true });
   const spec = JSON.parse(readFileSync(join(tpl.dir, "spec.json"), "utf8"));
   const name = o.name ?? o.id.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
   spec.business = { ...spec.business, id: o.id, name, doc: o.doc ?? spec.business.doc, version: bumpVersion(undefined) };
@@ -178,6 +180,7 @@ const CLAUDE_MD = (a: { name: string; template: string }) => [
     "| `calls/` | `.sql` files and compute modules that shapes name in their plans |",
     "| `seed/` | starting rows, one file per entity |",
     "| `scripts/` | scripted conversations for `bun run headless` |",
+    "| `eval/` | the labelled set: what a sentence means, decided by you, for `bun run eval` |",
     "| `.fishtea/manifest.json` | provenance: which files are still the archetype's and which are yours. **Commit it**, or `fishtea update` elsewhere cannot tell |",
     "",
     "## Commands",
@@ -292,7 +295,7 @@ export function writeAppFiles(dir: string, a: { id: string; name: string; templa
   const files: Record<string, string> = {
     "package.json": JSON.stringify({
       name: a.id, private: true, type: "module", description: `${a.name} — a FishTea application (${a.template} archetype)`,
-      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench", present: "bun fishtea.ts present", release: "bun release.ts" },
+      scripts: { fishtea: "bun fishtea.ts", doctor: "bun fishtea.ts doctor", validate: "bun fishtea.ts validate", derive: "bun fishtea.ts derive", migrate: "bun fishtea.ts migrate", seed: "bun fishtea.ts seed", dev: "bun fishtea.ts serve", headless: "bun fishtea.ts headless", tui: "bun fishtea.ts tui", up: "bun fishtea.ts up", down: "bun fishtea.ts down", stop: "bun fishtea.ts stop", start: "bun fishtea.ts start", ps: "bun fishtea.ts ps", logs: "bun fishtea.ts logs", bench: "bun fishtea.ts bench", eval: "bun fishtea.ts eval", present: "bun fishtea.ts present", release: "bun release.ts" },
       fishtea: { template: a.template, version: caretRange(FISHTEA_VERSION), home: committable },
     }, null, 2) + "\n",
     "fishtea.ts": `#!/usr/bin/env bun
@@ -369,7 +372,7 @@ machines; point \`DATABASE_URL\`, \`CLASSIFIER_URL\` and \`FISHTEA_PUBLIC_HOST\`
 
 Without Docker (a Postgres with pgvector on DATABASE_URL): \`bun run migrate && bun run seed && bun run dev\`, and \`bun run headless\` for the scripted conversation with no UI.
 
-Layout: \`spec.json\` (the business), \`calls/\` (SQL with $1..$n parameters, compute modules${a.template === "ecommerce" ? ", vendor adapters in calls/adapters/" : ""}), \`seed/\` (rows per entity), \`rules/\`, \`scripts/\` (headless walkthroughs). Every script runs the framework CLI through \`fishtea.ts\`; \`package.json\` → \`fishtea.home\` points at the framework checkout.
+Layout: \`spec.json\` (the business), \`calls/\` (SQL with $1..$n parameters, compute modules${a.template === "ecommerce" ? ", vendor adapters in calls/adapters/" : ""}), \`seed/\` (rows per entity), \`rules/\`, \`scripts/\` (headless walkthroughs), \`eval/\` (the labelled set \`bun run eval\` scores the classifier against). Every script runs the framework CLI through \`fishtea.ts\`; \`package.json\` → \`fishtea.home\` points at the framework checkout.
 `,
   };
   for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);

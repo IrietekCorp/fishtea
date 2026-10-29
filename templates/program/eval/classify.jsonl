@@ -1,0 +1,51 @@
+// Ground truth for this camp's classifier. See packages/cli/src/eval.ts for what the tags mean.
+// Session ids and names come from seed/session.json.
+// Note on `unsupported`: askAboutCamp is a catch-all question shape, so almost any question about the
+// camp legitimately belongs to it. The few unsupported cases here are deliberately administrative
+// rather than informational, because that is the only place a genuine hole exists in this archetype.
+{"text": "which week should we do", "persona": "stranger", "shape": "findSession", "tag": "plain"}
+{"text": "when is camp", "persona": "stranger", "shape": "findSession", "tag": "plain"}
+{"text": "how much is it", "persona": "stranger", "shape": "quotePrice", "tag": "plain"}
+{"text": "is it safe", "persona": "stranger", "shape": "askAboutCamp", "tag": "plain"}
+{"text": "what do kids build", "persona": "known", "shape": "askAboutCamp", "tag": "plain"}
+{"text": "who sponsors the scholarships", "persona": "stranger", "shape": "sponsors", "tag": "plain"}
+{"text": "what's the schedule for june-22", "persona": "parent", "shape": "sessionSchedule", "args": {"sessionId": "june-22"}, "tag": "plain"}
+{"text": "where do things stand", "persona": "parent", "shape": "registrationStatus", "tag": "plain"}
+{"text": "did my payment go through", "persona": "enrolled", "shape": "registrationStatus", "tag": "plain"}
+{"text": "my email is rae@ward.family", "persona": "stranger", "shape": "becomeKnown", "args": {"email": "rae@ward.family"}, "tag": "plain"}
+{"text": "what's the price per week", "persona": "stranger", "shape": "quotePrice", "tag": "plain"}
+{"text": "we're free the last week of July", "persona": "stranger", "shape": "findSession", "tag": "paraphrase", "why": "a date stated as a human says it, with no trigger word anywhere near it"}
+{"text": "what are we looking at for two kids", "persona": "stranger", "shape": "quotePrice", "args": {"campers": 2}, "tag": "paraphrase"}
+{"text": "my daughter has a peanut allergy, is that a problem", "persona": "stranger", "shape": "askAboutCamp", "tag": "paraphrase"}
+{"text": "how many grown-ups are with the kids", "persona": "stranger", "shape": "askAboutCamp", "tag": "paraphrase", "why": "means the staff ratio without using the word"}
+{"text": "my son is 9, what fits", "persona": "stranger", "shape": "findSession", "args": {"age": 9}, "tag": "paraphrase"}
+{"text": "what do the days actually look like", "persona": "parent", "shape": "sessionSchedule", "tag": "paraphrase"}
+{"text": "did everything go through", "persona": "parent", "shape": "registrationStatus", "tag": "paraphrase"}
+{"text": "money's tight this year", "persona": "parent", "shape": "applyScholarship", "tag": "paraphrase", "why": "nobody types \"financial aid\"; they say this"}
+{"text": "we don't have a computer at home", "persona": "parent", "shape": "requestDevice", "tag": "paraphrase"}
+{"text": "who are your sponsors", "persona": "stranger", "shape": "sponsors", "tag": "collision", "why": "sponsors owns \"sponsors\" and applyScholarship owns \"sponsor\" — one letter apart and two different shapes"}
+{"text": "is there a sponsor who could cover part of this", "persona": "parent", "shape": "applyScholarship", "tag": "collision", "why": "the other side of the sponsor/sponsors split"}
+{"text": "is there a discount for siblings", "persona": "parent", "shape": "quotePrice", "tag": "collision", "why": "a money question that is pricing, not aid"}
+{"text": "we can't afford the full price", "persona": "parent", "shape": "applyScholarship", "tag": "collision", "why": "carries quotePrice's \"price\" and applyScholarship's \"can't afford\" in one sentence"}
+{"text": "sign up", "persona": "parent", "shape": "registerCamper", "tag": "bare"}
+{"text": "book a spot", "persona": "parent", "shape": "registerCamper", "tag": "bare"}
+{"text": "itinerary", "persona": "parent", "shape": "sessionSchedule", "tag": "bare"}
+{"text": "keep in touch", "persona": "stranger", "shape": "becomeKnown", "tag": "bare"}
+{"text": "scholarship", "persona": "parent", "shape": "applyScholarship", "tag": "bare"}
+{"text": "can we borrow a tablet", "persona": "parent", "shape": "requestDevice", "tag": "bare"}
+{"text": "what happens each day in the first one", "persona": "parent", "shape": "sessionSchedule", "args": {"sessionId": "june-22"}, "context": ["last answer listed: 1. june-22 June 22–26, 2026; 2. july-27 July 27–31, 2026; 3. aug-10-teens August 10–14, 2026 (Teens)"], "tag": "anaphora"}
+{"text": "sign my daughter up for the July one", "persona": "parent", "shape": "registerCamper", "args": {"sessionId": "july-27"}, "context": ["last answer listed: 1. june-22 June 22–26, 2026; 2. july-27 July 27–31, 2026; 3. aug-10-teens August 10–14, 2026 (Teens)"], "tag": "anaphora", "why": "\"the July one\" has to resolve to an id from the prior turn"}
+{"text": "how much for that second week", "persona": "stranger", "shape": "quotePrice", "context": ["last answer listed: 1. june-22 June 22–26, 2026; 2. july-27 July 27–31, 2026; 3. aug-10-teens August 10–14, 2026 (Teens)"], "tag": "anaphora"}
+{"text": "anything for younger kids than those", "persona": "stranger", "shape": "findSession", "context": ["last answer listed: 1. june-22 June 22–26, 2026; 2. july-27 July 27–31, 2026; 3. aug-10-teens August 10–14, 2026 (Teens)"], "tag": "anaphora"}
+{"text": "i want to register", "persona": "stranger", "shape": null, "tag": "out-of-subset", "why": "registering needs a parent; a stranger is never offered the tool"}
+{"text": "where do things stand", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "can we borrow a laptop", "persona": "stranger", "shape": null, "tag": "out-of-subset"}
+{"text": "remember me", "persona": "parent", "shape": null, "tag": "out-of-subset", "why": "already known, so becomeKnown is not on offer"}
+{"text": "can you recommend a paediatrician", "persona": "parent", "shape": null, "tag": "unsupported"}
+{"text": "do you sell camp t-shirts online", "persona": "stranger", "shape": null, "tag": "unsupported"}
+{"text": "can i get a receipt for my employer's benefits portal", "persona": "parent", "shape": null, "tag": "unsupported"}
+{"text": "what's the weather in Lagos", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "tell me a joke", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "who is the prime minister", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "what's 17 times 4", "persona": "stranger", "shape": null, "tag": "off-topic"}
+{"text": "translate good morning into Dutch", "persona": "parent", "shape": null, "tag": "off-topic"}
