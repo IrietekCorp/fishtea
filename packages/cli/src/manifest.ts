@@ -26,8 +26,16 @@ import { join, relative, sep } from "node:path";
 export const MANIFEST_DIR = ".fishtea";
 export const MANIFEST_FILE = "manifest.json";
 
-/** Directories a template contributes to an application. Everything else in a template is framework business. */
-export const TEMPLATE_DIRS = ["calls", "seed", "rules", "scripts"] as const;
+/**
+ * Directories a template contributes to an application. Everything else in a template is framework business.
+ *
+ * `eval/` is here as well as in the scaffolder's copy list, and both matter: the scaffolder gives a *new*
+ * application its archetype's labelled set, and this list is what carries it to one that already exists.
+ * Leaving it out of either means half the applications never get the one artefact a spec cannot derive.
+ * The archetype's `baseline.json` comes along as a starting reference, and the moment anyone runs
+ * `fishtea eval --save` the three-way merge sees their own measurement as theirs and stops touching it.
+ */
+export const TEMPLATE_DIRS = ["calls", "seed", "rules", "scripts", "eval"] as const;
 
 /**
  * The merge base for one file: what the archetype said, and what we actually left in the application.

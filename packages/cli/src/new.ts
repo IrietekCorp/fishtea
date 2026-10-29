@@ -8,7 +8,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync
 import { join, resolve } from "node:path";
 import { bumpVersion, validateSpec, FISHTEA_VERSION, SPEC_FORMAT, caretRange } from "@fishtea/spec";
 import { isInside, lanAddress, workspaceRoot, type Flags } from "./env.ts";
-import { captureManifest, writeManifest } from "./manifest.ts";
+import { captureManifest, TEMPLATE_DIRS, writeManifest } from "./manifest.ts";
 
 export interface Template { name: string; dir: string; doc: string; onboard: Onboard }
 export interface Question { id: string; ask: string; type: "string" | "text" | "int" | "number" | "boolean" | "enum" | "multi" | "list"; path?: string; values?: string[]; default?: unknown; apply?: string; also?: { path?: string; seed?: string; field?: string }[]; seed?: string; field?: string }
@@ -88,9 +88,10 @@ export async function scaffold(o: ScaffoldOptions): Promise<{ dir: string; templ
   }
   if (existsSync(dir) && readdirSync(dir).length && !o.force) throw new Error(`${dir} exists and is not empty (use --force)`);
   mkdirSync(dir, { recursive: true });
-  // eval/ travels with the archetype because a labelled set is the only classifier artefact a spec
-  // cannot derive: an application that starts without one has no way to settle its own floor.
-  for (const sub of ["calls", "seed", "rules", "scripts", "eval"]) if (existsSync(join(tpl.dir, sub))) cpSync(join(tpl.dir, sub), join(dir, sub), { recursive: true });
+  // TEMPLATE_DIRS, not a second list: this is what a *new* application inherits and `fishtea update`
+  // is what carries the same directories to one that already exists. Two literals drift, and the first
+  // time they did, new applications got their archetype's labelled set and existing ones never could.
+  for (const sub of TEMPLATE_DIRS) if (existsSync(join(tpl.dir, sub))) cpSync(join(tpl.dir, sub), join(dir, sub), { recursive: true });
   const spec = JSON.parse(readFileSync(join(tpl.dir, "spec.json"), "utf8"));
   const name = o.name ?? o.id.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
   spec.business = { ...spec.business, id: o.id, name, doc: o.doc ?? spec.business.doc, version: bumpVersion(undefined) };
