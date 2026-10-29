@@ -31,27 +31,42 @@ export const PLUGIN_MANIFEST = "fishtea.plugin.json";
  * A directory only counts if it actually has `templates/`, because guessing wrong here surfaces much
  * later as "unknown template" rather than as a path problem.
  */
+/** A framework directory has its builtin plugins or its templates; a container's image has the former only. */
+const looksLikeHome = (d: string) => !!d && (existsSync(join(d, "plugins")) || existsSync(join(d, "templates")));
+
+/**
+ * Where the framework that is *executing* lives, ignoring any `FISHTEA_HOME`.
+ *
+ * Almost everything should prefer `frameworkHome()`, because an application naming its framework is the
+ * pin doing its job. `fishtea update` is the exception, and it is not a small one: its whole purpose is
+ * to move an application to the framework you invoked, so reading the templates of the version it is
+ * moving *away from* makes the plan under-report. That is not academic — an application pinned to 1.7.1
+ * reported "0 new" for the labelled set that 1.8.0 added, because its own `.env` pointed the comparison
+ * at 1.7.1's templates; the update then rewrites `FISHTEA_HOME`, so a second run would have shown two.
+ * One run has to show everything, or the plan is not a plan.
+ */
+export function runningHome(): string {
+  let fromSource = "";
+  try { fromSource = resolve(dirname(new URL(import.meta.url).pathname), "../../.."); } catch { /* bunfs */ }
+  if (looksLikeHome(fromSource)) return fromSource;
+
+  // A compiled binary is installed at <home>/bin/fishtea.
+  const fromExe = dirname(dirname(process.execPath));
+  if (looksLikeHome(fromExe)) return fromExe;
+
+  const current = join(homedir(), ".fishtea", "current");
+  if (looksLikeHome(current)) return current;
+
+  return fromSource || current;
+}
+
 export function frameworkHome(): string {
-  // A framework directory has its builtin plugins or its templates; a container's image has the former only.
-  const looksRight = (d: string) => !!d && (existsSync(join(d, "plugins")) || existsSync(join(d, "templates")));
   // FISHTEA_HOME wins when it is there. It can name a directory that is not: an application's .env holds
   // the host's install path, and a container that reads that .env has the framework somewhere else — so
   // a FISHTEA_HOME that does not exist falls through to where this code is actually running.
   const env = process.env.FISHTEA_HOME;
   if (env && existsSync(resolve(env))) return resolve(env);
-
-  let fromSource = "";
-  try { fromSource = resolve(dirname(new URL(import.meta.url).pathname), "../../.."); } catch { /* bunfs */ }
-  if (looksRight(fromSource)) return fromSource;
-
-  // A compiled binary is installed at <home>/bin/fishtea.
-  const fromExe = dirname(dirname(process.execPath));
-  if (looksRight(fromExe)) return fromExe;
-
-  const current = join(homedir(), ".fishtea", "current");
-  if (looksRight(current)) return current;
-
-  return fromSource || current;
+  return runningHome();
 }
 
 export interface Candidate { dir: string; from: ResolvedPlugin["from"] }

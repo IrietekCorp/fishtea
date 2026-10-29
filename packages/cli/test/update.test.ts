@@ -11,7 +11,7 @@ import { describe, expect, test, beforeEach, afterAll } from "bun:test";
 import { mkdtempSync, rmSync, cpSync, readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FISHTEA_VERSION, SPEC_FORMAT, caretRange, checkCompatibility, compareVersions, satisfies, migrateSpec, planMigration, migrations, MigrationError, type SpecMigration } from "@fishtea/spec";
+import { FISHTEA_VERSION, SPEC_FORMAT, caretRange, checkCompatibility, compareVersions, satisfies, migrateSpec, planMigration, migrations, MigrationError, type SpecMigration, frameworkHome, runningHome } from "@fishtea/spec";
 import { scaffold } from "../src/new.ts";
 import { readManifest, reconcile, COUNTS, templateFiles } from "../src/manifest.ts";
 import { planUpdate, applyUpdate, adopt } from "../src/update.ts";
@@ -314,5 +314,36 @@ describe("the install an application builds from", () => {
     expect(readFileSync(join(app, ".env"), "utf8")).toBe(`FISHTEA_HOME=/home/me/.fishtea/versions/${FISHTEA_VERSION}\nOTHER=versions/${old}\n`);
     expect(readFileSync(join(app, "docker-compose.yml"), "utf8")).toContain(`.fishtea/versions/${FISHTEA_VERSION}}`);
     expect(readFileSync(join(app, ".env.example"), "utf8")).toBe("FISHTEA_HOME=/home/me/src/fishtea\n");
+  });
+});
+
+describe("which framework the plan compares against", () => {
+  test("the one you invoked, never the one the application names", () => {
+    // An application's .env holds FISHTEA_HOME for the framework it currently runs against — the one
+    // `update` is moving it away from. Comparing against that made the plan under-report: an app
+    // pinned to 1.7.1 reported "0 new" for the labelled set 1.8.0 added, and because the update
+    // rewrites FISHTEA_HOME, a *second* run would then have shown two. One run must show everything.
+    const before = process.env.FISHTEA_HOME;
+    try {
+      process.env.FISHTEA_HOME = "/nonexistent/fishtea/1.0.0";
+      expect(runningHome()).not.toBe("/nonexistent/fishtea/1.0.0");
+      expect(existsSync(join(runningHome(), "templates"))).toBe(true);
+    } finally {
+      if (before === undefined) delete process.env.FISHTEA_HOME;
+      else process.env.FISHTEA_HOME = before;
+    }
+  });
+
+  test("frameworkHome still lets an application name its own, which is the pin doing its job", () => {
+    const before = process.env.FISHTEA_HOME;
+    try {
+      process.env.FISHTEA_HOME = runningHome();                 // a real directory, so it is honoured
+      expect(frameworkHome()).toBe(runningHome());
+      process.env.FISHTEA_HOME = "/nonexistent/fishtea/1.0.0";  // not there, so it falls through
+      expect(frameworkHome()).toBe(runningHome());
+    } finally {
+      if (before === undefined) delete process.env.FISHTEA_HOME;
+      else process.env.FISHTEA_HOME = before;
+    }
   });
 });

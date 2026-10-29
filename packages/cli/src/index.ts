@@ -12,7 +12,7 @@
 import { resolve, join, dirname } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import pc from "picocolors";
-import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, frameworkHome, type App } from "@fishtea/spec";
+import { loadApp, deriveDDL, deriveTools, deriveForm, shapes, SpecError, FISHTEA_VERSION, SPEC_FORMAT, checkCompatibility, frameworkHome, runningHome, type App } from "@fishtea/spec";
 import { connect, migrate, seed, entitiesDrift, Engine, runScript, LexicalClassifier, NeedleClient, createServer, type Classifier, type Channel, withBudget, loadSeam, seamsOfKind } from "@fishtea/core";
 import { scaffold, listTemplates } from "./new.ts";
 import type { Scaffolder } from "@fishtea/tui";
@@ -416,7 +416,9 @@ async function main() {
         console.log(pc.dim("  every other file is treated as yours and will never be overwritten"));
         return;
       }
-      const plan = planUpdate(dir, FISHTEA_HOME);
+      // runningHome(), not FISHTEA_HOME: this command exists to move the application to the framework
+      // you invoked, and an application's .env names the one it is moving away from. See runningHome().
+      const plan = planUpdate(dir, runningHome());
       console.log(renderPlan(plan));
       if (plan.clean) { console.log(pc.green("\n✓ up to date")); return; }
       if (flags["dry-run"] === true) { console.log(pc.dim("\n--dry-run: nothing written")); return; }
