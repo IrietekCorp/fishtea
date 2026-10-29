@@ -163,3 +163,41 @@ and 27.41 MB for the same rungs at four bits — the documented 8–29 MB range,
 measurable accuracy cost at this depth. A floor of 3.35 MB (embedding 8192×768 plus the tokenizer)
 survives any rung. For the browser, `--platform wasm` emits `needle.wasm` at 0.93 MB and `needle.js` at
 62 KB beside the archive. See docs/TUNING.md.
+
+## Phase 6 — the engine in a browser
+
+Headless Chromium, sixteen cores, the twenty-nine ecommerce cases used throughout, warmed four calls,
+`needle_reset` before each completion so it matches how the pool runs stateless.
+
+| rung | archive | native median | wasm median | ratio | cold start | heap | wasm accuracy |
+|---|---|---|---|---|---|---|---|
+| 20 layers | 35.34 MB | 187 ms | 888 ms | 4.7× | 6.1 s | 85 MB | 22/29 (native 23) |
+| 8, 2-bit | 14.44 MB | 81 ms | 392 ms | 4.8× | 2.4 s | 35 MB | 18/29 (native 18) |
+| 4, 2-bit | 8.12 MB | 47 ms | 215 ms | 4.6× | 1.2 s | 20 MB | 17/29 (native 16) |
+| 2, 2-bit | 7.00 MB | 30 ms | 142 ms | 4.7× | 0.7 s | 17 MB | 15/29 (native 13) |
+
+**The 4.7× is the thread count, and it is not a flag.** `needle.wasm` contains no pthread machinery and
+never references `SharedArrayBuffer`: it is single-threaded where the native engine spins twelve. The
+ratio holding to within 0.2× across a ten-fold range of model sizes is what says it is structural rather
+than incidental. `needle build --platform wasm` downloads a prebuilt engine rather than compiling one —
+the binary is byte-identical whether `cactus-needle` 3.0.4 or 3.2.8 fetches it (md5
+`ae92433d75dbc571576000226c4c8cc2`) — so the build flags are Cactus's to change. Upstream ask, like
+`WEIGHT_BITS`. Were threads enabled it would also want COOP/COEP headers on the serving origin.
+
+**Cold start is `needle_init`, not the download.** Fetch and compile are tens of milliseconds; the
+prefill of the 579-token system-and-tools prefix is 646 ms at two layers and 5977 ms at twenty. It scales
+with the tool list, which makes a persona subset a startup lever in the browser and not only an accuracy
+one.
+
+**A classify on the main thread freezes the page.** Probing `requestAnimationFrame` across one second of
+classifying: idle draws 74 frames with a 17 ms worst gap; the main thread draws 14 frames with a
+**1000 ms** worst gap; a `Worker` draws 74 frames at 17 ms while completing the same five classifies, at
+an unchanged 203 ms each. The engine belongs on a worker, always.
+
+**The WASM engine has the newer calibration, so the pinned floor would mute it.** Median confidence on a
+correct route is 0.22 at twenty layers, 0.22 at eight, 0.05 at four, 0.01 at two — the 3.2.8 profile,
+not 3.0.4's 0.79. At `rules.classify.floor = 0.35` a browser build keeps 8 of 19 correct routes at full
+depth and **0 of 13** at four layers. Anyone shipping the browser target must re-derive the floor or use
+a derived confidence first; inheriting 0.35 ships an application that answers nothing.
+
+Harness: `wasm-bench/{index.html,worker.js,drive.ts,block.ts,native.py}` in the session scratchpad.

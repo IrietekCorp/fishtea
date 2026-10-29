@@ -186,10 +186,58 @@ oversubscribed — **is a property of classifying on the server.** A router that
 its own CPU, and the ceiling stops existing. That is the version of this that can stand in for a
 conventional framework's router and session layer at any scale.
 
-Two things stand between here and there, and both are the same piece of work already described above: a
-shallow rung has to be *tuned* to be worth running (untuned, 4 layers is 11/24), and a tuned rung has no
-confidence head, so FishTea has to supply the gate itself. Neither is a browser problem. The WASM build's
-own speed is unmeasured.
+### What it actually costs in a browser
+
+Measured in headless Chromium on sixteen cores, against the same twenty-nine ecommerce cases every
+native number here comes from, so the two columns are comparable:
+
+| rung | archive | native median | **in-browser median** | cold start | heap | accuracy |
+|---|---|---|---|---|---|---|
+| 20 layers | 35.34 MB | 187 ms | **888 ms** | 6.1 s | 85 MB | 22/29 (native 23) |
+| 8 layers, 2-bit | 14.44 MB | 81 ms | **392 ms** | 2.4 s | 35 MB | 18/29 (native 18) |
+| 4 layers, 2-bit | 8.12 MB | 47 ms | **215 ms** | 1.2 s | 20 MB | 17/29 (native 16) |
+| 2 layers, 2-bit | 7.00 MB | 30 ms | **142 ms** | 0.7 s | 17 MB | 15/29 (native 13) |
+
+**The browser is 4.7× slower than native, and it is 4.7× at every rung** — a ratio that flat is a
+structural cost, not a quirk. It is the thread count: the published `needle.wasm` has no pthreads and
+never touches `SharedArrayBuffer`, so it runs on one core where the native engine spins twelve. The same
+spin-barrier design that makes [the native pool collapse under concurrency](operating.html) is simply
+absent here. And `needle build --platform wasm` only *downloads* a prebuilt engine — the binary is
+byte-identical whichever `cactus-needle` fetches it — so this is not a flag anyone can set. It is the
+second thing worth raising with Cactus, beside the 4-bit export guard.
+
+Accuracy survives the crossing: within the run-to-run variance already recorded, the browser scores what
+the native engine scores on the same archive.
+
+**The cold start is the prefix, not the download.** Fetching 8 MB and compiling a 0.93 MB engine is tens
+of milliseconds; `needle_init` is 1.2 s at four layers and **6.0 s at twenty**, because it prefills the
+579-token system-and-tools prefix. It is paid once per page, it scales with the tool list, and it is the
+strongest argument for persona subsets in the browser — a smaller subset is a shorter prefix.
+
+**The engine must run on a worker, and that is not an application's choice.** On the main thread a
+classify is a synchronous C call that blocks everything: probing `requestAnimationFrame` through one
+second of classifying gives a **worst frame gap of 1000 ms and 14 frames where idle draws 74**. The page
+is frozen. Moved to a `Worker`, the same five classifies leave the main thread at 17 ms frames and 74
+frames — indistinguishable from idle — and cost the same 203 ms each. A conversational interface that
+freezes while it thinks is worse than a slow one.
+
+**The floor would silence it today.** The WASM engine carries the newer calibration, not the pinned
+3.0.4 one: median confidence on a *correct* route is **0.22** at twenty layers and 0.01–0.05 on the
+shallow rungs. At `rules.classify.floor` of 0.35 a browser build would reject 11 of 19 correct routes on
+the full model and **every** correct route on the shallow ones — the application would pour `ask` at
+everything. This is the same conclusion the engine-upgrade measurement reached from the other direction,
+and it is the same remedy: the floor has to be re-derived from a labelled set, or replaced by the
+derived confidence above. Shipping the browser build on 0.35 would ship a mute application.
+
+So the shape of a client-side router is already clear: **a tuned four-layer rung at two bits, on a
+worker, gated by FishTea's own confidence.** That is 8 MB, a 1.2-second cold start and roughly 200 ms a
+turn, with no per-host ceiling at all. Every piece of it is work already named — the tuning, the derived
+confidence, the labelled set — and none of it is a browser problem.
+
+Two caveats on the numbers. They are Chromium on a desktop; Safari and Firefox are unmeasured, and a
+phone has neither these cores nor this memory bandwidth, so treat 4.7× as the shape and not the
+constant. And the archive fetch above is from localhost — over a real network the 8 MB is a download,
+cached after the first visit.
 
 ## Why the floor is not a constant
 
