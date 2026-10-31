@@ -82,7 +82,10 @@ fishtea migrate --allow-destructive   # also drop what left the spec
 fishtea seed
 ```
 
-Migration is additive by default and refuses destructive changes unless asked. A `pgdata` volume created
+Migration is additive by default and refuses destructive changes unless asked. An enum is kept in step
+with the spec: a value the spec adds widens the column's CHECK on the next migrate (reported as
+`changed`), and a value it removes is refused unless `--allow-destructive` is passed, and even then
+only while no row still holds that value. A `pgdata` volume created
 by an older major version will not start under 18 — dump and restore, or `fishtea down -v` for a
 throwaway stack.
 

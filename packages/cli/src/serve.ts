@@ -34,7 +34,7 @@ export async function serve(app: App, flags: Flags, dir: string) {
   const drift = await entitiesDrift(db, app);
   if (drift.drifted) {
     const report = await migrate(db, app, { log });
-    log(`migrated entities (${report.created.length} tables created, ${report.added.length} columns added)`);
+    log(`migrated entities (${report.created.length} tables created, ${report.added.length} columns added${report.changed.length ? `, enums changed: ${report.changed.join("; ")}` : ""})`);
     if (report.refused.length) log(pc.yellow(`refused destructive changes: ${report.refused.join(", ")} — run: fishtea migrate --allow-destructive`));
   }
   const first = deriveTables(app.spec)[0];

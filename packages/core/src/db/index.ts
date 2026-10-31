@@ -11,7 +11,18 @@ export function connect(url = process.env.DATABASE_URL ?? "postgres://fishtea:fi
 
 const here = new URL(".", import.meta.url).pathname;
 
-export interface MigrationReport { created: string[]; added: string[]; dropped: string[]; refused: string[]; conversation: boolean }
+export interface MigrationReport { created: string[]; added: string[]; dropped: string[]; refused: string[]; conversation: boolean; changed: string[] }
+
+/** The quoted literals of a CHECK, as Postgres prints it (`= ANY (ARRAY['a'::text, …])`) or as we wrote it (`IN ('a', …)`). */
+export function checkLiterals(def: string): string[] {
+  return [...def.matchAll(/'((?:[^']|'')*)'/g)].map((m) => m[1].replace(/''/g, "'"));
+}
+
+/** The values an enum column's derived CHECK allows, or null when the CHECK is not an enum's. */
+function enumValuesOf(check: string | undefined): string[] | null {
+  if (!check || !/^\S+ IN \(/.test(check)) return null;
+  return checkLiterals(check);
+}
 
 /**
  * Apply the fixed conversation schema, then the business schema derived from spec.entities.
@@ -35,7 +46,7 @@ export async function ensureConversationSchema(db: Db): Promise<void> {
 
 export async function migrate(db: Db, app: App, opts: { allowDestructive?: boolean; log?: (s: string) => void } = {}): Promise<MigrationReport> {
   const log = opts.log ?? (() => {});
-  const report: MigrationReport = { created: [], added: [], dropped: [], refused: [], conversation: true };
+  const report: MigrationReport = { created: [], added: [], dropped: [], refused: [], conversation: true, changed: [] };
   await ensureConversationSchema(db);
 
   for (const table of deriveTables(app.spec)) {
@@ -57,6 +68,33 @@ export async function migrate(db: Db, app: App, opts: { allowDestructive?: boole
       await db.unsafe(ddl);
       report.added.push(`${table.name}.${c.name}`);
       log(`added business.${table.name}.${c.name}`);
+    }
+    // An enum that gained values needs its CHECK replaced, or every row using a new value is refused —
+    // a seed fails and a core that seeds on start never comes up (ChicDuJour's staging, 1.8.1). Widening
+    // is always safe and happens here. Narrowing is destructive: refused without allowDestructive, and
+    // refused with a reason even then while rows still hold a value being removed. Compared by value,
+    // because Postgres rewrites `IN (…)` as `= ANY (ARRAY[…])`.
+    for (const c of table.columns) {
+      const want = enumValuesOf(c.check);
+      if (!want || !have.has(c.name)) continue;          // a column added above came with its CHECK
+      const name = `${table.name}_${c.name}_check`;
+      const rows = await db<{ def: string }[]>`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+        WHERE conrelid = ${`business.${q(table.name)}`}::regclass AND conname = ${name}`;
+      const had = rows.length ? checkLiterals(rows[0].def) : null;
+      if (had && had.length === want.length && had.every((v) => want.includes(v))) continue;
+      const removed = (had ?? []).filter((v) => !want.includes(v));
+      const added = want.filter((v) => !(had ?? []).includes(v));
+      const what = `${table.name}.${c.name}: ${[...added.map((v) => `+${v}`), ...removed.map((v) => `-${v}`)].join(" ") || "constraint restored"}`;
+      if (removed.length && !opts.allowDestructive) { report.refused.push(`${what} (removes enum values)`); continue; }
+      const ddl = `ALTER TABLE business.${q(table.name)} DROP CONSTRAINT IF EXISTS ${q(name)}; `
+        + `ALTER TABLE business.${q(table.name)} ADD CONSTRAINT ${q(name)} CHECK (${c.check!.replace(new RegExp(`^${c.name}\\b`), q(c.name))})`;
+      try {
+        await db.begin(async (tx: any) => { await tx.unsafe(ddl); });
+        report.changed.push(what);
+        log(`changed business.${what}`);
+      } catch (e) {
+        report.refused.push(`${what} (rows still use a removed value: ${(e as Error).message})`);
+      }
     }
     if (table.embed.length && !have.has("embedding")) { await db.unsafe(`ALTER TABLE business.${q(table.name)} ADD COLUMN embedding halfvec(${EMBED_DIM})`); report.added.push(`${table.name}.embedding`); }
     if (table.fts.length && !have.has("fts")) {

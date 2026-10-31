@@ -724,7 +724,8 @@ async function main() {
       const app = loadOrDie(resolveAppDir(flags));
       const db = connect(databaseUrl(flags));
       const report = await migrate(db, app, { allowDestructive: flags["allow-destructive"] === true, log: (s) => console.log("  " + s) });
-      console.log(pc.green(`✓ migrated ${app.spec.business.id}: ${report.created.length} created, ${report.added.length} added, ${report.dropped.length} dropped`));
+      console.log(pc.green(`✓ migrated ${app.spec.business.id}: ${report.created.length} created, ${report.added.length} added, ${report.dropped.length} dropped${report.changed.length ? `, ${report.changed.length} enum constraints widened` : ""}`));
+      for (const ch of report.changed) console.log(pc.dim(`  changed    ${ch}`));
       if (report.refused.length) console.log(pc.yellow(`  refused (destructive; re-run with --allow-destructive): ${report.refused.join(", ")}`));
       await db.end();
       return;
