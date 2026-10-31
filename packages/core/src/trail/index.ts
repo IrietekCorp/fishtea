@@ -16,6 +16,11 @@ export interface Turn {
   shape: string | null; kind: PourKind; confidence: number | null; answered: boolean; latencyMs: number | null;
   utterance: Record<string, unknown>; pour: Record<string, unknown>; provenance: Record<string, unknown>;
 }
+export interface Echo {
+  id: string; kind: string; visitorId: string; trailId: string; turnId: string; shape: string | null;
+  via: "redirect" | "beacon"; shared: boolean; persona: string | null; destination: string; location: string | null;
+  data: Record<string, unknown>; note: string | null; handlerMs: number | null; at: string;
+}
 export interface Trail { id: string; visitorId: string; headTurnId: string | null; envelope: Record<string, unknown>; openedAt: string }
 
 /**
@@ -38,6 +43,11 @@ const rowTurn = (r: any): Turn => ({
   id: r.id, trailId: r.trail_id, parentId: r.parent_id, seq: r.seq, author: r.author, at: r.at instanceof Date ? r.at.toISOString() : r.at,
   shape: r.shape, kind: r.kind, confidence: r.confidence, answered: r.answered, latencyMs: r.latency_ms,
   utterance: r.utterance, pour: r.pour, provenance: r.provenance,
+});
+const rowEcho = (r: any): Echo => ({
+  id: r.id, kind: r.kind, visitorId: r.visitor_id, trailId: r.trail_id, turnId: r.turn_id, shape: r.shape, via: r.via, shared: r.shared,
+  persona: r.persona, destination: r.destination, location: r.location, data: r.data ?? {}, note: r.note, handlerMs: r.handler_ms,
+  at: r.at instanceof Date ? r.at.toISOString() : r.at,
 });
 const rowTrail = (r: any): Trail => ({ id: r.id, visitorId: r.visitor_id, headTurnId: r.head_turn_id, envelope: r.envelope, openedAt: r.opened_at instanceof Date ? r.opened_at.toISOString() : r.opened_at });
 
@@ -95,6 +105,8 @@ export class TrailService {
   async deleteVisitors(ids: string[]): Promise<number> {
     if (!ids.length) return 0;
     return this.db.begin(async (tx: any) => {
+      // echoes point at turns (theirs, or theirs echoed by someone else) and at visitors: they go first
+      await tx`DELETE FROM conversation.echo WHERE visitor_id = ANY(${ids}) OR trail_id IN (SELECT id FROM conversation.trail WHERE visitor_id = ANY(${ids}))`;
       await tx`DELETE FROM conversation.turn WHERE trail_id IN (SELECT id FROM conversation.trail WHERE visitor_id = ANY(${ids}))`;
       await tx`DELETE FROM conversation.pending_notification WHERE visitor_id = ANY(${ids})`;
       await tx`DELETE FROM conversation.trail WHERE visitor_id = ANY(${ids})`;
@@ -290,6 +302,30 @@ export class TrailService {
   }
 
   // ── notifications ────────────────────────────────────────────────────────
+  // ── echoes ───────────────────────────────────────────────────────────────
+
+  async recordEcho(e: Omit<Echo, "at">): Promise<void> {
+    await this.db`INSERT INTO conversation.echo
+      (id, kind, visitor_id, trail_id, turn_id, shape, via, shared, persona, destination, location, data, note, handler_ms)
+      VALUES (${e.id}, ${e.kind}, ${e.visitorId}, ${e.trailId}, ${e.turnId}, ${e.shape}, ${e.via}, ${e.shared}, ${e.persona},
+              ${e.destination}, ${e.location}, ${this.db.json((e.data ?? {}) as any)}, ${e.note}, ${e.handlerMs})`;
+  }
+
+  /** A turn's echoes, oldest first: what was done with that answer. */
+  async echoes(turnIds: string[]): Promise<Echo[]> {
+    if (!turnIds.length) return [];
+    const rows = await this.db`SELECT * FROM conversation.echo WHERE turn_id = ANY(${turnIds}) ORDER BY at`;
+    return rows.map(rowEcho);
+  }
+
+  /** Recent echoes across visitors, newest first — the operator's view of what left the conversation. */
+  async recentEchoes(o: { since?: string; kind?: string; limit?: number } = {}): Promise<Echo[]> {
+    const rows = await this.db`SELECT * FROM conversation.echo
+      WHERE at > now() - ${o.since ?? "7 days"}::interval AND (${o.kind ?? null}::text IS NULL OR kind = ${o.kind ?? null})
+      ORDER BY at DESC LIMIT ${o.limit ?? 200}`;
+    return rows.map(rowEcho);
+  }
+
   async enqueueNotification(visitorId: string, n: { author: "system" | "operator"; name?: string; text: string; next?: unknown[] }): Promise<string> {
     const id = newId("n");
     await this.db`INSERT INTO conversation.pending_notification (id, visitor_id, author, name, text, next) VALUES (${id}, ${visitorId}, ${n.author}, ${n.name ?? null}, ${n.text}, ${this.db.json((n.next ?? []) as any)})`;

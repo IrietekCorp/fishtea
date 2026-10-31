@@ -448,7 +448,7 @@ function tsconfigFor(home: string, app: string, out: string, include: string[]):
       types: [join(mods, "vite/client")],
       paths: {
         "@app/*": [join(app, "*")], "@fishtea/ui/*": [join(uiPkg, "src/*")], "@fishtea/plugins/*": [join(home, "plugins", "*")],
-        "@fishtea/present": [join(home, "packages/spec/src/present.ts")], "#generated/*": [join(out, "*")],
+        "@fishtea/present": [join(home, "packages/spec/src/present.ts")], "@fishtea/echo": [join(home, "packages/spec/src/echo.ts")], "#generated/*": [join(out, "*")],
         react: [join(mods, "@types/react")], "react/*": [join(mods, "@types/react/*")], "react-dom/*": [join(mods, "@types/react-dom/*")], "lucide-react": [join(mods, "lucide-react")],
       },
     },

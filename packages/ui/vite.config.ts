@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
  *   @fishtea/ui        this package's src, for shells and views to build on
  *   @fishtea/plugins   the framework's builtin plugins, wherever this framework lives
  *   @fishtea/present   the layout language (@fishtea/spec's present.ts), which pour.present is written in
+ *   @fishtea/echo      the echo rules (@fishtea/spec's echo.ts): a link is built by the rule /echo judges it by
  */
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = process.env.FISHTEA_APP_DIR ? resolve(process.env.FISHTEA_APP_DIR) : null;
@@ -54,6 +55,16 @@ function head() {
       };
       try { if (!/^\\/admin(\\/|$)/.test(location.pathname) && (!window.__fishteaAnalytics.consent || localStorage.getItem("fishtea:consent") === "granted")) window.fishteaLoadAnalytics(); } catch (e) {}
     </script>` : "";
+      // echoes: what a link needs to know to report itself (docs/ECHOES.md) — each echo's transport, its
+      // analytics event and its host cases. Never a handler's name: that is the core's business. The spec
+      // checked every value (names, hosts, GA4 event names); the JSON is escaped like the analytics config.
+      const echoes = Object.fromEntries(Object.entries(spec.echoes ?? {})
+        .filter(([k, d]) => k !== "version" && k !== "doc" && d && typeof d === "object")
+        .map(([k, d]: [string, any]) => [k, {
+          via: d.via, analytics: d.analytics,
+          cases: (d.cases ?? []).map((c: any) => ({ hosts: c.hosts, via: c.via, analytics: c.analytics })),
+        }]));
+      const echoTag = Object.keys(echoes).length ? `<script>window.__fishteaEchoes = ${JSON.stringify(echoes).replace(/</g, "\\u003c")};</script>` : "";
       // rules.site.brand: the business's icons, its browser colour and what a shared link shows. Every value
       // was checked by the spec (paths in public/ or https, #hex, sizes like 32x32) and is escaped here too.
       const brand = spec.rules?.site?.brand ?? {};
@@ -76,6 +87,7 @@ function head() {
         typeof brand.themeColor === "string" ? `<meta name="theme-color" content="${esc(brand.themeColor)}" />` : "",
         typeof brand.logo?.src === "string" ? `<link rel="preload" as="image" href="${esc(brand.logo.src)}" />` : "",
         ...share,
+        echoTag,
         gtag,
       ].filter(Boolean).join("\n    ");
       return html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title ?? "FishTea")}</title>${tags ? `\n    ${tags}` : ""}`);
@@ -95,6 +107,7 @@ export default defineConfig({
       "@fishtea/plugins": resolve(HERE, "../../plugins"),
       // the layout language, alone: present.ts imports nothing, so it is safe in a browser bundle
       "@fishtea/present": resolve(HERE, "../spec/src/present.ts"),
+      "@fishtea/echo": resolve(HERE, "../spec/src/echo.ts"),
     },
     // A view or a shell lives outside this package, so its bare imports would otherwise look for a
     // node_modules beside it that is not there. They share this package's copies instead.

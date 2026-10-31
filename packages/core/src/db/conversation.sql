@@ -68,6 +68,32 @@ CREATE OR REPLACE VIEW conversation.unmet AS
   JOIN conversation.visitor v ON v.id = tr.visitor_id
   WHERE NOT t.answered AND t.author = 'visitor';
 
+-- Echoes: what a visitor did with an answer that leaves the conversation (an outbound link, today). A
+-- reverb of the turn that offered it, never a turn of its own: it does not move the head and is not
+-- something to rewind to. `shared` is an echo from someone other than the turn's own visitor (a link
+-- passed on). `destination` is what the answer published; `location` is where the visitor was sent
+-- (the handler's rewrite, or the same). docs/ECHOES.md.
+CREATE TABLE IF NOT EXISTS conversation.echo (
+  id           text PRIMARY KEY,
+  kind         text NOT NULL,
+  visitor_id   text NOT NULL REFERENCES conversation.visitor(id),
+  trail_id     text NOT NULL REFERENCES conversation.trail(id),
+  turn_id      text NOT NULL REFERENCES conversation.turn(id),
+  shape        text,
+  via          text NOT NULL CHECK (via IN ('redirect','beacon')),
+  shared       boolean NOT NULL DEFAULT false,
+  persona      text,
+  destination  text NOT NULL,
+  location     text,
+  data         jsonb NOT NULL DEFAULT '{}',
+  note         text,
+  handler_ms   integer,
+  at           timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS echo_turn_idx ON conversation.echo (turn_id);
+CREATE INDEX IF NOT EXISTS echo_visitor_idx ON conversation.echo (visitor_id, at DESC);
+CREATE INDEX IF NOT EXISTS echo_kind_at_idx ON conversation.echo (kind, at DESC);
+
 -- A pour kind added after a database was created does not reach it: the table above is CREATE TABLE IF
 -- NOT EXISTS, so an existing turn table keeps whatever CHECK it was born with and every composite pour
 -- would fail to append. Restating the constraint is idempotent and cheap, and it is the only part of

@@ -11,6 +11,7 @@ import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
 import { Separator } from "./components/ui/separator";
 import { utter, resume, subscribe, trail as fetchTrail, rewind as doRewind, type Pour, type Response, type Chip } from "./lib/client";
+import { EchoTurn } from "./lib/echo";
 import { patchPart } from "./lib/parts";
 import { ListVessel } from "./vessels/list";
 import { CardVessel } from "./vessels/card";
@@ -115,6 +116,7 @@ export function Container() {
       <div aria-live="polite" className="sr-only">{announce}</div>
 
       {res && pour && (
+        <EchoTurn.Provider value={res.turn.id}>
         <section key={res.turn.id} className="pour-enter space-y-4" aria-label="answer">
           {res.understood && pour.kind !== "ask" && (
             <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -142,6 +144,7 @@ export function Container() {
             </>
           )}
         </section>
+        </EchoTurn.Provider>
       )}
 
       {showTrail && (

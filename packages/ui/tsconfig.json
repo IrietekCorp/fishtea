@@ -32,6 +32,9 @@
       "@fishtea/present": [
         "../spec/src/present.ts"
       ],
+      "@fishtea/echo": [
+        "../spec/src/echo.ts"
+      ],
       "react": [
         "node_modules/@types/react"
       ],

@@ -37,6 +37,15 @@ export const MIGRATIONS: SpecMigration[] = [
       return [];
     },
   },
+  {
+    from: "1.1",
+    to: "1.2",
+    doc: "adds the optional `echoes` section (outbound reverbs of a turn, served at /echo) — additive",
+    apply() {
+      // A 1.1 spec is a valid 1.2 spec: `echoes` is optional, and absent means /echo refuses everything.
+      return [];
+    },
+  },
 ];
 
 export class MigrationError extends Error {}

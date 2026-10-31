@@ -267,7 +267,7 @@
             },
             "analytics": {
               "type": "object",
-              "description": "Page analytics on the site's pages (never /admin). google: a GA4 measurement id, G-…. consent (default true): load nothing until the visitor accepts in a banner; false loads it at once. notice: the banner's sentence.",
+              "description": "Page analytics on the site's pages (never /admin). google: a GA4 measurement id, G-\u2026. consent (default true): load nothing until the visitor accepts in a banner; false loads it at once. notice: the banner's sentence.",
               "properties": {
                 "google": {
                   "type": "string",
@@ -293,7 +293,7 @@
             },
             "brand": {
               "type": "object",
-              "description": "The business's own marks, for a shell that would otherwise set its name in type. logo: an image in public/ drawn in the header (height) and footer (footerHeight). icons: the favicon and touch icons, written into <head>. themeColor: the browser's chrome colour. image and url: the picture and canonical origin a shared link shows. Paths are in public/ (/…) or https URLs.",
+              "description": "The business's own marks, for a shell that would otherwise set its name in type. logo: an image in public/ drawn in the header (height) and footer (footerHeight). icons: the favicon and touch icons, written into <head>. themeColor: the browser's chrome colour. image and url: the picture and canonical origin a shared link shows. Paths are in public/ (/\u2026) or https URLs.",
               "properties": {
                 "logo": {
                   "type": "object",
@@ -388,7 +388,7 @@
             },
             "social": {
               "type": "object",
-              "description": "Where else the business is: a network's name (linkedin, x, instagram, github, youtube, facebook, or any other) → its https profile URL. An empty URL is a network not used yet, kept so /admin offers it.",
+              "description": "Where else the business is: a network's name (linkedin, x, instagram, github, youtube, facebook, or any other) \u2192 its https profile URL. An empty URL is a network not used yet, kept so /admin offers it.",
               "propertyNames": {
                 "pattern": "^[a-z][a-z0-9-]*$"
               },
@@ -535,6 +535,107 @@
         }
       }
     },
+    "echoes": {
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "doc": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "doc": {
+            "type": "string"
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "redirect",
+              "beacon"
+            ]
+          },
+          "handler": {
+            "type": "string"
+          },
+          "allow": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "analytics": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,39}$"
+              },
+              {
+                "const": false
+              }
+            ]
+          },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "hosts"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "hosts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)*$"
+                  }
+                },
+                "via": {
+                  "type": "string",
+                  "enum": [
+                    "redirect",
+                    "beacon"
+                  ]
+                },
+                "handler": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "const": false
+                    }
+                  ]
+                },
+                "analytics": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,39}$"
+                    },
+                    {
+                      "const": false
+                    }
+                  ]
+                },
+                "doc": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "operator": {
       "type": "object",
       "required": [
@@ -661,7 +762,7 @@
           }
         },
         "admin": {
-          "description": "Rows an operator reads and edits at /admin → Data. true takes the defaults; title: the field a row is called by; columns: the fields the list shows; order: the field it sorts by, highest first; collect: the shape of a public form that adds rows, whose link /admin offers.",
+          "description": "Rows an operator reads and edits at /admin \u2192 Data. true takes the defaults; title: the field a row is called by; columns: the fields the list shows; order: the field it sorts by, highest first; collect: the shape of a public form that adds rows, whose link /admin offers.",
           "oneOf": [
             {
               "const": true

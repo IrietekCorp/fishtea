@@ -17,10 +17,10 @@
 export const FISHTEA_VERSION = "1.8.0";
 
 /** The spec document format this build writes. Specs at an older format are migrated on `fishtea update`. */
-export const SPEC_FORMAT = "1.1";
+export const SPEC_FORMAT = "1.2";
 
 /** Every spec format this build can load without migrating first. */
-export const SUPPORTED_SPEC_FORMATS = ["1.0", "1.1"] as const;
+export const SUPPORTED_SPEC_FORMATS = ["1.0", "1.1", "1.2"] as const;
 
 /**
  * Compare two semver strings. Bun has this built in (`Bun.semver.order`), and we use it when we are running

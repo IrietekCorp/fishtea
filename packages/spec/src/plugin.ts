@@ -32,7 +32,7 @@ export const PLUGIN_KINDS = ["integration", "ui", "auth", "classifier", "channel
 export type PluginKind = (typeof PLUGIN_KINDS)[number];
 
 /** Sections of the spec a plugin may contribute to. `business` and `envelope` are the application's alone. */
-export const CONTRIBUTABLE = ["entities", "calls", "shapes", "rules", "personas", "notifications", "operator"] as const;
+export const CONTRIBUTABLE = ["entities", "calls", "shapes", "rules", "personas", "notifications", "echoes", "operator"] as const;
 export type Contributable = (typeof CONTRIBUTABLE)[number];
 
 /** A configuration question, the same shape a template's onboard.json uses. One vocabulary, not two. */

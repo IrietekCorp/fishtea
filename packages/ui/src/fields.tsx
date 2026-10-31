@@ -4,6 +4,13 @@
  */
 import { Badge } from "./components/ui/badge";
 import { money } from "./lib/utils";
+import { echoLink, useEchoTurn } from "./lib/echo";
+
+/** A `*Url` field: an outbound link, which echoes the turn on screen when the application declares echoes. */
+function UrlField({ value }: { value: string }) {
+  const a = echoLink(value, { turnId: useEchoTurn() });
+  return a ? <a {...a} className="underline">link</a> : <span>{value}</span>;
+}
 
 const HIDDEN = new Set(["id", "visitorId", "familyId", "customerId", "registrationId", "camperId", "sessionId", "productIds", "embedding", "fts"]);
 export const isHidden = (k: string) => HIDDEN.has(k);
@@ -19,7 +26,7 @@ export function Field({ name, value }: { name: string; value: unknown }) {
   const n = name.toLowerCase();
   if (/price|total|subtotal|tax|shipping|amount|discount|each/.test(n) && (typeof value === "number" || !isNaN(Number(value)))) return <span className="whitespace-nowrap tabular-nums">{money(value)}</span>;
   if (/imageurl|image$/.test(n) && typeof value === "string") return <img src={value} alt="" loading="lazy" className="h-16 w-16 rounded-md object-cover" />;
-  if (/url$/.test(n) && typeof value === "string") return <a href={value} className="underline" target="_blank" rel="noreferrer">link</a>;
+  if (/url$/.test(n) && typeof value === "string") return <UrlField value={value} />;
   if (/^(heat|rating|energy)$/.test(n) && typeof value === "number") return <span aria-label={`${labelOf(name)} ${value} of 10`} title={`${value}/10`}>{"●".repeat(Math.round(value / 2))}{"○".repeat(5 - Math.round(value / 2))} <span className="sr-only">{value} of 10</span></span>;
   if (/at$|date$/i.test(name) && typeof value === "string" && !isNaN(Date.parse(value))) return <time dateTime={value}>{new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: /at$/i.test(name) ? "short" : undefined })}</time>;
   if (typeof value === "boolean") return <Badge variant={value ? "accent" : "outline"}>{value ? "yes" : "no"}</Badge>;

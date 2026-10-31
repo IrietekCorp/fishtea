@@ -89,6 +89,50 @@ export interface GreetingDef { shape?: string; hint?: string; resume?: boolean; 
 
 export interface NotificationDef { to: "visitor" | "operator"; text: string; doc?: string; next?: NextDef[] }
 
+/**
+ * How the browser reaches `/echo` for an echo it reports.
+ *
+ * - `redirect` — the link *is* the echo: `/echo?…` records it, runs the handler and answers 302 to the
+ *   destination (or what the handler made of it).
+ * - `beacon` — the link goes straight to the destination and the echo is reported beside it
+ *   (`navigator.sendBeacon`). For a destination that must not be reached through a redirect.
+ */
+export type EchoVia = "redirect" | "beacon";
+
+/** A per-destination override, matched on the destination's host; the first case that matches wins. */
+export interface EchoCase {
+  /** hostnames; `*.example.com` also matches example.com itself */
+  hosts: string[];
+  via?: EchoVia;
+  /** a different handler for these destinations, or `false` for none */
+  handler?: string | false;
+  /** a different analytics event name, or `false` to report none */
+  analytics?: string | false;
+  doc?: string;
+}
+
+/**
+ * An echo: what a visitor did with an answer that leaves the conversation — following an outbound link,
+ * today. It is recorded as a reverb of the turn whose answer offered it (`conversation.echo`), never as a
+ * turn: it does not move the head and is not something to rewind to. docs/ECHOES.md.
+ */
+export interface EchoDef {
+  doc?: string;
+  /** default `redirect` */
+  via?: EchoVia;
+  /**
+   * A compute call that decides the outcome: it receives the echo (destination, the record in the answer
+   * that carried it, the turn, the echo id) and may return `{ location, data }` — a rewritten destination
+   * and facts to keep with the echo. Without one the destination is used as published.
+   */
+  handler?: string;
+  /** personas who may echo this; absent means every persona */
+  allow?: string[];
+  /** the analytics event a shell reports for it (GA4 naming); default the echo's own name; `false` for none */
+  analytics?: string | false;
+  cases?: EchoCase[];
+}
+
 export interface Spec {
   fishtea: string;
   business: { id: string; name: string; doc?: string; locale?: string; currency?: string; version: string };
@@ -111,6 +155,8 @@ export interface Spec {
   personas: { version: string; doc?: string } & Record<string, { when: string; doc?: string } | string | undefined>;
   envelope: { version: string; doc?: string; accept: string[]; greeting: Record<string, GreetingDef> };
   notifications?: { version: string; doc?: string } & Record<string, NotificationDef | string | undefined>;
+  /** outbound reverbs of a turn (format 1.2) */
+  echoes?: { version: string; doc?: string } & Record<string, EchoDef | string | undefined>;
   operator?: { version: string; doc?: string; shapes?: Record<string, ShapeDef> };
 }
 
@@ -127,6 +173,7 @@ export const calls = (s: Spec) => members<CallDef>(s.calls);
 export const shapes = (s: Spec) => members<ShapeDef>(s.shapes);
 export const personas = (s: Spec) => members<{ when: string; doc?: string }>(s.personas);
 export const notifications = (s: Spec) => members<NotificationDef>(s.notifications);
+export const echoes = (s: Spec) => members<EchoDef>(s.echoes);
 export const operatorShapes = (s: Spec): [string, ShapeDef][] => Object.entries(s.operator?.shapes ?? {});
 
 export function getShape(s: Spec, name: string): ShapeDef | undefined {

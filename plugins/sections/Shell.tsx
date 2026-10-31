@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Menu as MenuIcon, X } from "lucide-react";
 import type { Pour, Response } from "@fishtea/ui/lib/client";
 import { FishteaMenu } from "@fishtea/ui/menu/FishteaMenu";
+import { EchoTurn } from "@fishtea/ui/lib/echo";
 import type { Turn, Vessel } from "@fishtea/ui/menu/types";
 import spec from "@app/spec.json";
 import { useConversation, shapeOf, type Conversation, type Crumb } from "./useConversation";
@@ -54,14 +55,16 @@ export function Shell({ views = {}, chrome = {} }: { views?: Views; chrome?: Chr
       <main className="flex-1">
         {shown ? (
           <div key={c.section!.res.turn.id} className="fade">
+            <EchoTurn.Provider value={c.section!.res.turn.id}>
             <PourView pour={shown} res={c.section!.res} c={c} views={views} />
+            </EchoTurn.Provider>
             {/* the UI language lays out its own threads; a vessel does unless it says otherwise */}
             {views[shapeOf(shown) ?? ""] && !views[shapeOf(shown)!]!.ownThreads && <Threads pour={shown} c={c} />}
           </div>
         ) : <Booting />}
       </main>
 
-      {overlay && <ActionOverlay pour={overlay} res={c.current!.res} c={c} views={views} key={c.current!.res.turn.id} />}
+      {overlay && <EchoTurn.Provider value={c.current!.res.turn.id}><ActionOverlay pour={overlay} res={c.current!.res} c={c} views={views} key={c.current!.res.turn.id} /></EchoTurn.Provider>}
       {OwnFooter ? <OwnFooter {...footerProps(c, active)} /> : <Footer c={c} />}
       <Toasts c={c} />
     </div>
@@ -78,6 +81,7 @@ export const hostFor = (c: Conversation, pour: Pour): PresentHost => {
     args: (pour.kind === "answer" && pour.args) || c.section?.route.args || {},
     crumb: up && shape && !isSection(shape) ? { label: labelOf(up), go: () => c.go(up) } : null,
     offered: (ch) => isSection(ch.shape) || isAction(ch.shape),
+    turnId: c.section?.res.turn.id ?? c.current?.res.turn.id ?? null,
   };
 };
 

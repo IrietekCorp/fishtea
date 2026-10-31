@@ -170,7 +170,8 @@ scaffolder does not copy. Deleting is the cleaner story and loses nothing that w
 **c. General connectors, which do belong here.** Judged by one question: would every archetype want
 this, or only a shop?
 - **email relay** — a `channel` plugin. The socket now exists (§6); no relay is written.
-- **analytics** — there is no seam at all, and it is the interesting one. Page views are not the events
+- **analytics** — the outbound click is covered by echoes now (docs/ECHOES.md): recorded beside the
+  turn, and reported to gtag when the visitor consented. For everything else there is no seam at all, and it is the interesting one. Page views are not the events
   that matter here; a shape classified, a pour delivered, a write confirmed and an utterance nobody
   could answer are, and the last is already collected in the `unmet` view. Wants an `analytics` plugin
   kind with a `record(event)` the engine calls after each turn, carrying the same facts the verify strip
@@ -181,6 +182,9 @@ this, or only a shop?
 - Scheduled sync: `rules.inventory.syncEveryHours` is declared and unread. Simplest: a `setInterval` in
   `packages/cli/src/serve.ts` running `engine.operate("op.syncInventory", {})` when the spec has that
   shape, enqueuing the `inventory.synced` notification.
+- Outbound links are echoes now (docs/ECHOES.md): every external link an answer publishes goes through
+  `/echo` (or reports beside itself), with a per-host handler and transport. Still open: the visible
+  "buy at vendor" treatment below.
 - UI: products with `affiliateUrl` and `stock = 0` need a "buy at vendor" treatment.
   `packages/ui/src/fields.tsx` treats fields by name; add one for `affiliateUrl`.
 

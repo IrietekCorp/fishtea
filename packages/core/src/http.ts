@@ -163,6 +163,44 @@ export function createServer(opts: ServerOptions) {
 
   app.get("/spec/tools", (c) => c.json({ tools: engine.toolSpecs }));
 
+  // ── echoes: an answer followed out of the conversation (docs/ECHOES.md) ───────
+  //
+  // GET  /echo?echo=<name>&turn=<turnId>&to=<url>   the `redirect` transport: the link *is* the echo. 302.
+  // POST /echo {echo, turn, to, visitor?}            the `beacon` transport: the link went straight to the
+  //                                                  destination; this reports it. 204, or JSON to a fetch.
+  //
+  // Who is echoing comes from the cookie, as on every other route. A GET is a link someone may copy, so it
+  // never carries the visitor in its URL; a beacon cannot set headers, so its body may name the visitor —
+  // the same allowance /events makes for EventSource. A destination is followed only when the named turn
+  // published it, so neither form is an open redirect.
+  const echoLimit = (c: any, v: { id: string | null }) => rateLimit(`echo:${v.id ?? ipOf(c)}`, 240);
+  app.get("/echo", async (c) => {
+    const v = visitorOf(c);
+    if (!echoLimit(c, v)) return c.text("Too many requests", 429);
+    const q = c.req.query();
+    const out = await engine.echo({ echo: q.echo ?? "", turnId: q.turn ?? "", to: q.to ?? "", via: "redirect" },
+      { visitorId: v.id, hadToken: v.hadToken, envelope: envelopeOf(c) });
+    c.header("Cache-Control", "no-store");
+    if (out.status === "refused") return c.text("This link is no longer available.", 404);
+    if (out.visitorId) remember(c, out.visitorId);
+    return c.redirect(out.location, 302);
+  });
+  app.post("/echo", async (c) => {
+    // sendBeacon posts text/plain (a CORS-safelisted type, so no preflight); a fetch may post JSON
+    const raw = await c.req.text().catch(() => "");
+    let body: Record<string, unknown> = {};
+    try { body = JSON.parse(raw || "{}"); } catch { return c.json({ error: "body must be JSON" }, 400); }
+    const fromHeader = visitorOf(c);
+    const v = fromHeader.id ? fromHeader : { id: typeof body.visitor === "string" ? body.visitor : null, hadToken: typeof body.visitor === "string" };
+    if (!echoLimit(c, v)) return c.json({ error: "rate limited" }, 429);
+    const out = await engine.echo({ echo: String(body.echo ?? ""), turnId: String(body.turn ?? ""), to: String(body.to ?? ""), via: "beacon" },
+      { visitorId: v.id, hadToken: v.hadToken, envelope: envelopeOf(c) });
+    if (out.status === "refused") return c.json({ status: "refused", reason: out.reason }, 404);
+    if (out.visitorId) remember(c, out.visitorId);
+    const { visitorId: _, ...pub } = out;
+    return (c.req.header("accept") ?? "").includes("application/json") ? c.json(pub) : c.body(null, 204);
+  });
+
   /** Notifications for this visitor, as turns, over SSE. */
   app.get("/events", async (c) => {
     const v = visitorOf(c);
@@ -284,7 +322,14 @@ export function createServer(opts: ServerOptions) {
   });
   op.get("/turns/:id", async (c) => {
     const t = await engine.trails.turn(c.req.param("id"));
-    return t ? c.json({ turn: t }) : c.json({ error: "no such turn" }, 404);
+    return t ? c.json({ turn: t, echoes: await engine.trails.echoes([t.id]) }) : c.json({ error: "no such turn" }, 404);
+  });
+  /** What left the conversation: recent echoes, newest first (?since=7 days, ?echo=<name>, ?limit=200). */
+  op.get("/echoes", async (c) => {
+    const limit = Math.min(1000, Math.max(1, Number(c.req.query("limit") ?? 200) || 200));
+    try {
+      return c.json({ echoes: await engine.trails.recentEchoes({ since: c.req.query("since") ?? "7 days", kind: c.req.query("echo") || undefined, limit }) });
+    } catch { return c.json({ error: "since must be an interval, e.g. 24 hours or 7 days" }, 400); }
   });
 
   // ── the spec, whole ──────────────────────────────────────────────────────

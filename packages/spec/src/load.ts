@@ -3,7 +3,7 @@ import addFormats from "ajv-formats";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { dirname, join, resolve, basename } from "node:path";
 import schema from "../schema/spec.schema.json" with { type: "json" };
-import { type Spec, entities, calls, shapes, personas, notifications, operatorShapes, getShape, getCall, getEntity, type ShapeDef } from "./spec.ts";
+import { type Spec, entities, calls, shapes, personas, notifications, echoes, operatorShapes, getShape, getCall, getEntity, type ShapeDef } from "./spec.ts";
 import { parseType, SCALARS, type TypeSpec, isInlineObject } from "./types.ts";
 import { check as checkPresent, type SpecLike } from "./present.ts";
 import { checkSite } from "./site.ts";
@@ -239,6 +239,25 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
   for (const p of personaNames) if (p !== "operator" && !spec.envelope.greeting[p]) problems.push(`envelope.greeting: no greeting for persona "${p}"`);
 
   for (const [name, n] of notifications(spec)) for (const nx of n.next ?? []) if (!getShape(spec, nx.shape)) problems.push(`notifications.${name}.next: unknown shape "${nx.shape}"`);
+
+  // An echo's handler runs while a visitor waits on a redirect, so it must be a compute call: SQL may
+  // write (the echo itself is the only write /echo makes), and an external call is someone else's latency.
+  const handlerProblem = (at: string, h: string) => {
+    const c = getCall(spec, h);
+    if (!c) return `${at}: unknown call "${h}"`;
+    if (!c.impl.module) return `${at}: "${h}" must be a compute call (impl.module) — an echo handler decides, it does not read or write`;
+    return null;
+  };
+  for (const [name, e] of echoes(spec)) {
+    const at = `echoes.${name}`;
+    if (!/^[a-z][A-Za-z0-9_-]*$/.test(name)) problems.push(`${at}: an echo's name is a URL parameter — letters, digits, - and _, starting with a lower-case letter`);
+    if (e.handler) { const p = handlerProblem(`${at}.handler`, e.handler); if (p) problems.push(p); }
+    for (const who of e.allow ?? []) if (!personaNames.has(who)) problems.push(`${at}.allow: unknown persona "${who}"`);
+    (e.cases ?? []).forEach((c, i) => {
+      if (typeof c.handler === "string") { const p = handlerProblem(`${at}.cases[${i}].handler`, c.handler); if (p) problems.push(p); }
+      if (!c.hosts?.length) problems.push(`${at}.cases[${i}]: needs at least one host`);
+    });
+  }
 
   const tax = (spec.rules as any).tax;
   if (tax?.table && dir && !existsSync(join(dir, "rules", tax.table))) problems.push(`rules.tax.table: ${join(dir, "rules", tax.table)} not found`);

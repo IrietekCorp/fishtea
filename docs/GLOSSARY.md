@@ -51,6 +51,10 @@ branchable, and it never dies.
 
 **Rewind** — pointing at an earlier turn. Nothing is deleted.
 
+**Echo** — what a visitor did with an answer that took them out of the conversation, such as following
+an outbound link. It is recorded beside the turn that offered it (`conversation.echo`), never as a turn,
+and served at `/echo`. A destination is followed only if that conversation published it. [Echoes](echoes.html).
+
 **Branch** — a new utterance made from a rewound turn, creating a sibling path. The original survives.
 
 **Pour** — the system's response to an utterance. Exactly one of four kinds:

@@ -24,6 +24,7 @@ import {
   SlidersHorizontal, Sparkles, Star, UserCheck, X, Zap, type LucideIcon,
 } from "lucide-react";
 import type { Chip, Pour } from "../lib/client";
+import { echoLink, useEchoTurn } from "../lib/echo";
 import {
   bind, read, rowsOf, text,
   type Action, type Go, type MoleculeDef, type PresentTree, type ResolvedOrganism, type TagSource,
@@ -45,6 +46,16 @@ export interface PresentHost {
   threads?: boolean;
   /** a chip the host already offers elsewhere, so it is not repeated as a thread */
   offered?(chip: Chip): boolean;
+  /** the turn on screen: an external link names it so following the link echoes it (docs/ECHOES.md) */
+  turnId?: string | null;
+}
+
+/** An external link from an answer. With the application's echoes declared it reports itself; otherwise a plain link. */
+function OutLink({ href, turnId, className, children }: { href: string; turnId?: string | null; className: string; children: ReactNode }) {
+  const onScreen = useEchoTurn();
+  const a = echoLink(href, { turnId: turnId ?? onScreen });
+  if (!a) return null;
+  return <a {...a} className={className}>{children}</a>;
 }
 
 // ── atoms ─────────────────────────────────────────────────────────────────────────────────────────
@@ -217,10 +228,10 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
   const open = m.go ? () => ask(x, m.go!, row) : undefined;
   const rise = i < 4 ? `rise rise-${i + 1}` : "rise";
   const external = f.href && (
-    <a href={f.href} target="_blank" rel="noreferrer"
+    <OutLink href={f.href} turnId={x.host.turnId}
       className="relative z-10 inline-flex items-center gap-2 self-start whitespace-nowrap rounded border border-border px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:border-accent hover:text-accent">
       {open ? "Visit" : f.cta || "Open"} <ExternalLink size={13} />
-    </a>
+    </OutLink>
   );
 
   switch (m.as) {
@@ -272,7 +283,7 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
     case "highlight": {
       const body = <>{f.eyebrow && <p className="mb-1 font-mono text-xs text-accent">{f.eyebrow}</p>}<p className="mb-1.5 text-sm font-bold">{f.title}</p>{f.body && <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>}</>;
       const cls = "group flex gap-3 rounded border border-border bg-card p-4 text-left transition-colors hover:border-accent/40";
-      if (f.href) return <a href={f.href} target="_blank" rel="noreferrer" className={cls}><ExternalLink size={12} className="mt-1 shrink-0 text-accent" /><div>{body}</div></a>;
+      if (f.href) return <OutLink href={f.href} turnId={x.host.turnId} className={cls}><ExternalLink size={12} className="mt-1 shrink-0 text-accent" /><div>{body}</div></OutLink>;
       return open ? <button onClick={open} className={cls}><div>{body}</div></button> : <div className={cls}><div>{body}</div></div>;
     }
     case "step":
@@ -437,7 +448,7 @@ function Organism({ o, answer, scope, x }: OrgProps) {
             {meta && <span className="shrink-0 font-mono text-sm text-accent sm:pt-3">{meta}</span>}
             {!center && o.actions?.length ? <div className="no-print flex shrink-0 gap-3 self-start">{o.actions.map((a, i) => <ActionButton key={i} a={a} scope={scope} x={x} primary={a.primary ?? i === 0} />)}</div> : null}
           </div>
-          {o.contact?.length ? <Contact items={o.contact} scope={scope} center={center} /> : null}
+          {o.contact?.length ? <Contact items={o.contact} scope={scope} center={center} turnId={x.host.turnId} /> : null}
           {sub && <p className="mt-3 text-lg font-semibold italic text-muted-foreground">{sub}</p>}
           {lead && <Prose value={lead} className={`mt-5 max-w-3xl text-base text-muted-foreground sm:text-lg ${center ? "mx-auto" : ""}`} />}
         </div>
@@ -639,7 +650,7 @@ function Facets({ o, answer, scope, x }: { o: ResolvedOrganism; answer: unknown;
 }
 
 /** A hero's contact line: where, and how to reach them, the reachable ones as links. */
-function Contact({ items, scope, center }: { items: Action[]; scope: unknown; center: boolean }) {
+function Contact({ items, scope, center, turnId }: { items: Action[]; scope: unknown; center: boolean; turnId?: string | null }) {
   const shown = items.map((a) => ({ label: text(a.label, scope), href: a.href ? text(a.href, scope) : "" })).filter((a) => a.label);
   if (!shown.length) return null;
   return (
@@ -647,7 +658,9 @@ function Contact({ items, scope, center }: { items: Action[]; scope: unknown; ce
       {shown.map((a, i) => (
         <li key={i} className="flex items-center gap-3">
           {i > 0 && <span aria-hidden className="text-accent">·</span>}
-          {a.href ? <a href={a.href} target={a.href.startsWith("mailto:") ? undefined : "_blank"} rel="noreferrer" className="font-semibold text-foreground underline-offset-4 hover:text-accent hover:underline">{a.label}</a> : <span>{a.label}</span>}
+          {a.href && /^(mailto|tel):/i.test(a.href)
+            ? <a href={a.href} rel="noreferrer" className="font-semibold text-foreground underline-offset-4 hover:text-accent hover:underline">{a.label}</a>
+            : a.href ? <OutLink href={a.href} turnId={turnId} className="font-semibold text-foreground underline-offset-4 hover:text-accent hover:underline">{a.label}</OutLink> : <span>{a.label}</span>}
         </li>
       ))}
     </ul>
@@ -658,7 +671,7 @@ function ActionButton({ a, scope, x, primary }: { a: Action; scope: unknown; x: 
   const cls = primary ? "inline-flex items-center gap-2 rounded bg-accent px-6 py-3 font-black text-accent-foreground hover:brightness-110" : "inline-flex items-center gap-2 rounded border border-border px-6 py-3 font-bold text-muted-foreground hover:border-accent hover:text-foreground";
   const label = text(a.label, scope);
   if (a.print) return <button onClick={() => print()} className={`no-print ${cls}`}><Printer size={16} /> {label}</button>;
-  if (a.href) { const href = text(a.href, scope); return href ? <a href={href} target="_blank" rel="noreferrer" className={cls}>{label} <ExternalLink size={14} /></a> : null; }
+  if (a.href) { const href = text(a.href, scope); return href ? <OutLink href={href} turnId={x.host.turnId} className={cls}>{label} <ExternalLink size={14} /></OutLink> : null; }
   if (!a.shape) return null;
   return <button onClick={() => ask(x, { shape: a.shape!, args: a.args }, scope)} className={cls}>{label}</button>;
 }

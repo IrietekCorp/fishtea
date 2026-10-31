@@ -2,10 +2,11 @@
  * The engine: one utterance in, one pour out (BLUEPRINT §3 "Request lifecycle").
  * Provably UI-free: headless.ts and http.ts are both thin callers of Engine.
  */
-import { type App, type ShapeDef, type ToolSpec, deriveTools, deriveOperatorTools, getShape, inputSchema, shapes as specShapes, notifications as specNotifications, entities as specEntities, parseType, snake, deriveForm } from "@fishtea/spec";
+import { type App, type ShapeDef, type ToolSpec, type EchoVia, echoes as specEchoes, getCall, deriveTools, deriveOperatorTools, getShape, inputSchema, shapes as specShapes, notifications as specNotifications, entities as specEntities, parseType, snake, deriveForm } from "@fishtea/spec";
 import type { Db } from "./db/index.ts";
 import { bindCalls, type BoundCall } from "./calls/index.ts";
-import { TrailService, type Turn, type Author, type PourKind } from "./trail/index.ts";
+import { TrailService, newId, type Turn, type Author, type PourKind } from "./trail/index.ts";
+import { isWebUrl, locate, planEcho, type EchoHandlerInput, type EchoHandlerOutput, type EchoOutcome } from "./echo.ts";
 import { derivePersona, allowedShapes, checkPersonas, type Identity } from "./persona.ts";
 import { Planner, PlanError, resolve as resolveRefs, type Provenance } from "./plan/index.ts";
 import { type Pour, type Chip, type ClassMeta, askPour, formPour, confirmPour, answerPour, compositePour, type AnswerPour, chip, phraseFor, nextChips } from "./pour.ts";
@@ -703,6 +704,85 @@ export class Engine {
       return answerPour(this.app.spec, shapeName, shape, a, r.answer, r.provenance, "operator");
     }
     return formPour(shapeName, shape, a, { error: `${shapeName} is handled by the TUI/CLI, not the engine` });
+  }
+
+  // ── echoes: what was done with an answer outside the conversation ─────────
+
+  /**
+   * Record an echo of `turnId` — the visitor followed `to`, which that turn's answer published — run the
+   * echo's handler, and say where the visitor goes. docs/ECHOES.md.
+   *
+   * Refused (no record, nothing followed): an unknown echo, a URL that is not http(s), a turn that does not
+   * exist, or a URL that turn never published. That last check is what keeps /echo from being an open
+   * redirect, and why it needs no signing secret: the trail is the signature.
+   *
+   * Passed (followed as published, not recorded): a persona the echo's `allow` leaves out. The link was on
+   * their screen; stranding them on an error page protects nothing.
+   *
+   * A handler that throws, overruns its budget or answers a non-web location is a `note` on the record and
+   * the visitor goes to the destination as published. An echo never strands anyone.
+   */
+  async echo(req: { echo: string; turnId: string; to: string; via?: EchoVia }, opts: UtterOptions = {}): Promise<EchoOutcome & { visitorId?: string }> {
+    const def = specEchoes(this.app.spec).find(([n]) => n === req.echo)?.[1];
+    if (!def) return { status: "refused", reason: `no echo named "${req.echo}"` };
+    if (!isWebUrl(req.to)) return { status: "refused", reason: "not an http(s) destination" };
+    if (typeof req.turnId !== "string" || !req.turnId) return { status: "refused", reason: "no turn" };
+
+    let turn = await this.trails.turn(req.turnId);
+    if (!turn) return { status: "refused", reason: "no such turn" };
+    let record = locate(turn.pour, req.to);
+    if (!record) {
+      // A streamed part is on screen a moment before it is settled into the stored turn (streamComposite).
+      await Bun.sleep(250);
+      turn = (await this.trails.turn(req.turnId)) ?? turn;
+      record = locate(turn.pour, req.to);
+    }
+    if (!record) {
+      // The page may name a neighbouring turn (a shell keeps a page on screen while an overlay asks
+      // another): look back along the same trail. Still only what this conversation published.
+      for (const t of await this.trails.path(turn.trailId, 20)) {
+        const r = locate(t.pour, req.to);
+        if (r) { turn = t; record = r; break; }
+      }
+    }
+    if (!record) return { status: "refused", reason: "that conversation did not publish this destination" };
+
+    const plan = planEcho(req.echo, def, req.to);
+    const via: EchoVia = req.via ?? plan.via;
+    const trail = (await this.trails.get(turn.trailId))!;
+    const visitor = await this.trails.ensureVisitor(opts.visitorId);
+    const shared = visitor.id !== trail.visitorId;
+    const identity = await this.identity(visitor, shared ? (parseEnvelope(this.app, opts.envelope ?? {}) as Envelope) : (trail.envelope as Envelope));
+    const persona = shared ? derivePersona(this.app.spec, { identity, trail: [] }) : await this.persona(trail.id, identity);
+    if (def.allow && !def.allow.includes(persona)) {
+      return { status: "passed", location: req.to, via, analytics: null, recorded: false, reason: `persona "${persona}" is not allowed this echo`, visitorId: visitor.id };
+    }
+
+    const echoId = newId("e");
+    let location = req.to, data: Record<string, unknown> = {}, note: string | null = null, handlerMs: number | null = null;
+    if (plan.handler) {
+      const call = this.calls.get(plan.handler);
+      const limit = getCall(this.app.spec, plan.handler)?.timeoutMs ?? Number(this.app.spec.rules.calls?.timeoutMs ?? 250);
+      const input: EchoHandlerInput = { echo: req.echo, echoId, to: req.to, via, record, turnId: turn.id, shape: turn.shape, persona, shared };
+      const t0 = performance.now();
+      try {
+        if (!call) throw new Error(`handler "${plan.handler}" is not bound`);
+        const run = call.run(input as unknown as Record<string, unknown>, { visitor, spec: this.app.spec, resolve: this.app.resolve, db: this.db });
+        const out = (await Promise.race([run, Bun.sleep(limit).then(() => { throw new Error(`over its ${limit} ms budget`); })])).output as EchoHandlerOutput | null;
+        if (out?.location != null) { if (isWebUrl(out.location)) location = out.location; else note = `handler answered a non-web location; followed as published`; }
+        if (out?.data && typeof out.data === "object") data = out.data;
+      } catch (e) {
+        note = `handler ${plan.handler}: ${(e as Error).message}; followed as published`;
+      }
+      handlerMs = Math.round(performance.now() - t0);
+    }
+
+    await this.trails.recordEcho({
+      id: echoId, kind: req.echo, visitorId: visitor.id, trailId: trail.id, turnId: turn.id, shape: turn.shape, via, shared, persona,
+      destination: req.to, location: via === "redirect" ? location : null, data, note, handlerMs,
+    });
+    if (note) this.log(`echo ${req.echo} ${echoId}: ${note}`);
+    return { status: "followed", echoId, location, via, analytics: plan.analytics, recorded: true, visitorId: visitor.id };
   }
 
   async health() {
