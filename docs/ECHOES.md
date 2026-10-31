@@ -82,8 +82,14 @@ or write, and it runs while a visitor waits on a redirect. Its budget is its own
 ```
 
 and may answer `{ location?, data? }`. `location` replaces the destination: an affiliate handler adds the
-network's sub-id (`clickref=<echoId>`) so a reported sale names this echo. `data` is kept with the
-record. A handler that throws, overruns or answers anything but an http(s) location is a `note` on the
+network's sub-id so a reported sale names this echo. `data` is kept with the record.
+
+**Send a network a reference, not the echo id.** An echo id is mixed case with `-` and `_`, and the
+networks do not agree about either. Awin approves the punctuation but asks for lower case, and Rakuten's
+own pages contradict each other on special characters. A sub-id that comes back altered belongs to a sale
+that can never be joined. Derive something every network keeps intact, such as lower-case hex from a hash
+of the echo id. Return it in `data`, so the record says what was sent and a reported sale joins on
+`data->>'subId'`. A handler that throws, overruns or answers anything but an http(s) location is a `note` on the
 echo, and the visitor goes to the destination as published. **An echo never strands anyone.**
 
 **allow.** A persona an echo does not allow is sent on as published and nothing is recorded. The link
