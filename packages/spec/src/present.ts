@@ -67,6 +67,7 @@ export interface MoleculeDef {
   level?: string; levels?: string[];
   /** when this binds to something truthy the row is shown quietly — dimmed, its detail folded away */
   quiet?: Bind;
+  /** a field holding a picture: a quote's portrait, a timeline event's logo beside its title, a card's screenshot at its head */
   image?: string; href?: string; cta?: Bind; icon?: Bind;
   /** the turn a click on this molecule asks; derived from the shape's next[] when absent */
   go?: Go;
@@ -110,6 +111,8 @@ export interface OrganismDef {
   /** hero: a line of contact under the title, each item text, or a link when it has an `href`; an item
    *  whose label comes out empty is left out */
   contact?: Action[];
+  /** hero: a picture under the lead — a screenshot of the thing, a photo; nothing when it comes out empty */
+  image?: Bind;
   /** shown in place of the organism when `from` is empty; nothing when absent */
   empty?: Bind;
   /** stats: the figures */

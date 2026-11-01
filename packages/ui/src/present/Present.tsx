@@ -309,6 +309,7 @@ function Molecule({ m, row, x, i, icon, last }: MolProps) {
         <article className={`${rise} group relative flex h-full w-full flex-col justify-between overflow-hidden rounded-lg border border-border bg-card p-8 text-left transition-colors sm:p-10 ${open ? "hover:border-accent/50" : ""}`}>
           {Icon && <div aria-hidden className="pointer-events-none absolute -right-4 -top-4 opacity-5 transition-opacity group-hover:opacity-10"><Icon className="h-32 w-32 text-accent" /></div>}
           <div className="relative min-w-0">
+            {f.image && <img src={f.image} alt="" loading="lazy" className="mb-6 aspect-[16/10] w-full rounded border border-border bg-muted object-cover object-top" />}
             {f.eyebrow && <Kicker className="mb-4">{f.eyebrow}</Kicker>}
             <h3 className={`mb-4 font-black uppercase tracking-tight text-foreground ${short ? "text-3xl sm:text-4xl" : "text-xl leading-tight sm:text-2xl"} ${Icon ? "pr-12" : ""}`}>
               {open ? <button onClick={open} className="text-left uppercase after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-accent">{f.title}</button> : f.title}
@@ -342,9 +343,12 @@ function Event({ f, row, x, open, last }: { f: Filled; row: unknown; x: Ctx; ope
       <span aria-hidden className={`absolute -left-8 top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 ${f.quiet ? "border-border bg-background" : "border-accent bg-background group-hover/item:bg-accent"} transition-colors`} />
       {!last && <span aria-hidden className="absolute -left-8 top-6 h-[calc(100%-1.25rem)] w-0.5 -translate-x-1/2 bg-border" />}
       <div className="mb-1 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <div>
-          {open ? <button onClick={open} className="text-lg font-black tracking-tight text-foreground hover:text-accent">{f.title}</button> : <h3 className="text-lg font-black tracking-tight">{f.title}</h3>}
-          {f.eyebrow && <span className="ml-2 text-sm text-muted-foreground">{f.eyebrow}</span>}
+        <div className="flex items-center gap-3">
+          {f.image && <img src={f.image} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded border border-border bg-white object-contain p-1" />}
+          <div>
+            {open ? <button onClick={open} className="text-lg font-black tracking-tight text-foreground hover:text-accent">{f.title}</button> : <h3 className="text-lg font-black tracking-tight">{f.title}</h3>}
+            {f.eyebrow && <span className="ml-2 text-sm text-muted-foreground">{f.eyebrow}</span>}
+          </div>
         </div>
         {f.meta && <time className="shrink-0 font-mono text-xs text-accent tabular-nums">{f.meta}</time>}
       </div>
@@ -438,7 +442,7 @@ function Organism({ o, answer, scope, x }: OrgProps) {
 
   switch (o.organism) {
     case "hero": {
-      const [title, accent, kicker, lead, meta, sub] = [text(o.title, scope), text(o.accent, scope), text(o.kicker, scope), text(o.lead, scope), text(o.meta, scope), text(o.subtitle, scope)];
+      const [title, accent, kicker, lead, meta, sub, image] = [text(o.title, scope), text(o.accent, scope), text(o.kicker, scope), text(o.lead, scope), text(o.meta, scope), text(o.subtitle, scope), text(o.image, scope)];
       const center = o.align === "center";
       return (
         <div className={`rise mb-12 ${center ? "text-center" : ""}`}>
@@ -451,6 +455,7 @@ function Organism({ o, answer, scope, x }: OrgProps) {
           {o.contact?.length ? <Contact items={o.contact} scope={scope} center={center} turnId={x.host.turnId} /> : null}
           {sub && <p className="mt-3 text-lg font-semibold italic text-muted-foreground">{sub}</p>}
           {lead && <Prose value={lead} className={`mt-5 max-w-3xl text-base text-muted-foreground sm:text-lg ${center ? "mx-auto" : ""}`} />}
+          {image && <img src={image} alt="" className={`mt-8 aspect-[16/10] w-full max-w-3xl rounded-lg border border-border bg-muted object-cover object-top ${center ? "mx-auto" : ""}`} />}
         </div>
       );
     }

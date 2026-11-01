@@ -63,6 +63,15 @@ describe("present: declared layouts", () => {
     expect(m.body).toBeUndefined();
     expect(m.go?.shape).toBe("askAbout");
   });
+
+  test("a picture is declared on a molecule (a field) and on a hero (a binding), and validates", () => {
+    const spec = validateSpec(withPresent({
+      shapes: { projects: [{ organism: "hero", title: "Work", image: "$0.imageUrl" }, { organism: "grid", from: "$", molecule: { as: "card", title: "$name", image: "imageUrl" } }] },
+    }), { dir: resolvePath(ROOT, "templates/portfolio") });
+    const tree = resolvePresent(spec as never, "projects", [{ id: "p", name: "Fleet", imageUrl: "/shots/fleet.jpg" }]);
+    expect(tree.organisms[0].image).toBe("$0.imageUrl");
+    expect(tree.organisms[1].molecule!.image).toBe("imageUrl");
+  });
 });
 
 describe("present: bindings", () => {
