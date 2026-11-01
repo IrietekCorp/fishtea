@@ -20,8 +20,8 @@ const record = (name: string, arg?: unknown) => calls.push({ name, arg });
 const sampleTurns: Turn[] = [
   {
     id: 't1', index: 1, roomId: 'browse', roomLabel: 'Browse',
-    utterance: 'something linen for a summer wedding, under £80',
-    short: 'linen · wedding · under £80', summary: '12 pieces, £48 to £80',
+    utterance: 'something linen for a summer wedding, under $80',
+    short: 'linen · wedding · under $80', summary: '12 pieces, $48 to $80',
     shape: 'findProducts', vessel: 'list', at: '2026-10-06T14:14:00',
     preview: { kind: 'swatches', colors: ['#4a3527', '#6b4c36', '#3d3128', '#b08a66'] },
   },
@@ -33,12 +33,12 @@ const sampleTurns: Turn[] = [
   },
   {
     id: 't3', index: 3, roomId: 'browse', roomLabel: 'Browse',
-    utterance: 'tell me about the Ardmore', short: 'Ardmore shirt', summary: 'Ardmore shirt, £68, 9 in stock',
+    utterance: 'tell me about the Ardmore', short: 'Ardmore shirt', summary: 'Ardmore shirt, $68, 9 in stock',
     shape: 'showProduct', vessel: 'detail', at: '2026-10-06T14:19:00',
   },
   {
     id: 't4', index: 4, roomId: 'browse', roomLabel: 'Browse',
-    utterance: 'Ardmore or Harlow?', short: 'Ardmore or Harlow', summary: 'Ardmore £68 against Harlow £74',
+    utterance: 'Ardmore or Harlow?', short: 'Ardmore or Harlow', summary: 'Ardmore $68 against Harlow $74',
     shape: 'compareProducts', vessel: 'compare', at: '2026-10-06T14:22:00',
   },
 ];

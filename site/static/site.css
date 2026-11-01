@@ -2,15 +2,16 @@
  * fishtea.io — built on the FishTea design system.
  *
  * Every colour, size, radius and shadow below is a custom property generated from
- * docs/design/tokens.json (see tokens.generated.css, imported first). Nothing here invents a value.
+ * docs/design/tokens.json (see tokens.generated.css, imported first). Nothing here invents a value;
+ * site/build.test.ts fails the build on a literal colour in this file.
  *
  * The three rules from the brand book, which this file tries not to break:
- *   earth first, colour last          green and gold are accents; two greens on a screen is one too many
- *   hairlines and one low shadow      never a 2px outline, never a hard shadow
+ *   ground first, colour last         green and amber are signals; two greens on a screen is one too many
+ *   hairlines, no shadow at rest      depth is a shade and an edge; `shadow-mid` is for hover and pouring
  *   seven vessels, never a page       marketing pages borrow the vessel shapes rather than invent cards
  */
 @import url("tokens.generated.css");
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap");
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -25,29 +26,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--green-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a { color: var(--green-ink); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
 
 ::selection { background: var(--green); color: var(--on-green); }
 
-/* The hero and the one wood card are a *band*: a dark plank the page sits on.
+/* The band is the one surface that steps out of the page: the hero, and a single card per set.
  *
- * Wood is a band only in Ebony. Measured against the Oak ramp, `--wood` (#8a6a4e) is a mid-tone that
- * nothing reaches 4.5:1 against — body copy on it came out at 1.94:1, which is invisible, not subtle.
- * In Oak the band is `--pot`, the lightest surface, and wood keeps the job it is good at there: the edge.
- *
- * `--pot` and not `--tan`, which was the first try: the band carries a gold key label, and gold-ink on
- * tan measures 4.46:1 — under the bar by a rounding error, which is still under the bar. On pot it is
- * 5.83:1. Both sides are tokens; nothing in this file picks a colour.
+ * It used to be walnut, and in the light theme it could not be — `--wood` was a mid-tone that body copy
+ * measured 1.94:1 against, which is invisible rather than subtle, so the light theme had to substitute a
+ * different token and the rule needed four blocks to say so. The band is now a shade of the ground in
+ * both themes, so one line does it and every ink reads on it: ink-3, the weakest, clears 5.1:1 on Slate
+ * and 4.8:1 on Daylight.
  */
 :root { --band: var(--wood); --band-line: var(--wood-2); }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) { --band: var(--pot); --band-line: var(--wood-2); }
-}
-:root[data-theme="light"] { --band: var(--pot); --band-line: var(--wood-2); }
 
-.wrap { max-width: 1120px; margin: 0 auto; padding-inline: var(--space-5); }
+.wrap { max-width: 1140px; margin: 0 auto; padding-inline: var(--space-5); }
 @media (max-width: 40rem) { .wrap { padding-inline: var(--space-4); } }
 
 .skip { position: absolute; left: -9999px; }
@@ -63,16 +58,15 @@ header.top {
   background: var(--ground);
   border-bottom: var(--hairline) solid var(--line);
 }
-header.top .wrap { display: flex; align-items: center; gap: var(--space-5); min-height: 64px; }
+header.top .wrap { display: flex; align-items: center; gap: var(--space-5); min-height: 60px; }
 
-/* The mark and the wordmark are one lockup, so they sit tight and share a centre line. The wordmark's
-   own artboard carries a little left bearing of its own, which is why the gap here is smaller than it
-   looks — measured, the glyphs land about 10px from the cup. */
-.brand { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; text-decoration: none; }
-.brand .cup { display: block; height: 34px; width: auto; }
-/* The wordmark carries its own fills — "fish" in ink, "tea" in green — so it swaps per theme rather
-   than inheriting currentColor. A-dark on Ebony, A-light on Oak, exactly as the asset notes say. */
-.brand .wordmark { display: block; height: 39px; width: auto; }
+/* The brand in the bar is the wordmark alone. The cup is still the favicon, the app icon and the social
+   card, where it is read as a mark at 16–180px; in the header it was a drawing at 28px, which is the one
+   size at which an illustration is neither legible nor abstract. */
+.brand { display: inline-flex; align-items: center; flex: none; text-decoration: none; }
+/* The wordmark carries its own fills — "fish" in ink, "tea" in the accent — so it swaps per theme rather
+   than inheriting currentColor. The dark artwork on Slate, the light artwork on Daylight. */
+.brand .wordmark { display: block; height: 32px; width: auto; }
 .brand .wordmark.on-oak { display: none; }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .brand .wordmark.on-ebony { display: none; }
@@ -106,16 +100,16 @@ header.top nav a[aria-current] { color: var(--ink); font-weight: 600; border-bot
   border: var(--hairline) solid transparent; border-radius: var(--radius-md);
   background: var(--green); color: var(--on-green);
   font: var(--text-body-strong); text-decoration: none; cursor: pointer;
-  transition: filter var(--quick), background var(--quick);
+  transition: filter var(--quick), background var(--quick), border-color var(--quick);
 }
-.btn:hover { filter: brightness(1.06); }
+.btn:hover { filter: brightness(1.08); }
 .btn:active { filter: brightness(0.94); }         /* press by darkening, never by moving */
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-.btn.ghost:hover { background: var(--pot); filter: none; }
+.btn.ghost:hover { background: var(--pot); border-color: var(--steam); filter: none; }
 .btn.small { padding: var(--space-2) var(--space-3); font: var(--text-small); font-weight: 600; }
 
 .badge {
-  display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-sm);
+  display: inline-block; padding: 3px var(--space-2); border-radius: var(--radius-sm);
   font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase;
   background: var(--tan); color: var(--ink-2);
 }
@@ -126,18 +120,17 @@ header.top nav a[aria-current] { color: var(--ink); font-weight: 600; border-bot
 .chip {
   display: inline-block; padding: var(--space-2) var(--space-3);
   border: var(--hairline) solid var(--line); border-radius: var(--radius-pill);
-  background: var(--pot); color: var(--ink); font: var(--text-small); text-decoration: none;
-  transition: background var(--quick), box-shadow var(--quick);
+  background: var(--pot); color: var(--ink-2); font: var(--text-small); text-decoration: none;
+  transition: background var(--quick), color var(--quick), border-color var(--quick);
 }
-.chip:hover { background: var(--tan); box-shadow: var(--shadow-mid); }
+.chip:hover { background: var(--tan); color: var(--ink); border-color: var(--steam); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 /* ---- code ---------------------------------------------------------------------------------------- */
-code { font: var(--text-mono); background: var(--tan); padding: 0.1em 0.4em; border-radius: 4px; }
+code { font: var(--text-mono); background: var(--tan); padding: 0.1em 0.4em; border-radius: var(--radius-sm); }
 pre {
   background: var(--pot); border: var(--hairline) solid var(--line); border-radius: var(--radius-md);
   padding: var(--space-4); overflow-x: auto; font: var(--text-mono); color: var(--ink);
-  box-shadow: var(--shadow-low);
 }
 pre code { background: none; padding: 0; font: inherit; }
 
@@ -151,11 +144,17 @@ pre code { background: none; padding: 0; font: inherit; }
 
 /* ---- hero ---------------------------------------------------------------------------------------- */
 .hero { background: var(--band); border-bottom: var(--hairline) solid var(--line); }
-.hero .wrap { padding-block: var(--space-8); display: grid; gap: var(--space-6); align-items: center; }
-@media (min-width: 60rem) { .hero .wrap { grid-template-columns: 1.4fr 0.6fr; } }
+.hero .wrap { padding-block: var(--space-8); display: grid; gap: var(--space-7); align-items: center; }
+@media (min-width: 64rem) { .hero .wrap { grid-template-columns: 1.08fr 0.92fr; gap: var(--space-6); } }
 .hero > .wrap > * { min-width: 0; }
 
-.hero .tag { font: var(--text-mono); color: var(--gold-ink); margin: 0 0 var(--space-4); }
+/* A 2rem accent rule above the tagline: the one place the accent appears before the button. */
+.hero .tag {
+  font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 var(--space-4);
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.hero .tag::before { content: ""; width: 2rem; height: var(--accent-bar); background: var(--green); flex: none; }
 .hero h1 {
   font: var(--text-display-xl); letter-spacing: var(--tracking-display-xl);
   color: var(--ink); margin: 0 0 var(--space-5); text-wrap: balance;
@@ -163,15 +162,48 @@ pre code { background: none; padding: 0; font: inherit; }
 @media (max-width: 48rem) { .hero h1 { font-size: 40px; line-height: 44px; } }
 .hero .lede { font: var(--text-body-lg); color: var(--ink-2); max-width: 34rem; margin: 0 0 var(--space-5); }
 .hero .cta { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
-.hero .stack { font: var(--text-small); color: var(--ink-2); margin: var(--space-5) 0 0; }
-.hero-art { justify-self: center; }
-.hero-art img { display: block; width: 100%; max-width: 320px; height: auto; }
+.hero .stack { font: var(--text-small); color: var(--ink-3); margin: var(--space-5) 0 0; }
+
+/* ---- the console: the hero's demonstration, and the shape of every try-it strip ------------------- */
+/*
+ * The hero used to carry a drawing of a cup. A drawing says what the product is called; this says what
+ * it does — a visitor's words, what the classifier made of them, the vessel that poured, and the chips
+ * that follow. It is the product's own vocabulary, rendered in the product's own tokens.
+ */
+.console {
+  background: var(--pot); border: var(--hairline) solid var(--line); border-radius: var(--radius-lg);
+  overflow: hidden; box-shadow: var(--shadow-mid);
+}
+.console-bar {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--tan); border-bottom: var(--hairline) solid var(--line);
+}
+.console-bar .pip { width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--steam); flex: none; }
+.console-bar .what {
+  margin-left: var(--space-2); font: var(--text-mono-small); color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.console-body { padding: var(--space-4); display: grid; gap: var(--space-3); }
+
+/* What the visitor typed. A caret, because the point is that this is the whole interface. */
+.said {
+  margin: 0; display: flex; align-items: baseline; gap: var(--space-3);
+  background: var(--tan); border: var(--hairline) solid var(--line); border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); font: var(--text-body); color: var(--ink);
+}
+.said::before { content: "›"; color: var(--green-ink); font: var(--text-mono); flex: none; }
+.said::after {
+  content: ""; width: 2px; height: 1.1em; background: var(--green); flex: none;
+  align-self: center; animation: blink 1.2s steps(1, end) infinite;
+}
+@keyframes blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
 
 /* ---- sections -------------------------------------------------------------------------------------- */
 section { padding-block: var(--space-7); border-bottom: var(--hairline) solid var(--line); }
-section > .wrap > .key { font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--space-5); }
-section h2 { font: var(--text-display-lg); letter-spacing: var(--tracking-display-lg); margin: 0 0 var(--space-4); color: var(--ink); }
-section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width: 34rem; margin: 0 0 var(--space-5); }
+section > .wrap > .key { font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--space-4); }
+section h2 { font: var(--text-display-lg); letter-spacing: var(--tracking-display-lg); margin: 0 0 var(--space-4); color: var(--ink); text-wrap: balance; }
+section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width: 38rem; margin: 0 0 var(--space-5); }
 
 .split { display: grid; gap: var(--space-6); grid-template-columns: 1fr; align-items: start; }
 .split > * { min-width: 0; }
@@ -180,15 +212,15 @@ section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width
 .cards { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); }
 .cards > * { min-width: 0; }
 .card {
-  background: var(--pot); border: var(--hairline) solid var(--line); border-radius: var(--radius-lg);
-  padding: var(--space-5); box-shadow: var(--shadow-low);
+  background: var(--pot); border: var(--hairline) solid var(--line); border-radius: var(--radius-md);
+  padding: var(--space-5);
 }
-.card .key { font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--space-2); }
+.card .key { font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase; color: var(--ink-3); margin: 0 0 var(--space-3); }
 .card h3 { font: var(--text-title); letter-spacing: var(--tracking-title); margin: 0 0 var(--space-3); color: var(--ink); }
 .card p { font: var(--text-small); color: var(--ink-2); margin: 0; }
-/* One card per set may sit on wood — the accent, used once. */
+/* One card per set may step out onto the band — the accent, used once. */
 .card.wood { background: var(--band); border-color: var(--band-line); }
-.card.wood .key { color: var(--gold-ink); }
+.card.wood .key { color: var(--green-ink); }
 
 /* ---- the try-it strip: mouth, understood, vessel, provenance -------------------------------------- */
 .demo { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); }
@@ -197,22 +229,22 @@ section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width
   display: block; width: 100%;
   background: var(--pot); border: var(--hairline) solid var(--line); border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4); font: var(--text-body); color: var(--ink);
-  box-shadow: var(--shadow-low);
 }
-.understood { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; font: var(--text-small); color: var(--ink-2); }
-.dot { width: 8px; height: 8px; border-radius: var(--radius-pill); flex: none; }
+.understood { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; font: var(--text-mono-small); color: var(--ink-2); }
+.dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
 .dot.high { background: var(--green); }
 .dot.mid { background: var(--gold); }
 .understood.shaping { color: var(--gold-ink); }
 
 .vessel {
   background: var(--pot); border: var(--hairline) solid var(--line); border-radius: var(--radius-md);
-  padding: var(--space-4); box-shadow: var(--shadow-low);
+  padding: var(--space-4);
 }
 .vessel h4 { font: var(--text-title); letter-spacing: var(--tracking-title); margin: 0 0 var(--space-3); color: var(--ink); }
 .row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .row .name { font: var(--text-body-strong); color: var(--ink); }
 .row .meta { font: var(--text-small); color: var(--ink-2); }
+.rule { border: 0; border-top: var(--hairline) solid var(--line); margin: var(--space-3) 0; }
 .field {
   background: var(--tan); border: var(--hairline) solid var(--line); border-radius: var(--radius-sm);
   padding: var(--space-3); font: var(--text-body); color: var(--ink); margin-bottom: var(--space-3);
@@ -238,8 +270,8 @@ section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width
 
 /* ---- lists of claims ------------------------------------------------------------------------------ */
 .claims { list-style: none; margin: var(--space-5) 0 0; padding: 0; }
-.claims li { position: relative; padding-left: var(--space-5); margin-bottom: var(--space-3); font: var(--text-body); color: var(--ink-2); max-width: 34rem; }
-.claims li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--green); }
+.claims li { position: relative; padding-left: var(--space-5); margin-bottom: var(--space-3); font: var(--text-body); color: var(--ink-2); max-width: 36rem; }
+.claims li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--green); }
 
 /* ---- docs layout ----------------------------------------------------------------------------------- */
 .docs { display: grid; gap: var(--space-5); grid-template-columns: 1fr; padding-block: var(--space-5) var(--space-8); }
@@ -250,8 +282,8 @@ section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width
 .rail { display: none; font: var(--text-small); }
 @media (min-width: 82rem) {
   .rail {
-    display: block; position: sticky; top: calc(64px + var(--space-4)); align-self: start;
-    max-height: calc(100vh - 96px); overflow-y: auto;
+    display: block; position: sticky; top: calc(60px + var(--space-4)); align-self: start;
+    max-height: calc(100vh - 92px); overflow-y: auto;
     border-left: var(--hairline) solid var(--line); padding-left: var(--space-4);
   }
 }
@@ -287,7 +319,7 @@ section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width
 .side a[aria-current] { background: var(--tan); color: var(--ink); font-weight: 600; }
 
 @media (min-width: 64rem) {
-  .side { position: sticky; top: calc(64px + var(--space-4)); align-self: start; max-height: calc(100vh - 96px); overflow-y: auto; }
+  .side { position: sticky; top: calc(60px + var(--space-4)); align-self: start; max-height: calc(100vh - 92px); overflow-y: auto; }
   .side > summary { display: none; }
 }
 
@@ -302,7 +334,7 @@ section > .wrap > p.sub { font: var(--text-body); color: var(--ink-2); max-width
 }
 .prose h3 { font: var(--text-body-strong); color: var(--ink); margin: var(--space-5) 0 var(--space-2); }
 .prose h4 { font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase; color: var(--ink-3); margin: var(--space-5) 0 var(--space-2); }
-.prose p, .prose li { font: var(--text-body); color: var(--ink-2); max-width: 34rem; }
+.prose p, .prose li { font: var(--text-body); color: var(--ink-2); max-width: 36rem; }
 .prose strong { color: var(--ink); font-weight: 600; }
 .prose li { margin: var(--space-1) 0; }
 .prose pre, .prose table, .prose .scroll { max-width: 100%; }
@@ -332,7 +364,7 @@ tbody tr:hover { background: var(--pot); }
 }
 .ref-section > h3 { font: var(--text-mono); color: var(--ink); margin-top: 0; }
 .pill {
-  display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-pill);
+  display: inline-block; padding: 3px var(--space-2); border-radius: var(--radius-pill);
   font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase;
   background: var(--tan); color: var(--ink-3); vertical-align: middle;
 }
@@ -352,7 +384,7 @@ tbody tr:hover { background: var(--pot); }
   display: flex; gap: var(--space-5); align-items: flex-start; flex-wrap: wrap;
   margin: var(--space-5) 0 var(--space-6); padding: var(--space-5);
   border: var(--hairline) solid var(--line); border-radius: var(--radius-lg);
-  background: var(--pot); box-shadow: var(--shadow-low);
+  background: var(--pot);
 }
 .profile img { width: 150px; height: 150px; flex: none; border-radius: var(--radius-pill); object-fit: cover; border: var(--hairline) solid var(--line); }
 .profile > div { flex: 1 1 18rem; min-width: 0; }
@@ -386,5 +418,6 @@ footer.bottom a { color: var(--ink-3); }
 }
 @media (prefers-reduced-motion: reduce) {
   .pour { animation: none; }
+  .said::after { animation: none; }
   * { transition-duration: 1ms !important; }
 }

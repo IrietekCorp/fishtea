@@ -28,7 +28,7 @@ Adding a plugin writes **one line** naming it:
 ```json
 "plugins": {
   "version": "2026.09.22-1",
-  "payments": { "use": "stripe", "version": "^1.0.0", "kind": "integration", "config": { "currency": "gbp" } }
+  "payments": { "use": "stripe", "version": "^1.0.0", "kind": "integration", "config": { "currency": "usd" } }
 }
 ```
 
@@ -77,7 +77,7 @@ That scaffolds `plugins/loyalty/` in your application, with a manifest and a wor
   "name": "loyalty",
   "version": "0.1.0",
   "kind": "integration",
-  "fishtea": "^1.5.0",
+  "fishtea": "^1.8.0",
   "config": [{ "id": "greeting", "ask": "What should it say?", "type": "string", "default": "hello" }],
   "provides": {
     "calls": {

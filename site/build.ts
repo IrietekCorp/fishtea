@@ -212,7 +212,6 @@ function layout(page: Page, pages: Page[]): string {
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
   <a class="brand" href="${href("")}" aria-label="FishTea">
-    <img class="cup" src="${root}static/img/logo-mark.png" srcset="${root}static/img/logo-mark.png 1x, ${root}static/img/logo-mark@2x.png 2x" alt="" width="34" height="32">
     <img class="wordmark on-ebony" src="${root}static/img/wordmark-dark.svg" alt="FishTea" width="97" height="39">
     <img class="wordmark on-oak" src="${root}static/img/wordmark-light.svg" alt="" aria-hidden="true" width="97" height="39">
   </a>
@@ -275,9 +274,9 @@ function landing(): string {
     <h1>Describe a business once.<br>Derive everything else.</h1>
     <p class="lede">
       One <code>spec.json</code> gives you the Postgres schema, the classifier's tool list, the planner, the
-      UI and an operator console. Conversation replaces routing: a small on-device model turns what a
-      visitor says into a <strong>shape</strong>, the planner composes typed <strong>calls</strong>, and the
-      answer pours into one of seven <strong>vessels</strong>.
+      UI, visitor accounts and an operator console. Conversation replaces routing: a small on-device model
+      turns what a visitor says into a <strong>shape</strong>, the planner composes typed
+      <strong>calls</strong>, and the answer pours into one of seven <strong>vessels</strong>.
     </p>
     <div class="cta">
       <a class="btn" href="beta.html">Apply for access</a>
@@ -287,8 +286,32 @@ function landing(): string {
     invitation — <a href="welcome.html">start with Welcome</a> to see whether it is for you.</p>
     <p class="stack">Bun · PostgreSQL + pgvector · needle3 on device · React. No cloud model in the hot path.</p>
   </div>
-  <div class="hero-art">
-    <img src="static/img/logo-mark@2x.png" alt="" width="256" height="242">
+  <!-- The product, not a picture of it: a visitor's words, what the classifier made of them, the vessel
+       that poured, and the chips that follow. Decorative to a screen reader — the same turn is written
+       out in full, as text, in the section immediately below. -->
+  <div class="console" aria-hidden="true">
+    <div class="console-bar">
+      <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+      <span class="what">a shop, described once</span>
+    </div>
+    <div class="console-body">
+      <p class="said">something linen for a summer wedding, under $80</p>
+      <p class="understood"><span class="dot high"></span> findProducts · fabric: linen · occasion: wedding · max: 80</p>
+      <div class="vessel pour">
+        <h4>Three that fit</h4>
+        <div class="row"><span class="name">Ravello linen shirt</span><span class="price">$68</span></div>
+        <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">ships Thu</span></div>
+        <hr class="rule">
+        <div class="row"><span class="name">Bari linen trouser</span><span class="price">$74</span></div>
+        <div class="row"><span class="meta">sand · two left</span><span class="meta">ships Thu</span></div>
+        <p class="verify"><span class="read">read</span> products, stock · 41 ms · shape findProducts</p>
+      </div>
+      <div class="chips">
+        <span class="chip">warmer tones</span>
+        <span class="chip">under $60</span>
+        <span class="chip">ships this week</span>
+      </div>
+    </div>
   </div>
 </div></div>
 
@@ -299,17 +322,17 @@ function landing(): string {
   underneath it. Every part of this is derived; none of it is a page.</p>
   <div class="demo">
     <div>
-      <p class="mouth">something linen for a summer wedding, under £80</p>
+      <p class="mouth">something linen for a summer wedding, under $80</p>
       <p class="understood"><span class="dot high"></span> findProducts · fabric: linen · occasion: wedding · max: 80</p>
       <p class="post-meta">The classifier picks a shape and fills its arguments. Below the budget it asks
       instead of guessing — never a dumber model.</p>
     </div>
     <div class="vessel">
       <h4>Three that fit</h4>
-      <div class="row"><span class="name">Ravello linen shirt</span><span class="price">£68</span></div>
+      <div class="row"><span class="name">Ravello linen shirt</span><span class="price">$68</span></div>
       <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">ships Thu</span></div>
-      <hr style="border:0;border-top:var(--hairline) solid var(--line);margin:var(--space-3) 0">
-      <div class="row"><span class="name">Bari linen trouser</span><span class="price">£74</span></div>
+      <hr class="rule">
+      <div class="row"><span class="name">Bari linen trouser</span><span class="price">$74</span></div>
       <div class="row"><span class="meta">sand · two left</span><span class="meta">ships Thu</span></div>
       <p class="verify"><span class="read">read</span> products, stock · 41 ms · shape findProducts</p>
     </div>
@@ -371,11 +394,122 @@ $ fishtea up
   ui          http://10.0.0.19:5173</code></pre>
     </div>
     <div>
-      <p>The visitor types <em>"something linen for a summer wedding, under £80"</em>. The classifier picks
+      <p>The visitor types <em>"something linen for a summer wedding, under $80"</em>. The classifier picks
       the <code>findProducts</code> shape and fills its arguments; the planner runs the typed calls the
       shape names; the answer pours into a list vessel with the provenance strip underneath — which shape
       answered, what it read, what it wrote, how long it took.</p>
       <p>Nothing about that is hand-written. It is all derived from the spec.</p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">Accounts</p>
+  <h2>A conversation that remembers who it is talking to</h2>
+  <p class="sub">One rule turns on sign-up, sign-in with a password or with Google, a profile the holder
+  owns, and items saved across devices. The account is a row of your own entity — not a parallel idea of
+  a person kept somewhere else.</p>
+  <div class="split">
+    <div>
+      <pre><code>"rules": {
+  "accounts": {
+    "entity": "customer",
+    "profile": ["name", "photo", "preferences"],
+    "saved": { "call": "products.byIds" }
+  }
+}</code></pre>
+    </div>
+    <div>
+      <ul class="claims">
+        <li><strong>The account is your row.</strong> Signing up creates the <code>customer</code>, or
+        claims the one an email-only form made earlier. Credentials live apart, in the framework's own
+        table: an argon2id password, a Google subject, or both.</li>
+        <li><strong>The profile is a short list, not the table.</strong> Only the fields you name can be
+        read or written by the holder. A <code>photo</code> field takes an image; everything else is
+        bounded.</li>
+        <li><strong>A visitor id is still not a credential.</strong> Signing in sets the conversation's
+        customer, so the same trail becomes personal — and the account session is its own cookie.</li>
+      </ul>
+      <p><a href="operating.html#visitor-accounts">Visitor accounts →</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">The operator console</p>
+  <h2>Reports and jobs you declare, not build</h2>
+  <p class="sub">An application says what its operators need to see and to run; <code>/admin</code> draws
+  it. A report is query calls arranged into panels. A job is an operator shape with a Run button — and,
+  if you want, a clock.</p>
+  <div class="split">
+    <div>
+      <pre><code>"operator": {
+  "reports": {
+    "performance": {
+      "label": "Performance",
+      "panels": [
+        { "title": "The period",
+          "call": "report.totals",
+          "view": "tiles",
+          "columns": ["visits", "clicks"] },
+        { "title": "Clicks",
+          "call": "report.daily",
+          "view": "line", "x": "day",
+          "y": ["visits", "clicks"] }
+      ]
+    }
+  }
+}</code></pre>
+    </div>
+    <div>
+      <ul class="claims">
+        <li><strong>A panel can only read.</strong> Its call must be a <code>query</code>; the loader
+        refuses anything else and the core refuses SQL that writes. The period above the page arrives as
+        <code>from</code> and <code>to</code>.</li>
+        <li><strong>Four views, and a format per column.</strong> Tiles, line, bar and table — with
+        <code>money</code>, <code>percent</code>, <code>date</code> and <code>link</code> so a number
+        reads the way it means.</li>
+        <li><strong>A job outlives the request.</strong> Pressing Run answers immediately and the work
+        carries on in the core, because a catalogue sync takes longer than a proxy will wait. Every run
+        is kept, so the last good answer survives a restart.</li>
+        <li><strong>Or it runs itself.</strong> <code>"schedule": { "daily": ["05:00"], "afterDeploy":
+        true }</code> — a missed run catches up when the core comes back, and a new release fills what it
+        needs without a plain restart doing it again.</li>
+      </ul>
+      <p><a href="operating.html#admin">The console →</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">Echoes</p>
+  <h2>What the visitor did next</h2>
+  <p class="sub">An answer can end somewhere else: the shop that sells it, the paper behind the citation,
+  the map to the venue. Until echoes, the conversation lost the visitor at that point — it knew what it
+  had shown and not what they followed.</p>
+  <div class="split">
+    <div>
+      <div class="vessel">
+        <div class="row"><span class="name">Ravello linen shirt</span><span class="price">$68</span></div>
+        <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">at Ravello →</span></div>
+        <hr class="rule">
+        <p class="verify"><span class="read">read</span> products · 41 ms ·
+        <span class="wrote">echo</span> ravello.example → turn 4</p>
+      </div>
+      <p class="post-meta">An echo is recorded beside the turn whose answer offered the link, never as a
+      turn of its own. The head does not move; a rewind does not show it.</p>
+    </div>
+    <div>
+      <ul class="claims">
+        <li><strong>The trail is the signature.</strong> A destination is followed only when the
+        conversation published it — the turn's stored pour must contain that URL exactly. A link no
+        answer ever carried is refused.</li>
+        <li><strong>So it is not an open redirect,</strong> and it needs no signing secret: there is no
+        token to mint, rotate or leak.</li>
+        <li><strong>It is the fact a business needs.</strong> An affiliate site joins a sale back to the
+        question that produced it; a publication sees which sources readers trust.</li>
+      </ul>
+      <p><a href="echoes.html">Echoes →</a></p>
     </div>
   </div>
 </div></section>

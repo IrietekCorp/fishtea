@@ -99,11 +99,28 @@ path.
 And a question the business cannot answer is not a 404. It goes to the operator's unmet channel, which
 makes a failed question **demand signal** rather than an error.
 
+## What a conversation grows into
+
+The same description carries three things a site would otherwise need separate software for.
+
+- **A visitor who comes back as themselves.** One rule turns on accounts: sign up with an email and a
+  password or with Google, keep a profile and saved items across devices. The account is a row of *your*
+  entity, so signing in makes the conversation personal without introducing a second idea of a person.
+- **An operator console you declare.** Reports are query calls arranged into panels — tiles, a line, a
+  bar, a table — with a period above the page. Jobs are the operator shapes themselves, each with a Run
+  button and, if you want, a clock. Neither is a page anyone writes.
+- **What the visitor did next.** An answer can end somewhere else: the shop that sells it, the paper
+  behind the citation. An **echo** records that beside the turn whose answer offered the link, and only
+  for a destination the conversation actually published — so it is the fact a business needs without
+  being an open redirect.
+
 ## What to read next
 
 - **[Getting started](getting-started.html)** — install it and make something in four commands.
 - **[Glossary](glossary.html)** — a small vocabulary used precisely. Ten minutes here saves an hour later.
 - **[Archetypes](archetypes.html)** — the five starting points and what their interviews ask.
+- **[Running it](operating.html)** — the stack, the classifier pool, `/admin`, and visitor accounts.
+- **[Echoes](echoes.html)** — what a visitor did with an answer that took them out of the conversation.
 - **[The blueprint](blueprint.html)** — the full design, and the decisions that are settled.
 - **[What the build measured](measured.html)** — where the implementation deviated from the design, each
   deviation backed by a measurement rather than an opinion.
