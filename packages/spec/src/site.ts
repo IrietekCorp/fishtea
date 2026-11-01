@@ -10,7 +10,9 @@
  *             title and description, the input's placeholder, the call to action in the footer. They live
  *             here so a shell has no business in it.
  *   suggestions things a visitor might ask, in their words: the menu rotates them through the input's
- *             placeholder ("Ask anything — …") and offers the first three as chips that fill the input
+ *             placeholder ("Ask anything — …") and offers the first three as chips that fill the input.
+ *             One may be { label, shape, args } instead: its chip opens that shape with those arguments,
+ *             never asking the classifier, so a chip on the front page always lands
  *   analytics page analytics the site's pages load (never /admin): `google`, a GA4 measurement id. The UI
  *             server writes the tag into the page's <head> at build time, and by default loads it only once
  *             the visitor accepts in a consent banner (`consent: false` loads it at once; `notice` is the
@@ -33,6 +35,7 @@
 import type { SpecLike } from "./present.ts";
 
 export interface SiteSection { shape: string; label: string }
+export interface SiteSuggestion { label: string; shape: string; args?: Record<string, unknown> }
 export interface SiteRules {
   doc?: string;
   home: string;
@@ -40,7 +43,7 @@ export interface SiteRules {
   parents?: Record<string, string>;
   actions?: Record<string, SiteSection>;
   copy?: { title?: string; description?: string; ask?: string; cta?: { title?: string; lead?: string; label?: string } };
-  suggestions?: string[];
+  suggestions?: (string | SiteSuggestion)[];
   analytics?: { google?: string; consent?: boolean; notice?: string };
   brand?: SiteBrand;
   menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" };
@@ -99,7 +102,11 @@ export function checkSite(spec: SpecLike): string[] {
     if (!known(a.shape)) out.push(`rules.site.actions.${k}: no shape "${a.shape}"`);
     if (sections.has(a.shape)) out.push(`rules.site.actions.${k}: "${a.shape}" is a section, not something that opens over one`);
   }
-  for (const [i, s] of (site.suggestions ?? []).entries()) if (typeof s !== "string" || !s.trim()) out.push(`rules.site.suggestions[${i}]: an empty suggestion`);
+  for (const [i, s] of (site.suggestions ?? []).entries()) {
+    if (typeof s === "string") { if (!s.trim()) out.push(`rules.site.suggestions[${i}]: an empty suggestion`); continue; }
+    if (!s || typeof s.label !== "string" || !s.label.trim()) out.push(`rules.site.suggestions[${i}]: a suggestion needs a label`);
+    else if (!known(s.shape)) out.push(`rules.site.suggestions[${i}]: no shape "${s.shape}"`);
+  }
   const ga = site.analytics?.google;
   if (ga !== undefined && !/^G-[A-Z0-9]{4,}$/.test(ga)) out.push(`rules.site.analytics.google: "${ga}" is not a GA4 measurement id (G-…)`);
   if (site.brand) out.push(...checkBrand(site.brand));

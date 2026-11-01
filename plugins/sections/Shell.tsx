@@ -19,7 +19,7 @@ import { EchoTurn } from "@fishtea/ui/lib/echo";
 import type { Turn, Vessel } from "@fishtea/ui/menu/types";
 import spec from "@app/spec.json";
 import { useConversation, shapeOf, type Conversation, type Crumb } from "./useConversation";
-import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, logo, menu, needsInput, parentOf, sectionOf, sections, social, suggestions, urlFor } from "./site";
+import { actions, business, childrenOf, copy, home, isAction, isSection, labelOf, logo, menu, needsInput, parentOf, sectionOf, sections, social, suggestions, suggestionRoute, urlFor } from "./site";
 import { SocialLinks } from "./social";
 import { AskView, Chips, FormView } from "./generic";
 import { PresentAnswer, type PresentHost } from "@fishtea/ui/present/Present";
@@ -266,7 +266,7 @@ function Menu({ c, ownHeader }: { c: Conversation; ownHeader: boolean }) {
         suggestionMode={menu.suggestions}
         layout={menu.layout}
         busy={c.busy}
-        onSubmit={c.ask}
+        onSubmit={(text: string) => { const r = suggestionRoute(text); return r ? c.go(r.shape, r.args as any) : c.ask(text); }}
         onRewind={c.revisit}
         onStop={c.stop}
       />

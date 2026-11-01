@@ -9,7 +9,7 @@ import spec from "@app/spec.json";
 export interface Section { shape: string; label: string }
 export interface Action { shape: string; label: string }
 export interface Logo { src: string; alt?: string; height?: number; footerHeight?: number }
-interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: string[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" }; social?: Record<string, string> }
+interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: (string | { label: string; shape: string; args?: Record<string, unknown> })[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" }; social?: Record<string, string> }
 
 const rules = (spec as any).rules.site as SiteRules;
 const shapes = (spec as any).shapes as Record<string, { asks: string; input: Record<string, unknown>; effect?: string }>;
@@ -29,7 +29,14 @@ const NETWORKS: Record<string, string> = { linkedin: "LinkedIn", x: "X", instagr
 export const social: Profile[] = Object.entries(rules.social ?? {}).filter(([, url]) => !!url)
   .map(([network, url]) => ({ network, url, label: NETWORKS[network] ?? network.charAt(0).toUpperCase() + network.slice(1) }));
 /** Things a visitor might ask: the menu's rotating placeholder and its chips. */
-export const suggestions = rules.suggestions ?? [];
+const all = rules.suggestions ?? [];
+/** What the menu shows: each suggestion's words. */
+export const suggestions: string[] = all.map((s) => (typeof s === "string" ? s : s.label));
+/** A suggestion that names its shape, by its label: its chip opens that shape instead of asking. */
+export const suggestionRoute = (label: string) => {
+  const s = all.find((x) => typeof x !== "string" && x.label === label);
+  return s && typeof s !== "string" ? { shape: s.shape, args: s.args ?? {} } : null;
+};
 /** The shell's few business sentences — the input's placeholder, the footer's call to action — from the spec. */
 export const copy = { ask: rules.copy?.ask ?? "Ask anything", cta: { title: rules.copy?.cta?.title ?? "", lead: rules.copy?.cta?.lead ?? "", label: rules.copy?.cta?.label ?? actions.contact?.label ?? "" } };
 

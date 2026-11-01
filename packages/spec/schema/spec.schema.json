@@ -285,11 +285,33 @@
             "suggestions": {
               "type": "array",
               "items": {
-                "type": "string",
-                "minLength": 1
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "label",
+                      "shape"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "shape": {
+                        "type": "string"
+                      },
+                      "args": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                ]
               },
               "maxItems": 12,
-              "description": "Things a visitor might ask, in their words: the menu's rotating placeholder and its first three chips."
+              "description": "Things a visitor might ask, in their words: the menu's rotating placeholder and its first three chips. A suggestion may instead be { label, shape, args }: its chip opens that shape with those arguments, without asking the classifier."
             },
             "brand": {
               "type": "object",

@@ -64,7 +64,7 @@ export function Admin() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4 sm:px-6">
-          <a href="/" className="font-black tracking-tighter">Admin<span className="text-accent">.</span></a>
+          <a href="/admin" onClick={(e) => { e.preventDefault(); go("reports"); }} className="font-black tracking-tighter">Admin<span className="text-accent">.</span></a>
           <nav className="flex flex-1 gap-1 overflow-x-auto" aria-label="Admin">
             {SECTIONS.map((s) => (
               <button key={s.path} onClick={() => go(s.path)} aria-current={section === s.path ? "page" : undefined}

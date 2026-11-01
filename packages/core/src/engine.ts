@@ -127,6 +127,18 @@ export class Engine {
   /** Distinct values of indexed array fields, so the dev classifier can fill mood/style arguments. */
   async primeLexical() {
     if (!(this.classifier instanceof LexicalClassifier)) return;
+    this.classifier.setVocab(await this.lexicalVocab());
+  }
+
+  /** The keyword fallback, primed once: what answers when the classifier pool cannot (a timeout, a 503). */
+  private fallbackReady?: Promise<void>;
+  private async lexicalFallback(req: Parameters<Classifier["classify"]>[0]): Promise<ClassifyResult> {
+    this.fallbackReady ??= this.lexicalVocab().then((v) => this.lexicalGate.setVocab(v)).catch(() => {});
+    await this.fallbackReady;
+    return this.lexicalGate.classify(req);
+  }
+
+  private async lexicalVocab(): Promise<Record<string, string[]>> {
     const vocab: Record<string, string[]> = {};
     for (const [name, ent] of specEntities(this.app.spec)) {
       for (const f of ent.index ?? []) {
@@ -137,7 +149,7 @@ export class Engine {
         for (const key of [f, f.replace(/s$/, ""), f.replace(/Tags?$/, "").replace(/s$/, "")]) vocab[key] = [...new Set([...(vocab[key] ?? []), ...values])];
       }
     }
-    this.classifier.setVocab(vocab);
+    return vocab;
   }
 
   // ── identity & persona ───────────────────────────────────────────────────
@@ -344,6 +356,15 @@ export class Engine {
               }
             }
           } catch (e) { this.log(`recall skipped: ${(e as Error).message}`); }
+        }
+      }
+      // The pool could not answer (busy, timed out, down): ask the keyword classifier rather than nobody. It
+      // only stands in when it is sure — a trigger phrase or a named value — so a vague turn still asks.
+      if ((result.timedOut || result.error) && !(this.classifier instanceof LexicalClassifier)) {
+        const fallback = await this.lexicalFallback({ text, context, tools, budgetMs, maxTokens }).catch(() => null);
+        if (fallback?.calls.length && fallback.confidence >= Math.max(floor, 0.6) && !this.missingRequired(fallback.calls[0])) {
+          classifyMs += result.ms;
+          result = { ...fallback, reasoning: `[pool ${result.timedOut ? "timed out" : result.error}; keyword fallback] ${fallback.reasoning ?? ""}` };
         }
       }
       classifyMs += result.ms;
@@ -556,7 +577,13 @@ export class Engine {
   private offersFor(persona: string, allowed?: string[]): Chip[] {
     const g = this.app.spec.envelope.greeting[persona] ?? this.app.spec.envelope.greeting.stranger;
     const names = [...(g.shape ? [g.shape] : []), ...(g.offer ?? [])];
-    for (const n of allowed ?? []) if (names.length < 6 && !names.includes(n)) names.push(n);
+    // the rest of what they may ask, but only what a chip can start: a shape that needs an id (a product to
+    // compare, to react to) belongs on that product, not in a list of things to try
+    for (const n of allowed ?? []) {
+      const s = getShape(this.app.spec, n);
+      const needs = s && Object.values(s.input ?? {}).some((t) => { const x = typeof t === "string" ? t : String((t as any)?.type ?? ""); return !x.includes("?") && !x.includes("="); });
+      if (names.length < 6 && !names.includes(n) && s && s.classify !== false && !needs) names.push(n);
+    }
     return names.map((n) => chip(this.app.spec, n, undefined, undefined, persona)).filter((c): c is Chip => !!c);
   }
 

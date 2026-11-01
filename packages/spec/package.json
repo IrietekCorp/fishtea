@@ -1,6 +1,6 @@
 {
   "name": "@fishtea/spec",
-  "version": "1.8.10",
+  "version": "1.8.11",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
