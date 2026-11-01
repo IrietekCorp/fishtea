@@ -89,6 +89,13 @@ export interface ShapeDef {
    * the classifier, it competes with the lead for the same utterances and, being smaller, often wins.
    */
   classify?: boolean;
+  /**
+   * Operator shapes only: when the core runs this job by itself (admin/jobs.ts). `daily` is times of day
+   * in UTC ("05:00"); a time missed while the core was down runs when it comes back. `afterDeploy` runs it
+   * once when the release — spec, calls, seed, framework — has not had a successful run yet, so a fresh
+   * deploy fills what it needs and a plain restart does not.
+   */
+  schedule?: { daily?: string[]; afterDeploy?: boolean; args?: Record<string, unknown> };
 }
 
 export interface GreetingDef { shape?: string; hint?: string; resume?: boolean; offer?: string[] }

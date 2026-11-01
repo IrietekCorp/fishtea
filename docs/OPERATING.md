@@ -136,9 +136,24 @@ own `op.restart`, `op.editSection` and `op.notify`), each with its inputs filled
 a **Run** button. A job that writes asks once more. The run starts at once (`POST /op/jobs/:name` answers
 202) and carries on in the core, because a catalogue sync can take longer than a proxy lets a request
 wait; the page asks `GET /op/jobs` every few seconds until it ends, and shows what the shape answered or
-why it failed. A second press while a job runs is refused (409). The last run of each job is kept in
-memory, so a restart forgets it; what the job wrote is in the database. This is the button to press
-until the application has a scheduler, and the same endpoint a scheduler would call.
+why it failed.
+
+Every run is kept in `fishtea.job_run`, so the last good answer is still there after a restart, and what a
+job wrote stays in the application's tables until the next run replaces it. One run of a job at a time
+across every core on the database (a second press is a 409); a run a stopped core left behind is marked
+*interrupted* when a core starts.
+
+**On a schedule**: an operator shape may say when the core runs it by itself.
+
+```json
+"op.syncMoods": { …, "schedule": { "daily": ["05:00"], "afterDeploy": true, "args": {} } }
+```
+
+`daily` is times of day in UTC; one missed while the core was down runs when it comes back. `afterDeploy`
+runs the job once for a release that has not had a successful run of it yet — a release being spec.json,
+`calls/`, `seed/` and the framework's version — so a new image fills what it needs and a plain restart does
+not (a failed one is tried again an hour later). `fishtea serve` keeps the clock; `FISHTEA_SCHEDULE=0`
+turns it off, for a second core on the same database or a quiet debugging session.
 
 ### Reports
 

@@ -68,6 +68,9 @@ export interface CorsPolicy {
 
 export interface ServerOptions {
   engine: Engine;
+  /** run operator shapes on their `schedule` (admin/jobs.ts); fishtea serve sets it */
+  schedule?: boolean;
+  log?: (s: string) => void;
   operatorToken?: string;
   onReload?: () => Promise<App>;
   onRestart?: () => Promise<void>;
@@ -233,7 +236,10 @@ export function createServer(opts: ServerOptions) {
   // own, so anything that changes state from one also needs x-fishtea-admin — a header a page on another
   // site cannot set without a preflight this core's CORS policy refuses — on top of SameSite=Strict.
   const auth = new OperatorAuth(engine.db);
-  const jobs = new Jobs(engine);
+  const jobs = new Jobs(engine, { log: opts.log });
+  // the core runs operator shapes on their spec schedule only where it serves for real (fishtea serve);
+  // a test or a tool that builds a server leaves the clock alone
+  if (opts.schedule) jobs.schedule().catch((e) => opts.log?.(`job schedule did not start: ${e.message}`));
   const reports = new Reports(engine);
   const sameToken = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
   const ipOf = (c: any) => c.req.header("x-forwarded-for")?.split(",")[0].trim() ?? "local";
@@ -399,10 +405,10 @@ export function createServer(opts: ServerOptions) {
   });
 
   // Jobs (admin/jobs.ts): the operator shapes, started from /admin and run in the background
-  op.get("/jobs", (c) => c.json({ jobs: jobs.list() }));
+  op.get("/jobs", async (c) => c.json({ jobs: await jobs.list() }));
   op.post("/jobs/:name", async (c) => {
     const { args } = await c.req.json().catch(() => ({}));
-    const r = jobs.start(c.req.param("name"), args && typeof args === "object" ? args : {}, c.get("operator")?.username ?? "token");
+    const r = await jobs.start(c.req.param("name"), args && typeof args === "object" ? args : {}, c.get("operator")?.username ?? "token");
     return r.ok ? c.json({ run: r.run }, 202) : c.json({ error: r.error }, r.status);
   });
   op.post("/reload", async (c) => {

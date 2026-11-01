@@ -23,6 +23,8 @@ writeFileSync(join(dir, "calls/report_period.sql"), "-- $1 from, $2 to\nSELECT $
 writeFileSync(join(dir, "calls/report_broken.sql"), "SELECT nosuch FROM conversation.turn;\n");
 scratch.calls["report.period"] = { kind: "query", in: { from: "string", to: "string" }, out: "json[]", impl: { sql: "report_period.sql" } };
 scratch.calls["report.broken"] = { kind: "query", in: {}, out: "json[]", impl: { sql: "report_broken.sql" } };
+// a job on a schedule (the server here never starts the clock; the test ticks it by hand)
+scratch.operator.shapes["op.unmetReport"].schedule = { afterDeploy: true, daily: ["05:00"], args: { since: "1d" } };
 scratch.operator.reports = {
   overview: { label: "Overview", doc: "test", panels: [
     { title: "Totals", call: "report.period", view: "tiles", columns: ["turns"] },
@@ -249,12 +251,56 @@ describe("jobs", () => {
     expect((await post("op.nosuch")).status).toBe(404);
     expect((await post("op.restart")).status).toBe(404);
     expect((await post("op.unmetReport", as(s, json))).status).toBe(403);
-    // the class directly: nothing awaits between the two starts, so the first is still running
+    // one running row per job, whichever core holds it
+    await db`INSERT INTO fishtea.job_run (id, job, by, status) VALUES ('job_held', 'op.unmetReport', 'elsewhere', 'running')`;
+    expect((await post("op.unmetReport")).status).toBe(409);
+    await db`DELETE FROM fishtea.job_run WHERE id = 'job_held'`;
+  });
+
+  test("runs outlive the Jobs that started them: a new one (a restart) still shows the last good answer", async () => {
     const { Jobs } = await import("../src/index.ts");
-    const j = new Jobs(engine);
-    const first = j.start("op.unmetReport", {}, "test");
-    expect(j.start("op.unmetReport", {}, "test")).toMatchObject({ ok: false, status: 409 });
-    if (first.ok) expect((await first.done).status).toBe("done");
+    const r = await new Jobs(engine).start("op.unmetReport", { since: "7d" }, "test");
+    if (!r.ok) throw new Error(r.error);
+    await r.done;
+    const after = (await new Jobs(engine).list()).find((j) => j.name === "op.unmetReport")!;
+    expect(after.lastGood).toMatchObject({ id: r.run.id, status: "done", by: "test" });
+  });
+
+  test("the schedule: once after a deploy, again for a new release, and at a daily time it missed", async () => {
+    const { Jobs } = await import("../src/index.ts");
+    {
+      await db`DELETE FROM fishtea.job_run`;
+      const j = new Jobs(engine);
+      const runs = async () => (await db`SELECT trigger, status, args FROM fishtea.job_run WHERE job = 'op.unmetReport' ORDER BY started_at`).map((r: any) => r.trigger);
+      const settle = async () => { for (let i = 0; i < 100 && (await db`SELECT 1 FROM fishtea.job_run WHERE status = 'running'`).length; i++) await Bun.sleep(20); };
+      // 04:00: no good run for this release yet, and 05:00 has not come
+      await j.tick(new Date(Date.UTC(2030, 0, 1, 4, 0))); await settle();
+      expect(await runs()).toEqual(["deploy"]);
+      await db`UPDATE fishtea.job_run SET started_at = '2030-01-01T04:00:00Z'`;
+      // a restart, same release: nothing
+      await new Jobs(engine).tick(new Date(Date.UTC(2030, 0, 1, 4, 30))); await settle();
+      expect(await runs()).toEqual(["deploy"]);
+      // 05:01 has passed 05:00 with no run since: the daily one; then not again that day
+      await j.tick(new Date(Date.UTC(2030, 0, 1, 5, 1))); await settle();
+      await db`UPDATE fishtea.job_run SET started_at = '2030-01-01T05:01:00Z' WHERE trigger = 'schedule'`;
+      await j.tick(new Date(Date.UTC(2030, 0, 1, 9, 0))); await settle();
+      expect(await runs()).toEqual(["deploy", "schedule"]);
+      const [{ args }] = await db`SELECT args FROM fishtea.job_run WHERE trigger = 'schedule'`;
+      expect(args).toEqual({ since: "1d" });
+      // a new release (another framework, other calls…): after a deploy again
+      await db`UPDATE fishtea.job_run SET release = 'an-older-one'`;
+      await j.tick(new Date(Date.UTC(2030, 0, 1, 9, 30))); await settle();
+      expect((await runs()).filter((t) => t === "deploy").length).toBe(2);
+      expect((await j.list()).find((x) => x.name === "op.unmetReport")!.next).not.toBeNull();
+    }
+  });
+
+  test("next and last daily times are in UTC and wrap past midnight", async () => {
+    const { nextDaily, lastDaily } = await import("../src/index.ts");
+    const at = new Date(Date.UTC(2030, 0, 1, 23, 30));
+    expect(nextDaily(["05:00", "17:00"], at)!.toISOString()).toBe("2030-01-02T05:00:00.000Z");
+    expect(lastDaily(["05:00", "17:00"], at)!.toISOString()).toBe("2030-01-01T17:00:00.000Z");
+    expect(lastDaily(["23:45"], at)!.toISOString()).toBe("2029-12-31T23:45:00.000Z");
   });
 });
 

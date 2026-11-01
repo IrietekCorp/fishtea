@@ -211,6 +211,7 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     for (const p of shape.allow) if (!personaNames.has(p)) problems.push(`${at}.allow: unknown persona "${p}"`);
     if (where === "operator.shapes" && !shape.allow.includes("operator")) problems.push(`${at}: operator shapes must allow "operator"`);
     if (where === "shapes" && shape.allow.includes("operator")) problems.push(`${at}: consumer shapes may not allow "operator"`);
+    if (where === "shapes" && shape.schedule) problems.push(`${at}.schedule: only operator shapes run on a schedule`);
     for (const n of shape.next ?? []) if (!getShape(spec, n.shape)) problems.push(`${at}.next: unknown shape "${n.shape}"`);
 
     // A composite is planned part by part, so every part has to be plannable, readable and reachable by

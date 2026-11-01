@@ -148,3 +148,22 @@ CREATE TABLE IF NOT EXISTS fishtea.saved (
   at           timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (customer_id, item_id)
 );
+
+-- Job runs (admin/jobs.ts): every run of an operator shape, by a person, a script or the schedule, with
+-- what it answered. At most one run of a job at a time, across every core on this database.
+CREATE TABLE IF NOT EXISTS fishtea.job_run (
+  id           text PRIMARY KEY,
+  job          text NOT NULL,
+  by           text NOT NULL,
+  trigger      text NOT NULL DEFAULT 'manual',
+  args         jsonb NOT NULL DEFAULT '{}',
+  status       text NOT NULL,
+  release      text,
+  started_at   timestamptz NOT NULL DEFAULT now(),
+  finished_at  timestamptz,
+  ms           integer,
+  answer       jsonb,
+  error        text
+);
+CREATE UNIQUE INDEX IF NOT EXISTS job_run_one_running ON fishtea.job_run (job) WHERE status = 'running';
+CREATE INDEX IF NOT EXISTS job_run_job_started_idx ON fishtea.job_run (job, started_at DESC);

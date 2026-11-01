@@ -1099,6 +1099,29 @@
         "classify": {
           "type": "boolean",
           "description": "false keeps this shape out of the classifier's tool list: it is reached as a composite part, a chip, a greeting or a posted shape, never by classifying someone's words. For a part that would otherwise compete with its lead."
+        },
+        "schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "operator shapes only: when the core runs this job by itself",
+          "properties": {
+            "daily": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              "description": "times of day, UTC, HH:MM"
+            },
+            "afterDeploy": {
+              "type": "boolean",
+              "description": "run once when a release (spec, calls, seed or framework) has not had a successful run yet"
+            },
+            "args": {
+              "type": "object",
+              "description": "the arguments a scheduled run is given"
+            }
+          }
         }
       },
       "additionalProperties": false

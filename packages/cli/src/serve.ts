@@ -66,6 +66,8 @@ export async function serve(app: App, flags: Flags, dir: string) {
   const cors = { origins: corsOrigins(flags), hosts: selfHosts(flags) };
   const server = createServer({
     engine,
+    schedule: process.env.FISHTEA_SCHEDULE !== "0",
+    log,
     cors,
     operatorToken: process.env.FISHTEA_OPERATOR_TOKEN,
     onReload: reload,

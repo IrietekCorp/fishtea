@@ -22,7 +22,7 @@ test("an insert-seeded entity keeps an operator's edit; an upsert-seeded one is 
   writeFileSync(join(dir, "seed/customer.json"), JSON.stringify([{ id: "cu_seed", email: "seed@example.com", name: "From the file" }, { id: "cu_new", email: "new@example.com", name: "New" }]));
   await seed(db, app);
   const rows = await db`SELECT id, name FROM business.customer WHERE id IN ('cu_seed', 'cu_new') ORDER BY id`;
-  expect(rows).toEqual([{ id: "cu_new", name: "New" }, { id: "cu_seed", name: "Edited at /admin" }]);
+  expect([...rows]).toEqual([{ id: "cu_new", name: "New" }, { id: "cu_seed", name: "Edited at /admin" }]);
 
   spec.entities.customer.seed = "upsert";
   writeFileSync(join(dir, "spec.json"), JSON.stringify(spec, null, 2));

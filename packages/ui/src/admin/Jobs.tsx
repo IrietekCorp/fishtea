@@ -43,7 +43,7 @@ export function Jobs() {
     <section className="max-w-3xl">
       <div className="mb-6">
         <h1 className="text-2xl font-black tracking-tight">Jobs</h1>
-        <p className="text-sm text-muted-foreground">The operator shapes in this application's spec. A run carries on in the core when you leave this page; the last run of each job is kept until the core restarts.</p>
+        <p className="text-sm text-muted-foreground">The operator shapes in this application's spec. A run carries on in the core when you leave this page. Every run is kept, so the last good answer is here after a restart; a job with a schedule in the spec also runs by itself.</p>
       </div>
       {error && <p role="alert" className="mb-4 text-sm text-write">{error}</p>}
       {!list.length && <p className="text-sm text-muted-foreground">This application declares no operator shapes.</p>}
@@ -74,6 +74,7 @@ function JobCard({ job, onChange }: { job: Job; onChange: () => void }) {
         <div className="min-w-0">
           <h2 className="font-mono text-sm font-black">{job.name}</h2>
           <p className="text-sm text-muted-foreground">{job.asks}</p>
+          {job.schedule && <p className="mt-1 text-xs text-muted-foreground">{scheduleText(job)}</p>}
         </div>
         <span className={`rounded px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${job.effect === "write" ? "bg-write/15 text-write" : "bg-muted text-muted-foreground"}`}>{job.effect === "write" ? "writes" : "reads"}</span>
       </header>
@@ -108,6 +109,9 @@ function JobCard({ job, onChange }: { job: Job; onChange: () => void }) {
       </div>
 
       {run && <LastRun run={run} />}
+      {run && run.status !== "done" && run.status !== "running" && job.lastGood && (
+        <details className="mt-3 text-sm"><summary className="cursor-pointer text-xs font-semibold text-muted-foreground">The last good run, still in use</summary><LastRun run={job.lastGood} /></details>
+      )}
     </article>
   );
 }
@@ -119,8 +123,8 @@ function LastRun({ run }: { run: JobRun }) {
     <div className="mt-4 border-t border-border pt-4 text-sm" aria-live="polite">
       <p className="flex flex-wrap items-center gap-2">
         {icon}
-        <b>{run.status === "running" ? "Running" : run.status === "done" ? "Finished" : "Failed"}</b>
-        <span className="text-muted-foreground">started {when(run.startedAt)} by {run.by}{run.ms != null ? `, took ${took(run.ms)}` : ""}</span>
+        <b>{run.status === "running" ? "Running" : run.status === "done" ? "Finished" : run.status === "interrupted" ? "Interrupted by a restart" : "Failed"}</b>
+        <span className="text-muted-foreground">started {when(run.startedAt)} {run.trigger === "deploy" ? "after a deploy" : run.trigger === "schedule" ? "on schedule" : `by ${run.by}`}{run.ms != null ? `, took ${took(run.ms)}` : ""}</span>
       </p>
       {run.error && <p className="mt-2 font-mono text-xs text-write">{run.error}</p>}
       {run.answer !== undefined && run.answer !== null && (
@@ -131,4 +135,12 @@ function LastRun({ run }: { run: JobRun }) {
       )}
     </div>
   );
+}
+
+/** "Daily at 05:00 UTC and after each deploy · next 2 Nov, 05:00" */
+function scheduleText(job: Job): string {
+  const s = job.schedule!;
+  const parts = [s.daily?.length ? `daily at ${s.daily.join(", ")} UTC` : "", s.afterDeploy ? "after each deploy" : ""].filter(Boolean);
+  const text = parts.join(" and ");
+  return `Runs ${text}${job.next ? ` · next ${when(job.next)}` : ""}`;
 }

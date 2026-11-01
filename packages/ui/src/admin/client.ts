@@ -64,8 +64,11 @@ export const updateRow = (entity: string, id: string, patch: Record<string, unkn
 export const deleteRow = (entity: string, id: string) => call<{ ok: boolean }>("DELETE", `/data/${encodeURIComponent(entity)}/${encodeURIComponent(id)}`);
 
 export interface JobField { name: string; label: string; type: string; required: boolean; array: boolean; default?: unknown; enumValues?: string[]; doc?: string }
-export interface JobRun { id: string; job: string; by: string; args: Record<string, unknown>; status: "running" | "done" | "failed"; startedAt: string; finishedAt: string | null; ms: number | null; answer?: unknown; error?: string }
-export interface Job { name: string; asks: string; effect: "read" | "write" | string; fields: JobField[]; last: JobRun | null }
+export interface JobRun { id: string; job: string; by: string; trigger?: "manual" | "schedule" | "deploy"; args: Record<string, unknown>; status: "running" | "done" | "failed" | "interrupted"; startedAt: string; finishedAt: string | null; ms: number | null; release?: string | null; answer?: unknown; error?: string }
+export interface Job {
+  name: string; asks: string; effect: "read" | "write" | string; fields: JobField[]; last: JobRun | null; lastGood?: JobRun | null;
+  schedule?: { daily?: string[]; afterDeploy?: boolean } | null; next?: string | null;
+}
 export const jobs = () => call<{ jobs: Job[] }>("GET", "/jobs");
 export const runJob = (name: string, args: Record<string, unknown>) => call<{ run: JobRun }>("POST", `/jobs/${encodeURIComponent(name)}`, { args });
 
