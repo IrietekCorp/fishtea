@@ -31,3 +31,13 @@ test("a vague turn still asks, and offers nothing that needs an id", async () =>
   const offered = ((r.pour as any).options ?? []).map((o: any) => o.shape);
   for (const s of ["relatedProducts", "compareProducts", "react", "removeFromCart", "orderStatus"]) expect(offered).not.toContain(s);
 });
+
+test("rules.classify.fallback answers what the classifier left unchosen with the visitor's words", async () => {
+  const spec = JSON.parse(JSON.stringify(app.spec));
+  spec.rules.classify = { ...(spec.rules.classify ?? {}), fallback: { shape: "findProducts", arg: "text" } };
+  const silent: Classifier = { name: "needle3", classify: async () => ({ calls: [], confidence: 0.01, ms: 5, classifier: "needle3" }), health: async () => ({ ok: true }) };
+  const e = new Engine({ app: { ...app, spec }, db, classifier: silent });
+  const r = await e.utter({ text: "linen trousers" }, {});
+  expect((r.pour as any).shape).toBe("findProducts");
+  expect(String((r.pour as any).classifier?.reasoning)).toContain("fallback");
+});

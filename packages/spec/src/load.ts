@@ -231,6 +231,14 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     else if (!name.startsWith("op.")) problems.push(`${at}: shape has no plan`);
   }
 
+  const fb = (spec.rules as any)?.classify?.fallback;
+  if (fb) {
+    const s = typeof fb.shape === "string" ? getShape(spec, fb.shape) : undefined;
+    if (!s || fb.shape.startsWith("op.")) problems.push(`rules.classify.fallback.shape: no shape "${fb.shape}"`);
+    else if (typeof fb.arg !== "string" || !(fb.arg in s.input)) problems.push(`rules.classify.fallback.arg: "${fb.arg}" is not an input of ${fb.shape}`);
+    else if (s.effect === "write") problems.push(`rules.classify.fallback: "${fb.shape}" writes; a fallback answers, it never changes anything`);
+  }
+
   // Accounts: an entity with a unique email, profile fields it has, and a saved call that reads
   const acc = (spec.rules as any)?.accounts;
   if (acc) {

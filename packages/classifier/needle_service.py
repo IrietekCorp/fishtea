@@ -83,6 +83,10 @@ MODEL_PATH = os.environ.get("NEEDLE_MODEL_PATH") or _installed_model()  # offlin
 
 # ── worker process ──────────────────────────────────────────────────────────
 
+def _loose(name: str) -> str:
+    return "".join(ch for ch in str(name).lower() if ch.isalnum())
+
+
 def _fold(text: str, context: list[str]) -> str:
     if not context:
         return text
@@ -159,9 +163,21 @@ def worker_main(idx: int, requests: mp.Queue, results: mp.Queue, tools_json: str
                 r = a.complete(text, max_new_tokens=int(payload.get("maxTokens") or MAX_NEW_TOKENS))
                 t_c = time.time()
                 emb = a.embed(payload["text"]) if (payload.get("embed", True) and embed_dim()) else None
+                # The model writes a tool's name the way it read it in the docs, and often in snake case
+                # ("find_products" for findProducts): match on letters and digits alone, so a right call is
+                # not thrown away for its spelling. A name that matches nothing is dropped, and said so.
+                allowed = set(payload.get("tools") or by_name)
+                loose = {_loose(n): n for n in by_name if n in allowed}
+                calls, dropped = [], []
+                for c in (r.get("function_calls") or []):
+                    name = c.get("name") or ""
+                    real = name if name in allowed and name in by_name else loose.get(_loose(name))
+                    if real: calls.append({"name": real, "arguments": c.get("arguments") or {}})
+                    else: dropped.append(name)
                 out = {
                     "timings": {"bind": round((t_b - t_a) * 1000, 1), "complete": round((t_c - t_b) * 1000, 1), "embed": round((time.time() - t_c) * 1000, 1)},
-                    "function_calls": [{"name": c.get("name"), "arguments": c.get("arguments") or {}} for c in (r.get("function_calls") or []) if c.get("name") in by_name],
+                    "function_calls": calls,
+                    "dropped": dropped,
                     "reasoning": r.get("reasoning"),
                     "confidence": r.get("confidence"),
                     "embedding": emb,

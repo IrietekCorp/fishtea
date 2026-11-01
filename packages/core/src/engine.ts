@@ -108,7 +108,10 @@ export class Engine {
     const seen = new Set<string>();
     const out: string[][] = [];
     for (const [name] of Object.entries(this.app.spec.personas).filter(([k]) => k !== "version" && k !== "doc")) {
-      const names = allowedShapes(this.app.spec, name).sort();
+      // the subsets a request will actually send: what this persona may ask *and* the classifier may choose
+      // (classify: false shapes never reach it), or the pool warms keys no request ever uses
+      const classifiable = new Set(this.tools.map((t) => t.name));
+      const names = allowedShapes(this.app.spec, name).filter((n) => classifiable.has(n)).sort();
       const key = names.join(",");
       if (names.length && !seen.has(key)) { seen.add(key); out.push(names); }
     }
@@ -128,6 +131,23 @@ export class Engine {
   async primeLexical() {
     if (!(this.classifier instanceof LexicalClassifier)) return;
     this.classifier.setVocab(await this.lexicalVocab());
+  }
+
+  /**
+   * When the classifier chose nothing: the keyword classifier, if it is sure (it was asked already when
+   * the pool failed, so `req` is null then); otherwise `rules.classify.fallback` — the shape a business
+   * would rather answer with than "I didn't catch that", given the visitor's words as one argument. A shop
+   * searches its catalogue for what was typed.
+   */
+  private async fallbackCall(text: string, req: Parameters<Classifier["classify"]>[0] | null, allowed: string[]): Promise<{ name: string; arguments: Record<string, unknown>; why: string } | null> {
+    if (req && !(this.classifier instanceof LexicalClassifier)) {
+      const lex = await this.lexicalFallback(req).catch(() => null);
+      const top = lex?.calls[0];
+      if (top && lex!.confidence >= 0.6 && allowed.includes(top.name) && !this.missingRequired(top)) return { name: top.name, arguments: top.arguments ?? {}, why: "keywords" };
+    }
+    const fb = (this.app.spec.rules.classify as any)?.fallback as { shape?: string; arg?: string } | undefined;
+    if (fb?.shape && fb.arg && allowed.includes(fb.shape) && getShape(this.app.spec, fb.shape)) return { name: fb.shape, arguments: { [fb.arg]: text }, why: `${fb.shape} with what was typed` };
+    return null;
   }
 
   /** The keyword fallback, primed once: what answers when the classifier pool cannot (a timeout, a 503). */
@@ -371,11 +391,22 @@ export class Engine {
       meta = { name: result.classifier, ms: Math.round(classifyMs), confidence: result.confidence, reasoning: result.reasoning, calls: result.calls, timedOut: result.timedOut, error: result.error, recalled: recalledCount };
       if (!pour) {
         if (result.timedOut || result.error) {
-          pour = askPour({ phrase: "Tell me a little more?", options: this.offersFor(persona), reason: result.timedOut ? "budget" : "pool-down", classifier: meta });
-          answered = false; reasonUnmet = result.timedOut ? "budget" : "pool-down";
+          const fb = await this.fallbackCall(text, null, allowed);
+          if (fb) {
+            shapeName = fb.name; args = fb.arguments; meta = { ...meta, reasoning: `[fallback: ${fb.why}]` };
+          } else {
+            pour = askPour({ phrase: "Tell me a little more?", options: this.offersFor(persona), reason: result.timedOut ? "budget" : "pool-down", classifier: meta });
+            answered = false; reasonUnmet = result.timedOut ? "budget" : "pool-down";
+          }
         } else if (!result.calls.length) {
-          pour = this.gate(text, persona, allowed, meta) ?? askPour({ phrase: "I didn't catch what you're after.", hint: "Here's what I can help with:", options: this.offersFor(persona, allowed), reason: "no-match", classifier: meta });
-          answered = false; reasonUnmet = "no-match";
+          const gated = this.gate(text, persona, allowed, meta);
+          const fb = gated ? null : await this.fallbackCall(text, { text, context, tools, budgetMs, maxTokens }, allowed);
+          if (fb) {
+            shapeName = fb.name; args = fb.arguments; meta = { ...meta, reasoning: `${meta.reasoning ?? ""} [fallback: ${fb.why}]`.trim() };
+          } else {
+            pour = gated ?? askPour({ phrase: "I didn't catch what you're after.", hint: "Here's what I can help with:", options: this.offersFor(persona, allowed), reason: "no-match", classifier: meta });
+            answered = false; reasonUnmet = "no-match";
+          }
         } else if (result.confidence < floor) {
           const top = result.calls[0];
           const s = getShape(this.app.spec, top.name);

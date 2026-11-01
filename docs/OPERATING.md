@@ -89,6 +89,22 @@ only while no row still holds that value. A `pgdata` volume created
 by an older major version will not start under 18 — dump and restore, or `fishtea down -v` for a
 throwaway stack.
 
+## When the classifier chooses nothing
+
+A small model sometimes reasons its way to the right shape and still emits no call, and a pool that is
+busy or switching subsets can miss the turn's budget. In both cases the core no longer gives up at once:
+
+1. the keyword classifier answers when it is sure (a trigger phrase, or a value it knows, like a mood);
+2. otherwise `rules.classify.fallback` — `{ "shape": "findProducts", "arg": "text" }` — answers with the
+   visitor's own words as that argument: a shop searches its catalogue rather than saying "I didn't catch
+   that". It must be a shape that reads;
+3. otherwise the ask, offering only shapes a chip can start (nothing that needs an id).
+
+The pool is warmed with each persona's *classifiable* shapes — what a request actually sends — so a
+worker is already on the right subset; a `classify: false` shape is never one of them. The pool matches a
+call's name on letters alone (`find_products` is findProducts) and reports what it could not match as
+`dropped`.
+
 ## Health and benchmarks
 
 ```bash
