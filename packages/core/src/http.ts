@@ -15,6 +15,8 @@ import { Jobs } from "./admin/jobs.ts";
 import { Reports } from "./admin/reports.ts";
 import { applySettings, settingsOf } from "./admin/settings.ts";
 import { Data, DataError } from "./admin/data.ts";
+import { Accounts, ACCOUNT_DAYS } from "./accounts.ts";
+import { randomBytes } from "node:crypto";
 import { streamSSE } from "hono/streaming";
 import type { Engine, Utterance } from "./engine.ts";
 import type { App } from "@fishtea/spec";
@@ -265,6 +267,108 @@ export function createServer(opts: ServerOptions) {
     return r.ok ? c.json({ ok: true }) : c.json({ error: r.problem }, 400);
   });
   app.route("/op/auth", opAuth);
+
+  // ── visitor accounts (accounts.ts): on when spec rules.accounts names an entity ────────────────────
+  const accounts = new Accounts(engine.db, () => engine.app.spec);
+  const ACCOUNT_COOKIE = "fishtea_account", OAUTH_COOKIE = "fishtea_oauth";
+  const acct = new Hono();
+  acct.use("*", async (c, next) => {
+    if (!accounts.config) return c.json({ error: "this application has no accounts" }, 404);
+    // a change needs a header no cross-site form can set, as /utter does
+    if (c.req.method !== "GET" && !c.req.header("x-fishtea-visitor")) return c.json({ error: "missing x-fishtea-visitor" }, 403);
+    await next();
+  });
+  const keep = (c: any, r: { token: string; expires: Date }) =>
+    setCookie(c, ACCOUNT_COOKIE, r.token, { path: "/", httpOnly: true, sameSite: "Lax", secure: secure(c), maxAge: ACCOUNT_DAYS * 86400 });
+  const who = (c: any) => accounts.session(getCookie(c, ACCOUNT_COOKIE));
+  /** Where to send someone back to after Google: a path on this site, never another site. */
+  const localPath = (p?: string | null) => (p && p.startsWith("/") && !p.startsWith("//") && !p.includes("\\") ? p.slice(0, 500) : "/");
+  const redirectUri = (c: any) => process.env.GOOGLE_REDIRECT_URI
+    ?? `${secure(c) ? "https" : "http"}://${c.req.header("x-forwarded-host") ?? c.req.header("host")}/core/account/google/callback`;
+
+  acct.get("/me", async (c) => {
+    const id = await who(c);
+    const me = id ? await accounts.me(id) : null;
+    return c.json({ account: me && { email: me.email, hasPassword: me.hasPassword, google: me.google, profile: me.profile }, google: accounts.googleEnabled, profile: accounts.config!.profile });
+  });
+  acct.post("/signup", async (c) => {
+    if (!rateLimit(`signup:${ipOf(c)}`, 10)) return c.json({ error: "too many attempts; wait a minute" }, 429);
+    const { email, password, name } = await c.req.json().catch(() => ({}));
+    const r = await accounts.signUp(email, password, name);
+    if (!r.ok) return c.json({ error: r.error }, r.status as any);
+    keep(c, r); await accounts.link(visitorOf(c).id, r.customerId);
+    return c.json({ ok: true });
+  });
+  acct.post("/login", async (c) => {
+    if (!rateLimit(`account-login:${ipOf(c)}`, opts.loginPerMinute ?? 10)) return c.json({ error: "too many attempts; wait a minute" }, 429);
+    const { email, password } = await c.req.json().catch(() => ({}));
+    const r = await accounts.signIn(email, password);
+    if (!r.ok) return c.json({ error: r.error }, r.status as any);
+    keep(c, r); await accounts.link(visitorOf(c).id, r.customerId);
+    return c.json({ ok: true });
+  });
+  acct.post("/logout", async (c) => {
+    await accounts.signOut(getCookie(c, ACCOUNT_COOKIE));
+    deleteCookie(c, ACCOUNT_COOKIE, { path: "/" });
+    await accounts.link(visitorOf(c).id, null);
+    return c.json({ ok: true });
+  });
+  acct.post("/password", async (c) => {
+    const token = getCookie(c, ACCOUNT_COOKIE), id = await accounts.session(token);
+    if (!id) return c.json({ error: "sign in" }, 401);
+    if (!rateLimit(`account-password:${id}`, 10)) return c.json({ error: "too many attempts; wait a minute" }, 429);
+    const { current, next } = await c.req.json().catch(() => ({}));
+    const r = await accounts.changePassword(id, current, next, token!);
+    return r.ok ? c.json({ ok: true }) : c.json({ error: r.error }, r.status as any);
+  });
+  acct.put("/profile", async (c) => {
+    const id = await who(c);
+    if (!id) return c.json({ error: "sign in" }, 401);
+    const r = await accounts.updateProfile(id, await c.req.json().catch(() => null));
+    return r.ok ? c.json({ ok: true, account: await accounts.me(id) }) : c.json({ error: r.error }, r.status as any);
+  });
+  acct.delete("/", async (c) => {
+    const id = await who(c);
+    if (!id) return c.json({ error: "sign in" }, 401);
+    const { confirm } = await c.req.json().catch(() => ({}));
+    if (confirm !== "delete my account") return c.json({ error: 'send { "confirm": "delete my account" }' }, 400);
+    await accounts.remove(id);
+    deleteCookie(c, ACCOUNT_COOKIE, { path: "/" });
+    return c.json({ ok: true });
+  });
+  acct.get("/saved", async (c) => {
+    const id = await who(c);
+    const saved = id ? await accounts.saved(id) : [];
+    const call = accounts.config!.saved?.call;
+    // the application's own query turns ids into rows, read-only (Engine.query refuses anything that writes)
+    const items = call && saved.length && c.req.query("items") !== "0" ? await engine.query(call, { ids: saved.map((s) => s.id) }).catch(() => []) : [];
+    return c.json({ saved, items, signedIn: !!id });
+  });
+  acct.post("/saved", async (c) => {
+    const id = await who(c);
+    if (!id) return c.json({ error: "sign in to save" }, 401);
+    const { itemId, on } = await c.req.json().catch(() => ({}));
+    const r = await accounts.save(id, itemId, on !== false);
+    return r.ok ? c.json({ ok: true }) : c.json({ error: r.error }, r.status as any);
+  });
+  acct.get("/google/start", (c) => {
+    if (!accounts.googleEnabled) return c.json({ error: "Google sign-in is not set up" }, 404);
+    const state = randomBytes(24).toString("base64url");
+    setCookie(c, OAUTH_COOKIE, JSON.stringify({ state, next: localPath(c.req.query("next")) }), { path: "/", httpOnly: true, sameSite: "Lax", secure: secure(c), maxAge: 600 });
+    return c.redirect(accounts.googleAuthUrl(state, redirectUri(c)));
+  });
+  acct.get("/google/callback", async (c) => {
+    let saved: { state?: string; next?: string } = {};
+    try { saved = JSON.parse(getCookie(c, OAUTH_COOKIE) ?? "{}"); } catch { /* treated as no state */ }
+    deleteCookie(c, OAUTH_COOKIE, { path: "/" });
+    const back = (q: string) => c.redirect(`${localPath(saved.next)}${localPath(saved.next).includes("?") ? "&" : "?"}${q}`);
+    if (!accounts.googleEnabled || !saved.state || c.req.query("state") !== saved.state || !c.req.query("code")) return back("account=google-failed");
+    const r = await accounts.signInWithGoogle(c.req.query("code")!, redirectUri(c));
+    if (!r.ok) return back("account=google-failed");
+    keep(c, r); await accounts.link(visitorOf(c).id, r.customerId);
+    return c.redirect(localPath(saved.next));
+  });
+  app.route("/account", acct);
 
   const op = new Hono<{ Variables: { operator: Operator | null } }>();
   op.use("*", async (c, next) => {

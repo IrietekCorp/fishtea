@@ -175,6 +175,37 @@ them; `GET /op/reports/:name?from=&to=` answers the rows, for anything that want
 `change-me`. There is no TLS here either — behind anything public, put the ui server behind HTTPS, and
 the session cookie is marked Secure when the request says it came over it.
 
+## Visitor accounts
+
+`rules.accounts` turns them on: visitors sign up with an email and password, or with Google, and keep a
+profile and saved items across devices.
+
+```json
+"accounts": { "entity": "customer", "profile": ["name", "photo", "preferences"], "saved": { "call": "products.byIds" } }
+```
+
+- **The account is a row of `entity`**, which needs a unique `email`. Signing up makes one, or claims the
+  row an email-only form made earlier. Credentials are FishTea's (`fishtea.account`: an argon2id password,
+  a Google subject, or both).
+- **`profile`** is every field the holder may read and change (`PUT /account/profile`); nothing else is
+  written. A field named like `photo` takes a PNG, JPEG or WebP `data:` URL under 400 kB; `json` fields
+  take objects or lists under 8 kB; text, 2,000 characters.
+- **`saved.call`** is a query taking `ids`; `GET /account/saved` answers its rows beside the ids.
+- **The session is its own cookie** (`fishtea_account`, httpOnly, 30 days, stored hashed). The visitor id
+  is not a credential: it never reads a profile. Signing in sets the visitor's `customer_id`, so the
+  conversation treats them as a customer; signing out clears it.
+- **Google**: set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (an OAuth "Web application" client in Google
+  Cloud). The redirect URI to register is `https://<site>/core/account/google/callback`; set
+  `GOOGLE_REDIRECT_URI` when the site is reached some other way.
+- **Not yet**: email verification and password-reset emails, which need an email service. A lost password
+  is `fishtea account reset <email>` (removes it, ends every session); signing up again with the same
+  email sets a new one and keeps the profile and saves.
+
+Routes, all under `/account` and all refusing a change without the `x-fishtea-visitor` header: `GET /me`,
+`POST /signup`, `/login`, `/logout`, `/password`, `PUT /profile`, `DELETE /` (with
+`{ "confirm": "delete my account" }`), `GET|POST /saved`, `GET /google/start?next=/path`,
+`GET /google/callback`.
+
 ## Visitors that are not people
 
 A headless run, a layout check, a browser test: each is a visitor to the core, and a new one each time.

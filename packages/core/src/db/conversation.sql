@@ -121,3 +121,30 @@ CREATE TABLE IF NOT EXISTS fishtea.operator_session (
   expires_at   timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS operator_session_operator_idx ON fishtea.operator_session (operator_id);
+
+-- Visitor accounts (core/src/accounts.ts): a customer row of the application's (rules.accounts.entity) who
+-- can sign in, with a password, with Google, or both. Sessions are stored as the sha256 of their token,
+-- as an operator's are. `saved` is what an account keeps (a product, a property…): ids of the
+-- application's rows, which this table does not interpret.
+CREATE TABLE IF NOT EXISTS fishtea.account (
+  customer_id   text PRIMARY KEY,
+  password_hash text,
+  google_sub    text UNIQUE,
+  failed        integer NOT NULL DEFAULT 0,
+  locked_until  timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  changed_at    timestamptz
+);
+CREATE TABLE IF NOT EXISTS fishtea.account_session (
+  token_hash   text PRIMARY KEY,
+  customer_id  text NOT NULL REFERENCES fishtea.account(customer_id) ON DELETE CASCADE,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  expires_at   timestamptz NOT NULL
+);
+CREATE INDEX IF NOT EXISTS account_session_customer_idx ON fishtea.account_session (customer_id);
+CREATE TABLE IF NOT EXISTS fishtea.saved (
+  customer_id  text NOT NULL REFERENCES fishtea.account(customer_id) ON DELETE CASCADE,
+  item_id      text NOT NULL,
+  at           timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (customer_id, item_id)
+);

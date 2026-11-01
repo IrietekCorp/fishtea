@@ -230,6 +230,22 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     else if (!name.startsWith("op.")) problems.push(`${at}: shape has no plan`);
   }
 
+  // Accounts: an entity with a unique email, profile fields it has, and a saved call that reads
+  const acc = (spec.rules as any)?.accounts;
+  if (acc) {
+    const ent = typeof acc.entity === "string" ? getEntity(spec, acc.entity) : undefined;
+    if (!ent) problems.push(`rules.accounts.entity: unknown entity "${acc.entity}"`);
+    else {
+      if (!("email" in ent.fields) || !(ent.unique ?? []).includes("email")) problems.push(`rules.accounts.entity: ${acc.entity} needs an email field that is unique`);
+      for (const f of acc.profile ?? []) if (!(f in ent.fields) || f === "id" || f === "email") problems.push(`rules.accounts.profile: "${f}" is not a field an account may change on ${acc.entity}`);
+    }
+    if (acc.saved?.call) {
+      const call = getCall(spec, acc.saved.call);
+      if (!call) problems.push(`rules.accounts.saved.call: unknown call "${acc.saved.call}"`);
+      else if (call.kind !== "query" || !("ids" in call.in)) problems.push(`rules.accounts.saved.call: "${acc.saved.call}" must be a query taking ids`);
+    }
+  }
+
   // A report reads; a panel that could write would be a write with nobody confirming it.
   for (const [name, r] of operatorReports(spec)) {
     r.panels.forEach((p, i) => {

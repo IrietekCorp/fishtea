@@ -478,6 +478,18 @@ async function main() {
       await db.end();
       return;
     }
+    case "account": {
+      // fishtea account reset <email>: a visitor who lost their password. Removes it (Google sign-in, if
+      // any, still works) and ends every session; they sign up again with the same email to set a new one.
+      if (positional[1] !== "reset" || !positional[2]) throw new Error("usage: fishtea account reset <email>");
+      const db = connect(databaseUrl(flags));
+      const { Accounts } = await import("@fishtea/core");
+      const app = loadApp(resolveAppDir(flags));
+      const done = await new Accounts(db, () => app.spec).reset(String(positional[2]));
+      console.log(done ? pc.green(`✓ ${positional[2]}: password removed and signed out everywhere; signing up again with that email sets a new one`) : pc.yellow(`no account for ${positional[2]}`));
+      await db.end();
+      return;
+    }
     case "visitors": {
       // fishtea visitors prune [--yes]: visitors only tooling produced. Previews unless told --yes.
       if (positional[1] !== "prune") throw new Error("usage: fishtea visitors prune [--yes]");
@@ -840,6 +852,7 @@ async function main() {
                               [--adopt] start tracking an application made before provenance existed
   fishtea plugin list|info|add|remove|create|promote
                               everything outside the conversation: integrations, design systems, auth
+  fishtea account reset <email>  a visitor's lost password: remove it and end their sessions
   fishtea ui-assets           regenerate the ui bundle's assets from ui/shell plugins (--typecheck: check their code)
   fishtea validate            validate spec.json and print section hashes
   fishtea visitors prune      visitors only tooling produced (headless, present, tests); --yes deletes them
