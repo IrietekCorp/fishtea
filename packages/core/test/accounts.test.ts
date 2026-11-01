@@ -149,6 +149,10 @@ describe("accounts", () => {
     const start = await fetch(`${base}/account/google/start?next=//evil.example/x`, { redirect: "manual" });
     expect(start.status).toBe(302);
     expect(start.headers.get("location")).toStartWith("https://accounts.google.com/o/oauth2/v2/auth?");
+    const local = new URL(start.headers.get("location")!).searchParams.get("redirect_uri");
+    expect(local).toBe(`http://localhost:${server.port}/core/account/google/callback`);
+    const real = await fetch(`${base}/account/google/start`, { redirect: "manual", headers: { "x-forwarded-host": "staging.example.com", "x-forwarded-proto": "http" } });
+    expect(new URL(real.headers.get("location")!).searchParams.get("redirect_uri")).toBe("https://staging.example.com/core/account/google/callback");
     const oauth = start.headers.get("set-cookie")!.match(/fishtea_oauth=([^;]+)/)![1];
     expect(JSON.parse(decodeURIComponent(oauth)).next).toBe("/");
     const wrong = await fetch(`${base}/account/google/callback?state=forged&code=c`, { redirect: "manual", headers: { cookie: `fishtea_oauth=${oauth}` } });

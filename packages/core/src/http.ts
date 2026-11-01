@@ -289,8 +289,14 @@ export function createServer(opts: ServerOptions) {
   const who = (c: any) => accounts.session(getCookie(c, ACCOUNT_COOKIE));
   /** Where to send someone back to after Google: a path on this site, never another site. */
   const localPath = (p?: string | null) => (p && p.startsWith("/") && !p.startsWith("//") && !p.includes("\\") ? p.slice(0, 500) : "/");
-  const redirectUri = (c: any) => process.env.GOOGLE_REDIRECT_URI
-    ?? `${secure(c) ? "https" : "http"}://${c.req.header("x-forwarded-host") ?? c.req.header("host")}/core/account/google/callback`;
+  // Google only accepts the address it was given, and a proxy does not always say the visit was HTTPS
+  // (staging behind Traefik and Caddy did not): any real host is https; only a local one is http
+  const redirectUri = (c: any) => {
+    if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
+    const host = c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "localhost";
+    const local = /^(localhost|127\.0\.0\.1|\[::1\]|[^.:]+)(:\d+)?$/.test(host) || /\.(localhost|test)(:\d+)?$/.test(host);
+    return `${local && !secure(c) ? "http" : "https"}://${host}/core/account/google/callback`;
+  };
 
   acct.get("/me", async (c) => {
     const id = await who(c);
