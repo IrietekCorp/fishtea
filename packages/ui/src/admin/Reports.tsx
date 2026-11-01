@@ -24,7 +24,7 @@ const guess = (col: string): ReportFormat =>
 
 export function fmt(v: unknown, f: ReportFormat, currency = "USD"): string {
   if (v === null || v === undefined || v === "") return "—";
-  if (f === "text") return String(v);
+  if (f === "text" || f === "link") return String(v);
   if (f === "date") {
     const d = new Date(String(v).length === 10 ? `${v}T00:00:00Z` : String(v));
     return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -297,7 +297,7 @@ function Table({ p }: { p: ReportPanel }) {
       return c * sort.dir;
     });
   }, [p.rows, sort]);
-  const numeric = (c: string) => !["text", "date"].includes(formatOf(p, c, p.rows[0]?.[c]));
+  const numeric = (c: string) => !["text", "date", "link"].includes(formatOf(p, c, p.rows[0]?.[c]));
   return (
     <div className="max-h-[28rem] overflow-auto">
       <table className="w-full text-sm">
@@ -316,11 +316,25 @@ function Table({ p }: { p: ReportPanel }) {
         <tbody>
           {rows.map((r, i) => (
             <tr key={i} className="border-b border-border/60 last:border-0">
-              {cols.map((c) => <td key={c} className={`px-2 py-1.5 ${numeric(c) ? "text-right tabular-nums" : "max-w-[16rem] truncate"}`} title={numeric(c) ? undefined : String(r[c] ?? "")}>{cell(p, r, c)}</td>)}
+              {cols.map((c) => formatOf(p, c) === "link" && r[c]
+                ? <td key={c} className="px-2 py-1.5"><CopyLink url={String(r[c])} /></td>
+                : <td key={c} className={`px-2 py-1.5 ${numeric(c) ? "text-right tabular-nums" : "max-w-[16rem] truncate"}`} title={numeric(c) ? undefined : String(r[c] ?? "")}>{cell(p, r, c)}</td>)}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** A link a report hands out (a campaign's tagged address): shown short, copied whole. */
+function CopyLink({ url }: { url: string }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => { try { await navigator.clipboard.writeText(url); setDone(true); setTimeout(() => setDone(false), 1500); } catch { /* the address stays selectable */ } };
+  return (
+    <span className="flex max-w-[22rem] items-center gap-2">
+      <span className="min-w-0 truncate font-mono text-xs text-muted-foreground" title={url}>{url.replace(/^https?:\/\//, "")}</span>
+      <button onClick={copy} className="shrink-0 rounded border border-border px-2 py-0.5 text-xs font-semibold hover:border-foreground" aria-label="Copy the link">{done ? "Copied" : "Copy"}</button>
+    </span>
   );
 }

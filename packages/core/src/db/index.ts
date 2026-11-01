@@ -159,7 +159,9 @@ export async function seed(db: Db, app: App, opts: { log?: (s: string) => void }
         return `$${i + 1}${cast}`;
       });
       const update = cols.filter((c) => c !== "id").map((c) => `${q(c)} = excluded.${q(c)}`).join(", ");
-      await db.unsafe(`INSERT INTO business.${q(table)} (${cols.map(q).join(",")}) VALUES (${placeholders.join(",")}) ON CONFLICT (id) DO UPDATE SET ${update || "id = excluded.id"}`, vals as any[]);
+      // `seed: "insert"`: the file adds what is missing; what an operator changed since stays changed
+      const onConflict = ent.seed === "insert" ? "DO NOTHING" : `DO UPDATE SET ${update || "id = excluded.id"}`;
+      await db.unsafe(`INSERT INTO business.${q(table)} (${cols.map(q).join(",")}) VALUES (${placeholders.join(",")}) ON CONFLICT (id) ${onConflict}`, vals as any[]);
       n++;
     }
     counts[entity] = n;

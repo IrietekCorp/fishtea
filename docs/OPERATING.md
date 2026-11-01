@@ -164,7 +164,8 @@ dates), and panels, each one query call drawn one way.
   row (`x` the label, the first `y` the length). `table` draws the rows, sortable by any column.
 - `columns` picks and orders, `labels` names a column for people, `format` says how a value reads: `int`,
   `number`, `money` (in the row's `currency` column when it has one), `percent` (a ratio: 0.12 is 12%),
-  `date`, `text`. Without one, the column's name is a guess.
+  `date`, `text`, `link` (shown short with a Copy button: a campaign's tagged address). Without one, the
+  column's name is a guess.
 - `width: "half"` puts two panels side by side; tiles and lines are full width unless told otherwise.
 
 Every panel is asked at once and one that fails shows its error in its own place. `GET /op/reports` lists
@@ -174,6 +175,14 @@ them; `GET /op/reports/:name?from=&to=` answers the rows, for anything that want
 `fishtea notify`). New applications get a random token in `.env`; the core warns while it is
 `change-me`. There is no TLS here either — behind anything public, put the ui server behind HTTPS, and
 the session cookie is marked Secure when the request says it came over it.
+
+## Seed files and /admin edits
+
+`seed/<entity>.json` is loaded on every start. By default it **upserts**: every field it lists is written
+again, so the file is the truth and an edit made at /admin → Data lasts until the next restart. An entity
+with `"seed": "insert"` only gains the rows that are missing; rows already there keep whatever an operator
+changed. Use it for rows people manage by hand (programmes, campaigns); a change to such a row in the seed
+file then has to be made at /admin too, or in a one-off fix-up.
 
 ## Visitor accounts
 

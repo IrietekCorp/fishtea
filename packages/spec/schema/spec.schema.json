@@ -658,29 +658,89 @@
           "type": "object",
           "additionalProperties": {
             "type": "object",
-            "required": ["label", "panels"],
+            "required": [
+              "label",
+              "panels"
+            ],
             "additionalProperties": false,
             "properties": {
-              "label": { "type": "string" },
-              "doc": { "type": "string" },
+              "label": {
+                "type": "string"
+              },
+              "doc": {
+                "type": "string"
+              },
               "panels": {
                 "type": "array",
                 "minItems": 1,
                 "items": {
                   "type": "object",
-                  "required": ["title", "call", "view"],
+                  "required": [
+                    "title",
+                    "call",
+                    "view"
+                  ],
                   "additionalProperties": false,
                   "properties": {
-                    "title": { "type": "string" },
-                    "doc": { "type": "string" },
-                    "call": { "type": "string" },
-                    "view": { "enum": ["tiles", "line", "bar", "table"] },
-                    "x": { "type": "string" },
-                    "y": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-                    "columns": { "type": "array", "items": { "type": "string" } },
-                    "labels": { "type": "object", "additionalProperties": { "type": "string" } },
-                    "format": { "type": "object", "additionalProperties": { "enum": ["int", "number", "money", "percent", "date", "text"] } },
-                    "width": { "enum": ["full", "half"] }
+                    "title": {
+                      "type": "string"
+                    },
+                    "doc": {
+                      "type": "string"
+                    },
+                    "call": {
+                      "type": "string"
+                    },
+                    "view": {
+                      "enum": [
+                        "tiles",
+                        "line",
+                        "bar",
+                        "table"
+                      ]
+                    },
+                    "x": {
+                      "type": "string"
+                    },
+                    "y": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "labels": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "format": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "enum": [
+                          "int",
+                          "number",
+                          "money",
+                          "percent",
+                          "date",
+                          "text",
+                          "link"
+                        ]
+                      }
+                    },
+                    "width": {
+                      "enum": [
+                        "full",
+                        "half"
+                      ]
+                    }
                   }
                 }
               }
@@ -822,6 +882,13 @@
               "additionalProperties": false
             }
           ]
+        },
+        "seed": {
+          "enum": [
+            "upsert",
+            "insert"
+          ],
+          "description": "upsert (default): the seed file is the truth on every start; insert: missing rows only, so /admin edits stay"
         }
       },
       "additionalProperties": false

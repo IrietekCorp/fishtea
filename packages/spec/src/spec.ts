@@ -13,6 +13,12 @@ export interface EntityDef {
    * /admin offers to copy and send).
    */
   admin?: true | EntityAdmin;
+  /**
+   * How seed/<entity>.json meets rows already there. `upsert` (the default) writes every listed field on
+   * every start, so the seed file is the truth. `insert` adds the rows that are missing and leaves the
+   * rest alone, so what an operator changed at /admin → Data stays changed.
+   */
+  seed?: "upsert" | "insert";
 }
 export interface EntityAdmin { title?: string; columns?: string[]; order?: string; collect?: string }
 
@@ -169,7 +175,7 @@ export interface Spec {
  * draws the rows. `columns` picks and orders what is shown, `labels` names a column for people, `format`
  * says how a value reads (money in the row's `currency` when it has one).
  */
-export type ReportFormat = "int" | "number" | "money" | "percent" | "date" | "text";
+export type ReportFormat = "int" | "number" | "money" | "percent" | "date" | "text" | "link";
 export interface ReportPanel {
   title: string; doc?: string; call: string; view: "tiles" | "line" | "bar" | "table";
   x?: string; y?: string[]; columns?: string[]; labels?: Record<string, string>; format?: Record<string, ReportFormat>;

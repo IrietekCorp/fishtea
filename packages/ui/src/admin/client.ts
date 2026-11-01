@@ -69,7 +69,7 @@ export interface Job { name: string; asks: string; effect: "read" | "write" | st
 export const jobs = () => call<{ jobs: Job[] }>("GET", "/jobs");
 export const runJob = (name: string, args: Record<string, unknown>) => call<{ run: JobRun }>("POST", `/jobs/${encodeURIComponent(name)}`, { args });
 
-export type ReportFormat = "int" | "number" | "money" | "percent" | "date" | "text";
+export type ReportFormat = "int" | "number" | "money" | "percent" | "date" | "text" | "link";
 export interface ReportSummary { name: string; label: string; doc?: string; panels: number }
 export interface ReportPanel {
   title: string; doc?: string; call: string; view: "tiles" | "line" | "bar" | "table";
