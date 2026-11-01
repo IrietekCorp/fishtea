@@ -161,8 +161,9 @@ describe("accounts", () => {
     expect((await post("", {}, cookie, "DELETE")).status).toBe(400);
     expect((await post("", { confirm: "delete my account" }, cookie, "DELETE")).status).toBe(200);
     expect((await me(cookie)).account).toBeNull();
-    const [{ n }] = await db`SELECT count(*)::int AS n FROM business.customer WHERE email = 'ada@example.com'`;
-    expect(n).toBe(1);
+    const rows = await db`SELECT name, photo, preferences FROM business.customer WHERE email = 'ada@example.com'`;
+    expect(rows.length).toBe(1);
+    expect(rows[0]).toEqual({ name: null, photo: null, preferences: null });
     expect((await post("/login", { email: "ada@example.com", password: PW })).status).toBe(401);
   });
 });

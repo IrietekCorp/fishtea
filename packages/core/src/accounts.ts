@@ -176,8 +176,15 @@ export class Accounts {
     return r.length > 0;
   }
 
-  /** The account and its saves go; the customer row stays as the application's record, without a way in. */
+  /**
+   * The account, its saves and its profile go: every profile field that may be empty is emptied. The
+   * customer row stays as the application's record (an order, a conversion may point at it), with only
+   * what the application itself put there, and without a way in.
+   */
   async remove(customerId: string) {
+    const fields = this.entity().fields as Record<string, any>;
+    const clear = this.config!.profile.filter((f) => f in fields && f !== "id" && f !== "email" && (typeof fields[f] === "string" ? fields[f].includes("?") : fields[f].optional));
+    if (clear.length) await this.db.unsafe(`UPDATE ${this.table} SET ${clear.map((f) => `"${snake(f)}" = NULL`).join(", ")} WHERE id = $1`, [customerId]);
     await this.db`UPDATE conversation.visitor SET customer_id = NULL WHERE customer_id = ${customerId}`;
     await this.db`DELETE FROM fishtea.account WHERE customer_id = ${customerId}`;
   }
