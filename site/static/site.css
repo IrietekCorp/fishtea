@@ -60,20 +60,26 @@ header.top {
 }
 header.top .wrap { display: flex; align-items: center; gap: var(--space-5); min-height: 60px; }
 
-/* The brand in the bar is the wordmark alone. The cup is still the favicon, the app icon and the social
-   card, where it is read as a mark at 16–180px; in the header it was a drawing at 28px, which is the one
-   size at which an illustration is neither legible nor abstract. */
-.brand { display: inline-flex; align-items: center; flex: none; text-decoration: none; }
-/* The wordmark carries its own fills — "fish" in ink, "tea" in the accent — so it swaps per theme rather
-   than inheriting currentColor. The dark artwork on Slate, the light artwork on Daylight. */
-.brand .wordmark { display: block; height: 32px; width: auto; }
-.brand .wordmark.on-oak { display: none; }
+/* The mark and the wordmark are one lockup, so they sit tight and share a centre line. Both are flat
+   SVG now, which is what makes a 30px mark in a header bar legible where the old raster drawing was a
+   smudge at the same size. */
+.brand { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; text-decoration: none; }
+.brand .cup { height: 30px; width: auto; }
+.brand .wordmark { height: 32px; width: auto; }
+.hero-mark { height: 64px; width: auto; margin: 0 0 var(--space-5); }
+
+/* Both artworks carry their own fills — the cup's rim and the wordmark's "fish" in ink, the liquid and
+   "tea" in the accent — so they swap per theme rather than inheriting currentColor. These rules own
+   `display` for every themed artwork; the sizing rules above deliberately do not set it, or they would
+   out-specify the hiding and both copies would show at once. */
+.on-ebony, .on-oak { display: block; }
+.on-oak { display: none; }
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .brand .wordmark.on-ebony { display: none; }
-  :root:not([data-theme="dark"]) .brand .wordmark.on-oak { display: block; }
+  :root:not([data-theme="dark"]) .on-ebony { display: none; }
+  :root:not([data-theme="dark"]) .on-oak { display: block; }
 }
-:root[data-theme="light"] .brand .wordmark.on-ebony { display: none; }
-:root[data-theme="light"] .brand .wordmark.on-oak { display: block; }
+:root[data-theme="light"] .on-ebony { display: none; }
+:root[data-theme="light"] .on-oak { display: block; }
 
 header.top nav {
   display: flex; gap: var(--space-5); margin-inline: auto var(--space-4);

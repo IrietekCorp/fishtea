@@ -30,13 +30,16 @@ const inline = (f: string) => readFileSync(join(DIST, f), "utf8");
 // The stylesheet's first line imports the tokens by relative URL, which a data: page cannot resolve.
 const css = inline("tokens.generated.css") + inline("site.css").replace(/@import url\("tokens\.generated\.css"\);/, "");
 const wordmark = readFileSync(join(DIST, "img/wordmark-dark.svg"), "utf8");
+const logomark = readFileSync(join(DIST, "img/logo-mark.svg"), "utf8");
 
 const html = `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8">
 <style>${css}
   html, body { width: 1200px; height: 630px; margin: 0; overflow: hidden; }
   body { background: var(--ground); display: grid; grid-template-columns: 1fr 1fr;
          align-items: center; gap: 56px; padding: 0 72px; }
-  .mark { height: 54px; width: auto; display: block; margin-bottom: 28px; }
+  .lockup { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; }
+  .lockup .cup { height: 56px; width: 56px; }
+  .lockup .mark { height: 52px; width: auto; display: block; }
   .tag { font: var(--text-key); letter-spacing: var(--tracking-key); text-transform: uppercase;
          color: var(--ink-3); margin: 0 0 18px; display: flex; align-items: center; gap: 14px; }
   .tag::before { content: ""; width: 34px; height: var(--accent-bar); background: var(--green); }
@@ -46,7 +49,7 @@ const html = `<!doctype html><html lang="en" data-theme="dark"><head><meta chars
   .console { box-shadow: none; }
 </style></head><body>
 <div>
-  ${wordmark.replace("<svg", '<svg class="mark"')}
+  <div class="lockup">${logomark.replace("<svg", '<svg class="cup"')}${wordmark.replace("<svg", '<svg class="mark"')}</div>
   <p class="tag">solid ground, liquid UI</p>
   <h1>Describe a business once.<br>Derive everything else.</h1>
   <p class="l">One spec gives you the schema, the classifier's tools, the planner, the UI and the

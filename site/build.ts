@@ -212,6 +212,8 @@ function layout(page: Page, pages: Page[]): string {
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
   <a class="brand" href="${href("")}" aria-label="FishTea">
+    <img class="cup on-ebony" src="${root}static/img/logo-mark.svg" alt="" width="30" height="30">
+    <img class="cup on-oak" src="${root}static/img/logo-mark-light.svg" alt="" aria-hidden="true" width="30" height="30">
     <img class="wordmark on-ebony" src="${root}static/img/wordmark-dark.svg" alt="FishTea" width="97" height="39">
     <img class="wordmark on-oak" src="${root}static/img/wordmark-light.svg" alt="" aria-hidden="true" width="97" height="39">
   </a>
@@ -270,6 +272,8 @@ function landing(): string {
   return `
 <div class="hero"><div class="wrap">
   <div>
+    <img class="hero-mark on-ebony" src="static/img/logo-mark.svg" alt="" width="64" height="64">
+    <img class="hero-mark on-oak" src="static/img/logo-mark-light.svg" alt="" aria-hidden="true" width="64" height="64">
     <p class="tag">solid ground, liquid UI</p>
     <h1>Describe a business once.<br>Derive everything else.</h1>
     <p class="lede">

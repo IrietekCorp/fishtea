@@ -56,7 +56,10 @@ Around every vessel: `Mouth` above, `Understood` between, `VerifyStrip` below, `
 ## Iconography and imagery
 
 - No icon set. The confidence dot, the check in `Confirm`, timeline dots and the caret are CSS or inline SVG in token colours, 1.5px strokes.
-- The wordmark is flat type, `wordmark-dark.svg` on Slate and `wordmark-light.svg` on Daylight: "fish" in `ink`, "tea" in the accent, no outline. **It is the whole brand lockup in a header bar** — the cup does not accompany it there.
-- The cup mark (`logo-mark.png`, and the master in `fishtea-logo-transparent.png`) is the favicon, the app icon and the social card: sizes at which it reads as a mark. It is not a hero illustration and not a header mark, because at 28px a drawing is neither legible nor abstract. Never recolour it; never place it on the accent.
-- A marketing page demonstrates the product rather than illustrating it: the hero carries a **console** — a visitor's words, the understood line, a vessel that poured and the chips that follow — in the product's own tokens.
+- **The mark is a cup whose lower two-thirds is a wave**: the claim in the first paragraph, drawn — a solid vessel, and a liquid that takes its shape. It is real geometry, in `logo-mark.svg` (Slate) and `logo-mark-light.svg` (Daylight), with the rim and handle in `ink` and the liquid in the accent. `icon.svg` is the same mark on its own slate ground, for a browser tab or a home screen where the surface behind it is not ours to choose.
+- **Every size comes from that geometry**, not from a resample: `bun scripts/brand-assets.ts` writes the three SVGs and then the favicons, the app icon and the raster marks. The drawing it replaced had no vector at all, so a 28px header mark was a 945px cartoon squeezed down — which is why the mark used to be banned from the header and is welcome there now.
+- The wordmark is flat type, `wordmark-dark.svg` on Slate and `wordmark-light.svg` on Daylight: "fish" in `ink`, "tea" in the accent, no outline. The lockup is the mark at 30px, `space-2`, then the wordmark at 32px.
+- Never recolour either; never place either on the accent. The cup's liquid is the only place the accent appears inside a mark.
+- A marketing page demonstrates the product as well as wearing the mark: the hero carries the mark at 64px above the headline, and a **console** beside it — a visitor's words, the understood line, a vessel that poured and the chips that follow — in the product's own tokens.
+- The original cartoon artwork is kept in `docs/design/fishtea-logo.png` and `fishtea-logo-transparent.png`. It is history, not a source; nothing in `site/static/img/` derives from it any more.
 - Product imagery sits at `radius-sm` with a `hairline` edge.
