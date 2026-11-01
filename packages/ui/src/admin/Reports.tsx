@@ -59,11 +59,12 @@ function useWidth<T extends HTMLElement>() {
   return [ref, w] as const;
 }
 
-/** A round top for an axis: 0–4 gridlines at 1, 2 or 5 × 10ⁿ. */
-function niceMax(max: number) {
+/** A round top for an axis: 4 gridlines at 1, 2, 2.5 or 5 × 10ⁿ; whole steps for counts, so no label repeats. */
+function niceMax(max: number, whole = false) {
+  if (whole && max <= 4) return 4;
   if (max <= 0) return 1;
   const step = 10 ** Math.floor(Math.log10(max / 4));
-  const m = [1, 2, 2.5, 5, 10].find((k) => k * step * 4 >= max) ?? 10;
+  const m = (whole && step < 10 ? [1, 2, 5, 10] : [1, 2, 2.5, 5, 10]).find((k) => k * step * 4 >= max) ?? 10;
   return m * step * 4;
 }
 
@@ -186,10 +187,10 @@ function Line({ p }: { p: ReportPanel }) {
   const rows = p.rows;
   const H = 220, L = 52, R = ys.length > 1 ? 84 : 16, T = 12, B = 28;
   const w = width - L - R, h = H - T - B;
-  const max = useMemo(() => niceMax(Math.max(0, ...rows.flatMap((r) => ys.map((y) => num(r[y]) ?? 0)))), [rows, ys]);
+  const f = formatOf(p, ys[0]);
+  const max = useMemo(() => niceMax(Math.max(0, ...rows.flatMap((r) => ys.map((y) => num(r[y]) ?? 0))), f === "int"), [rows, ys, f]);
   const px = (i: number) => L + (rows.length === 1 ? w / 2 : (i / (rows.length - 1)) * w);
   const py = (v: number) => T + h - (v / max) * h;
-  const f = formatOf(p, ys[0]);
   const cur = typeof rows[0]?.currency === "string" ? (rows[0].currency as string) : undefined;
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((k) => k * max);
   const xTicks = rows.length <= 2 ? rows.map((_, i) => i) : [0, Math.floor((rows.length - 1) / 2), rows.length - 1];
@@ -261,7 +262,8 @@ function Line({ p }: { p: ReportPanel }) {
 function Bars({ p }: { p: ReportPanel }) {
   const x = p.x!, y = p.y![0];
   const rows = p.rows.slice(0, 15);
-  const max = Math.max(0, ...rows.map((r) => num(r[y]) ?? 0)) || 1;
+  const max = Math.max(0, ...rows.map((r) => num(r[y]) ?? 0));
+  if (!max) return <p className="text-sm text-muted-foreground">None in this period.</p>;
   return (
     <ul className="space-y-2" aria-label={`${p.title}: ${labelOf(p, y)} by ${labelOf(p, x)}`}>
       {rows.map((r, i) => {

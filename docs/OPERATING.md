@@ -140,6 +140,36 @@ why it failed. A second press while a job runs is refused (409). The last run of
 memory, so a restart forgets it; what the job wrote is in the database. This is the button to press
 until the application has a scheduler, and the same endpoint a scheduler would call.
 
+### Reports
+
+`/admin` → **Reports** (the page it opens on) draws what the application declares in
+`spec.operator.reports`: a page per report, a period picked above it (7, 30, 90 days, 12 months, or two
+dates), and panels, each one query call drawn one way.
+
+```json
+"operator": { "version": "…", "reports": {
+  "performance": { "label": "Performance", "doc": "…", "panels": [
+    { "title": "The period", "call": "report.totals", "view": "tiles", "columns": ["visits", "clicks"] },
+    { "title": "Clicks", "call": "report.daily", "view": "line", "x": "day", "y": ["visits", "clicks"] },
+    { "title": "By brand", "call": "report.brands", "view": "bar", "x": "brand", "y": ["clicks"] },
+    { "title": "Brands", "call": "report.brands", "view": "table", "format": { "rate": "percent" } }
+  ] } } }
+```
+
+- A panel's call must be a `query` (validate refuses anything else, and the core refuses SQL that
+  writes). It is asked with the period as `from` and `to`, ISO dates with `to` inclusive, when it declares
+  them; columns arrive camel-cased, as every call's rows do.
+- `tiles` draws the first row, a tile per column. `line` draws rows over `x` (a date), one line per `y`
+  column, three at most and on one axis, so put money and counts in separate panels. `bar` draws a bar per
+  row (`x` the label, the first `y` the length). `table` draws the rows, sortable by any column.
+- `columns` picks and orders, `labels` names a column for people, `format` says how a value reads: `int`,
+  `number`, `money` (in the row's `currency` column when it has one), `percent` (a ratio: 0.12 is 12%),
+  `date`, `text`. Without one, the column's name is a guess.
+- `width: "half"` puts two panels side by side; tiles and lines are full width unless told otherwise.
+
+Every panel is asked at once and one that fails shows its error in its own place. `GET /op/reports` lists
+them; `GET /op/reports/:name?from=&to=` answers the rows, for anything that wants them without the page.
+
 `/op` has two doors: a person's session, or `FISHTEA_OPERATOR_TOKEN` for scripts (the TUI,
 `fishtea notify`). New applications get a random token in `.env`; the core warns while it is
 `change-me`. There is no TLS here either — behind anything public, put the ui server behind HTTPS, and
