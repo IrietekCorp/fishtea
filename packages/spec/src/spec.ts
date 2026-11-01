@@ -157,8 +157,26 @@ export interface Spec {
   notifications?: { version: string; doc?: string } & Record<string, NotificationDef | string | undefined>;
   /** outbound reverbs of a turn (format 1.2) */
   echoes?: { version: string; doc?: string } & Record<string, EchoDef | string | undefined>;
-  operator?: { version: string; doc?: string; shapes?: Record<string, ShapeDef> };
+  operator?: { version: string; doc?: string; shapes?: Record<string, ShapeDef>; reports?: Record<string, ReportDef> };
 }
+
+/**
+ * A report: a page of /admin → Reports, read-only, each panel one query call drawn one way.
+ *
+ * Every panel's call is asked with the report's period as `from` and `to` (dates, inclusive), when it
+ * declares them. `tiles` draws the first row, a tile per column; `line` draws rows over `x` (a date), one
+ * line per `y` column; `bar` draws one bar per row, `x` the label and the first `y` the length; `table`
+ * draws the rows. `columns` picks and orders what is shown, `labels` names a column for people, `format`
+ * says how a value reads (money in the row's `currency` when it has one).
+ */
+export type ReportFormat = "int" | "number" | "money" | "percent" | "date" | "text";
+export interface ReportPanel {
+  title: string; doc?: string; call: string; view: "tiles" | "line" | "bar" | "table";
+  x?: string; y?: string[]; columns?: string[]; labels?: Record<string, string>; format?: Record<string, ReportFormat>;
+  width?: "full" | "half";
+}
+export interface ReportDef { label: string; doc?: string; panels: ReportPanel[] }
+export const operatorReports = (s: Spec): [string, ReportDef][] => Object.entries(s.operator?.reports ?? {});
 
 const META = new Set(["version", "doc"]);
 

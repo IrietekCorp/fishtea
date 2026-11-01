@@ -18,6 +18,17 @@ cpSync(join(ROOT, "templates/ecommerce"), dir, { recursive: true });
 // one entity opened to operators, for /admin → Data
 const scratch = JSON.parse(readFileSync(join(dir, "spec.json"), "utf8"));
 scratch.entities.customer.admin = { columns: ["email", "name"], order: "createdAt" };
+// a report: the period reaches the query, and a broken panel stands alone
+writeFileSync(join(dir, "calls/report_period.sql"), "-- $1 from, $2 to\nSELECT $1::date::text AS from_day, $2::date::text AS to_day, (SELECT count(*)::int FROM conversation.turn) AS turns;\n");
+writeFileSync(join(dir, "calls/report_broken.sql"), "SELECT nosuch FROM conversation.turn;\n");
+scratch.calls["report.period"] = { kind: "query", in: { from: "string", to: "string" }, out: "json[]", impl: { sql: "report_period.sql" } };
+scratch.calls["report.broken"] = { kind: "query", in: {}, out: "json[]", impl: { sql: "report_broken.sql" } };
+scratch.operator.reports = {
+  overview: { label: "Overview", doc: "test", panels: [
+    { title: "Totals", call: "report.period", view: "tiles", columns: ["turns"] },
+    { title: "Broken", call: "report.broken", view: "table" },
+  ] },
+};
 writeFileSync(join(dir, "spec.json"), JSON.stringify(scratch, null, 2) + "\n");
 let app = loadApp(dir);
 let engine: Engine;
@@ -258,5 +269,45 @@ describe("a lost password", () => {
     const back = await signIn("admin", DEFAULT_PASSWORD);
     expect(await back.json()).toEqual({ operator: { username: "admin" }, mustChange: true });
     expect(await new OperatorAuth(db).reset("second")).toBe("created");
+  });
+});
+
+describe("reports", () => {
+  // "a lost password" has ended every session by now; the operator token reads the same
+
+  test("the declared reports are listed", async () => {
+    const r = await fetch(`${base}/op/reports`, { headers: { "x-fishtea-operator": OP } });
+    expect(((await r.json()) as any).reports).toEqual([{ name: "overview", label: "Overview", doc: "test", panels: 2 }]);
+  });
+
+  test("each panel is asked with the period, and one that fails says so without taking the others down", async () => {
+    const r = await fetch(`${base}/op/reports/overview?from=2026-10-01&to=2026-10-07`, { headers: { "x-fishtea-operator": OP } });
+    expect(r.status).toBe(200);
+    const rep = (await r.json()) as any;
+    expect(rep).toMatchObject({ name: "overview", from: "2026-10-01", to: "2026-10-07" });
+    expect(rep.panels[0].rows[0]).toMatchObject({ fromDay: "2026-10-01", toDay: "2026-10-07" });
+    expect(typeof rep.panels[0].rows[0].turns).toBe("number");
+    expect(rep.panels[1].rows).toEqual([]);
+    expect(rep.panels[1].error).toContain("nosuch");
+  });
+
+  test("no period is the last 30 days; a period the wrong way round is turned; an unknown report is a 404", async () => {
+    const rep = (await (await fetch(`${base}/op/reports/overview`, { headers: { "x-fishtea-operator": OP } })).json()) as any;
+    expect((Date.parse(rep.to) - Date.parse(rep.from)) / 86400e3).toBe(29);
+    const back = (await (await fetch(`${base}/op/reports/overview?from=2026-10-07&to=2026-10-01`, { headers: { "x-fishtea-operator": OP } })).json()) as any;
+    expect([back.from, back.to]).toEqual(["2026-10-01", "2026-10-07"]);
+    expect((await fetch(`${base}/op/reports/nosuch`, { headers: { "x-fishtea-operator": OP } })).status).toBe(404);
+    expect((await fetch(`${base}/op/reports/overview`)).status).toBe(403);
+  });
+
+  test("a panel whose call is not a query is refused by the spec, and by the engine whatever the spec says", async () => {
+    const { validateSpec } = await import("@fishtea/spec");
+    const bad = JSON.parse(JSON.stringify(app.spec));
+    bad.operator.reports.overview.panels.push({ title: "Writes", call: "customer.upsert", view: "table" }, { title: "No axis", call: "report.period", view: "line" });
+    let problems: string[] = [];
+    try { validateSpec(bad, { dir }); } catch (e) { problems = (e as any).problems ?? [String(e)]; }
+    expect(problems.some((p: string) => p.includes("customer.upsert") && p.includes("must be a query"))).toBe(true);
+    expect(problems.some((p: string) => p.includes("panels[3]") && p.includes('"x" and "y"'))).toBe(true);
+    await expect(engine.query("customer.upsert", {})).rejects.toThrow("not a read-only query");
   });
 });

@@ -682,6 +682,19 @@ export class Engine {
     return { email: null, customerId: v.customerId };
   }
 
+  /**
+   * One query call, asked by an operator outside any conversation: a report panel (admin/reports.ts).
+   * Only a `query` whose SQL writes nothing is run; anything else is refused before it touches the
+   * database, whatever the spec says, because nothing here asks anybody to confirm a write.
+   */
+  async query(callName: string, args: Record<string, unknown>): Promise<unknown> {
+    const bound = this.calls.get(callName);
+    if (!bound) throw new Error(`unknown call ${callName}`);
+    if (bound.def.kind !== "query" || bound.wrote.length) throw new Error(`${callName} is not a read-only query`);
+    const r = await bound.run(args, { visitor: { id: "operator" }, spec: this.app.spec, resolve: this.app.resolve, db: this.db });
+    return r.output;
+  }
+
   /** Operator shapes: a separate registry (§12.5). Only op.unmetReport and op.notify have engine-side plans. */
   async operate(shapeName: string, args: Record<string, unknown>): Promise<Pour> {
     const shape = this.app.spec.operator?.shapes?.[shapeName];

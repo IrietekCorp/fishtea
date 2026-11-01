@@ -3,7 +3,7 @@ import addFormats from "ajv-formats";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { dirname, join, resolve, basename } from "node:path";
 import schema from "../schema/spec.schema.json" with { type: "json" };
-import { type Spec, entities, calls, shapes, personas, notifications, echoes, operatorShapes, getShape, getCall, getEntity, type ShapeDef } from "./spec.ts";
+import { type Spec, entities, calls, shapes, personas, notifications, echoes, operatorShapes, operatorReports, getShape, getCall, getEntity, type ShapeDef } from "./spec.ts";
 import { parseType, SCALARS, type TypeSpec, isInlineObject } from "./types.ts";
 import { check as checkPresent, type SpecLike } from "./present.ts";
 import { checkSite } from "./site.ts";
@@ -228,6 +228,17 @@ function structural(spec: Spec, dir: string | undefined, problems: string[]) {
     }
     if (shape.plan) planProblems(at, shape, spec, problems);
     else if (!name.startsWith("op.")) problems.push(`${at}: shape has no plan`);
+  }
+
+  // A report reads; a panel that could write would be a write with nobody confirming it.
+  for (const [name, r] of operatorReports(spec)) {
+    r.panels.forEach((p, i) => {
+      const at = `operator.reports.${name}.panels[${i}]`;
+      const call = getCall(spec, p.call);
+      if (!call) { problems.push(`${at}: unknown call "${p.call}"`); return; }
+      if (call.kind !== "query") problems.push(`${at}: "${p.call}" is a ${call.kind}; a report panel reads, so its call must be a query`);
+      if ((p.view === "line" || p.view === "bar") && (!p.x || !p.y?.length)) problems.push(`${at}: a ${p.view} needs "x" and "y"`);
+    });
   }
 
   for (const [state, g] of Object.entries(spec.envelope.greeting)) {

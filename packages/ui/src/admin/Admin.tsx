@@ -1,7 +1,7 @@
 /**
  * /admin: where the people who run this application sign in. Visitors (every visit, every turn, the
  * layout each answer carried — what /debug used to show a visitor about themselves), the questions
- * nobody could answer, the rows the spec opens to operators, the operator shapes as jobs to run, the spec itself, the lighter settings, and
+ * nobody could answer, the reports the spec declares, the rows the spec opens to operators, the operator shapes as jobs to run, the spec itself, the lighter settings, and
  * their own account.
  *
  * The gate is the core's, not this page's: every call is refused without a session, and a session on the
@@ -16,8 +16,10 @@ import { SpecEditor } from "./SpecEditor";
 import { Settings } from "./Settings";
 import { Data } from "./Data";
 import { Jobs } from "./Jobs";
+import { Reports } from "./Reports";
 
 const SECTIONS = [
+  { path: "reports", label: "Reports" },
   { path: "visitors", label: "Visitors" },
   { path: "unmet", label: "Unmet" },
   { path: "data", label: "Data" },
@@ -57,7 +59,7 @@ export function Admin() {
     </Frame>
   );
 
-  const section = parts[0] && SECTIONS.some((s) => s.path === parts[0]) ? parts[0] : "visitors";
+  const section = parts[0] && SECTIONS.some((s) => s.path === parts[0]) ? parts[0] : "reports";
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
@@ -74,6 +76,7 @@ export function Admin() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        {section === "reports" && <Reports parts={parts.slice(1)} go={go} />}
         {section === "visitors" && <Visitors parts={parts.slice(1)} go={go} />}
         {section === "unmet" && <Unmet go={go} />}
         {section === "data" && <Data parts={parts.slice(1)} go={go} />}

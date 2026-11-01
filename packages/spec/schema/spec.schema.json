@@ -653,6 +653,39 @@
           "additionalProperties": {
             "$ref": "#/$defs/shape"
           }
+        },
+        "reports": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["label", "panels"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "doc": { "type": "string" },
+              "panels": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["title", "call", "view"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "title": { "type": "string" },
+                    "doc": { "type": "string" },
+                    "call": { "type": "string" },
+                    "view": { "enum": ["tiles", "line", "bar", "table"] },
+                    "x": { "type": "string" },
+                    "y": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "columns": { "type": "array", "items": { "type": "string" } },
+                    "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+                    "format": { "type": "object", "additionalProperties": { "enum": ["int", "number", "money", "percent", "date", "text"] } },
+                    "width": { "enum": ["full", "half"] }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

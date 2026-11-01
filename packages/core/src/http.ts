@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { SpecError, validateSpec } from "@fishtea/spec";
 import { OperatorAuth, SESSION_HOURS, type Operator } from "./admin/auth.ts";
 import { Jobs } from "./admin/jobs.ts";
+import { Reports } from "./admin/reports.ts";
 import { applySettings, settingsOf } from "./admin/settings.ts";
 import { Data, DataError } from "./admin/data.ts";
 import { streamSSE } from "hono/streaming";
@@ -231,6 +232,7 @@ export function createServer(opts: ServerOptions) {
   // site cannot set without a preflight this core's CORS policy refuses — on top of SameSite=Strict.
   const auth = new OperatorAuth(engine.db);
   const jobs = new Jobs(engine);
+  const reports = new Reports(engine);
   const sameToken = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
   const ipOf = (c: any) => c.req.header("x-forwarded-for")?.split(",")[0].trim() ?? "local";
 
@@ -285,6 +287,13 @@ export function createServer(opts: ServerOptions) {
     if (shape === "op.editSection") { if (!opts.onEditSection) return c.json({ error: "edit not wired" }, 501); return c.json({ kind: "answer", shape, vessel: "confirm", answer: await opts.onEditSection(args.section, args.patch) }); }
     return c.json(await engine.operate(shape, args ?? {}));
   });
+  // Reports (admin/reports.ts): spec.operator.reports, each panel a read-only query over a period
+  op.get("/reports", (c) => c.json({ reports: reports.list() }));
+  op.get("/reports/:name", async (c) => {
+    const r = await reports.run(c.req.param("name"), { from: c.req.query("from"), to: c.req.query("to") });
+    return r ? c.json(r) : c.json({ error: `no report ${c.req.param("name")}` }, 404);
+  });
+
   // Jobs (admin/jobs.ts): the operator shapes, started from /admin and run in the background
   op.get("/jobs", (c) => c.json({ jobs: jobs.list() }));
   op.post("/jobs/:name", async (c) => {

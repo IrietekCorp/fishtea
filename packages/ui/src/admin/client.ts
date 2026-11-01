@@ -68,3 +68,15 @@ export interface JobRun { id: string; job: string; by: string; args: Record<stri
 export interface Job { name: string; asks: string; effect: "read" | "write" | string; fields: JobField[]; last: JobRun | null }
 export const jobs = () => call<{ jobs: Job[] }>("GET", "/jobs");
 export const runJob = (name: string, args: Record<string, unknown>) => call<{ run: JobRun }>("POST", `/jobs/${encodeURIComponent(name)}`, { args });
+
+export type ReportFormat = "int" | "number" | "money" | "percent" | "date" | "text";
+export interface ReportSummary { name: string; label: string; doc?: string; panels: number }
+export interface ReportPanel {
+  title: string; doc?: string; call: string; view: "tiles" | "line" | "bar" | "table";
+  x?: string; y?: string[]; columns?: string[]; labels?: Record<string, string>; format?: Record<string, ReportFormat>; width?: "full" | "half";
+  rows: Record<string, unknown>[]; error?: string; ms: number;
+}
+export interface Report { name: string; label: string; doc?: string; from: string; to: string; panels: ReportPanel[] }
+export const reports = () => call<{ reports: ReportSummary[] }>("GET", "/reports");
+export const report = (name: string, from: string, to: string) =>
+  call<Report>("GET", `/reports/${encodeURIComponent(name)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
