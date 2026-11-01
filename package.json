@@ -1,6 +1,6 @@
 {
   "name": "fishtea",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "private": true,
   "type": "module",
   "description": "Describe a business once in JSON; derive the data layer, the classifier's tool list, the planner, the vessels and the operator console from it.",
