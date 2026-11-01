@@ -123,6 +123,23 @@ session of that operator.
 | lockout | five wrong passwords lock the account for fifteen minutes; ten attempts a minute per address |
 | changes | a cookie'd change also needs the `x-fishtea-admin` header, which a page on another site cannot send |
 
+**A lost password.** `fishtea admin reset` (in a deployed image: `bun packages/cli/src/index.ts admin
+reset`, run where the core's `DATABASE_URL` is set) puts `admin` back on the first password,
+`FISHTEA_ADMIN_PASSWORD` or the one above, lifts a lockout and ends that operator's sessions. The next
+sign-in must change it again, so a reset hands nobody a working account. `--username` names another
+operator.
+
+### Jobs
+
+`/admin` → **Jobs** lists the application's operator shapes (`spec.operator.shapes`, less the console's
+own `op.restart`, `op.editSection` and `op.notify`), each with its inputs filled with their defaults and
+a **Run** button. A job that writes asks once more. The run starts at once (`POST /op/jobs/:name` answers
+202) and carries on in the core, because a catalogue sync can take longer than a proxy lets a request
+wait; the page asks `GET /op/jobs` every few seconds until it ends, and shows what the shape answered or
+why it failed. A second press while a job runs is refused (409). The last run of each job is kept in
+memory, so a restart forgets it; what the job wrote is in the database. This is the button to press
+until the application has a scheduler, and the same endpoint a scheduler would call.
+
 `/op` has two doors: a person's session, or `FISHTEA_OPERATOR_TOKEN` for scripts (the TUI,
 `fishtea notify`). New applications get a random token in `.env`; the core warns while it is
 `change-me`. There is no TLS here either — behind anything public, put the ui server behind HTTPS, and

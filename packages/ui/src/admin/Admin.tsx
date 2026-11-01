@@ -1,7 +1,7 @@
 /**
  * /admin: where the people who run this application sign in. Visitors (every visit, every turn, the
  * layout each answer carried — what /debug used to show a visitor about themselves), the questions
- * nobody could answer, the rows the spec opens to operators, the spec itself, the lighter settings, and
+ * nobody could answer, the rows the spec opens to operators, the operator shapes as jobs to run, the spec itself, the lighter settings, and
  * their own account.
  *
  * The gate is the core's, not this page's: every call is refused without a session, and a session on the
@@ -15,11 +15,13 @@ import { Visitors, Unmet } from "./Visitors";
 import { SpecEditor } from "./SpecEditor";
 import { Settings } from "./Settings";
 import { Data } from "./Data";
+import { Jobs } from "./Jobs";
 
 const SECTIONS = [
   { path: "visitors", label: "Visitors" },
   { path: "unmet", label: "Unmet" },
   { path: "data", label: "Data" },
+  { path: "jobs", label: "Jobs" },
   { path: "spec", label: "Spec" },
   { path: "settings", label: "Settings" },
   { path: "account", label: "Account" },
@@ -75,6 +77,7 @@ export function Admin() {
         {section === "visitors" && <Visitors parts={parts.slice(1)} go={go} />}
         {section === "unmet" && <Unmet go={go} />}
         {section === "data" && <Data parts={parts.slice(1)} go={go} />}
+        {section === "jobs" && <Jobs />}
         {section === "spec" && <SpecEditor />}
         {section === "settings" && <Settings />}
         {section === "account" && (

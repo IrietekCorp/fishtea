@@ -49,6 +49,24 @@ export class OperatorAuth {
     return true;
   }
 
+  /**
+   * Back to the first password, for an operator who has lost theirs (`fishtea admin reset`). It is the
+   * password a new installation gets, FISHTEA_ADMIN_PASSWORD or the documented one, and it must be changed
+   * at the next sign-in, so a reset hands nobody a working account. A lockout is lifted and every session
+   * of that operator ends. An operator who does not exist yet is created, as on a first start.
+   */
+  async reset(username = DEFAULT_OPERATOR): Promise<"reset" | "created"> {
+    const hash = await Bun.password.hash(process.env.FISHTEA_ADMIN_PASSWORD || DEFAULT_PASSWORD);
+    const [r] = await this.db`SELECT id FROM fishtea.operator WHERE username = ${username}`;
+    if (!r) {
+      await this.db`INSERT INTO fishtea.operator (id, username, password_hash, must_change) VALUES (${newId("op")}, ${username}, ${hash}, true)`;
+      return "created";
+    }
+    await this.db`UPDATE fishtea.operator SET password_hash = ${hash}, must_change = true, failed = 0, locked_until = NULL WHERE id = ${r.id}`;
+    await this.db`DELETE FROM fishtea.operator_session WHERE operator_id = ${r.id}`;
+    return "reset";
+  }
+
   /** Whether an operator is still on the password they were given, for the banner. */
   async defaultStillSet(): Promise<boolean> {
     return (await this.db`SELECT 1 FROM fishtea.operator WHERE must_change LIMIT 1`).length > 0;

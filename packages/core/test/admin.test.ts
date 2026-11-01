@@ -190,3 +190,73 @@ describe("data", () => {
     expect(((await (await get("/customer")).json()) as any).rows.some((r: any) => r.id === id)).toBe(false);
   });
 });
+
+describe("jobs", () => {
+  const session = async () => sessionOf(await signIn("admin", NEW_PASSWORD));
+  const until = async (s: string, name: string) => {
+    for (let i = 0; i < 100; i++) {
+      const { jobs } = (await (await fetch(`${base}/op/jobs`, { headers: as(s) })).json()) as any;
+      const j = jobs.find((x: any) => x.name === name);
+      if (j.last && j.last.status !== "running") return j.last;
+      await Bun.sleep(20);
+    }
+    throw new Error(`${name} never finished`);
+  };
+
+  test("the operator shapes are listed with their inputs, without the console's own", async () => {
+    const s = await session();
+    const { jobs } = (await (await fetch(`${base}/op/jobs`, { headers: as(s) })).json()) as any;
+    expect(jobs.map((j: any) => j.name)).toEqual(["op.unmetReport", "op.syncInventory"]);
+    const sync = jobs.find((j: any) => j.name === "op.syncInventory");
+    expect(sync.effect).toBe("write");
+    expect(sync.fields.find((f: any) => f.name === "limit")).toMatchObject({ type: "int", default: 50 });
+    expect(sync.last).toBeNull();
+  });
+
+  test("a run starts at once, ends in the background, and keeps what it answered", async () => {
+    const s = await session();
+    const r = await fetch(`${base}/op/jobs/op.unmetReport`, { method: "POST", headers: as(s, admin), body: JSON.stringify({ args: { since: "1d" } }) });
+    expect(r.status).toBe(202);
+    expect(((await r.json()) as any).run).toMatchObject({ job: "op.unmetReport", status: "running", by: "admin", args: { since: "1d" } });
+    const last = await until(s, "op.unmetReport");
+    expect(last.status).toBe("done");
+    expect(Array.isArray(last.answer)).toBe(true);
+    expect(last.ms).toBeGreaterThanOrEqual(0);
+  });
+
+  test("inputs the shape refuses are a failed run, saying why", async () => {
+    const s = await session();
+    expect((await fetch(`${base}/op/jobs/op.syncInventory`, { method: "POST", headers: as(s, admin), body: JSON.stringify({ args: { limit: "lots" } }) })).status).toBe(202);
+    const last = await until(s, "op.syncInventory");
+    expect(last.status).toBe("failed");
+    expect(last.error).toContain("limit");
+  });
+
+  test("unknown jobs, the console's shapes, a second press while running, and no header are refused", async () => {
+    const s = await session();
+    const post = (name: string, headers = as(s, admin)) => fetch(`${base}/op/jobs/${name}`, { method: "POST", headers, body: "{}" });
+    expect((await post("op.nosuch")).status).toBe(404);
+    expect((await post("op.restart")).status).toBe(404);
+    expect((await post("op.unmetReport", as(s, json))).status).toBe(403);
+    // the class directly: nothing awaits between the two starts, so the first is still running
+    const { Jobs } = await import("../src/index.ts");
+    const j = new Jobs(engine);
+    const first = j.start("op.unmetReport", {}, "test");
+    expect(j.start("op.unmetReport", {}, "test")).toMatchObject({ ok: false, status: 409 });
+    if (first.ok) expect((await first.done).status).toBe("done");
+  });
+});
+
+describe("a lost password", () => {
+  test("reset puts the operator back on the first password, to be changed, and ends their sessions", async () => {
+    const { OperatorAuth } = await import("../src/index.ts");
+    const s = sessionOf(await signIn("admin", NEW_PASSWORD));
+    expect((await fetch(`${base}/op/visitors`, { headers: as(s) })).status).toBe(200);
+    expect(await new OperatorAuth(db).reset()).toBe("reset");
+    expect((await fetch(`${base}/op/visitors`, { headers: as(s) })).status).toBe(403);
+    expect((await signIn("admin", NEW_PASSWORD)).status).toBe(401);
+    const back = await signIn("admin", DEFAULT_PASSWORD);
+    expect(await back.json()).toEqual({ operator: { username: "admin" }, mustChange: true });
+    expect(await new OperatorAuth(db).reset("second")).toBe("created");
+  });
+});

@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSyn
 import { join } from "node:path";
 import { SpecError, validateSpec } from "@fishtea/spec";
 import { OperatorAuth, SESSION_HOURS, type Operator } from "./admin/auth.ts";
+import { Jobs } from "./admin/jobs.ts";
 import { applySettings, settingsOf } from "./admin/settings.ts";
 import { Data, DataError } from "./admin/data.ts";
 import { streamSSE } from "hono/streaming";
@@ -229,6 +230,7 @@ export function createServer(opts: ServerOptions) {
   // own, so anything that changes state from one also needs x-fishtea-admin — a header a page on another
   // site cannot set without a preflight this core's CORS policy refuses — on top of SameSite=Strict.
   const auth = new OperatorAuth(engine.db);
+  const jobs = new Jobs(engine);
   const sameToken = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
   const ipOf = (c: any) => c.req.header("x-forwarded-for")?.split(",")[0].trim() ?? "local";
 
@@ -282,6 +284,13 @@ export function createServer(opts: ServerOptions) {
     if (shape === "op.restart") { if (!opts.onRestart) return c.json({ error: "restart not wired" }, 501); await opts.onRestart(); return c.json({ kind: "answer", shape, vessel: "confirm", answer: { ok: true } }); }
     if (shape === "op.editSection") { if (!opts.onEditSection) return c.json({ error: "edit not wired" }, 501); return c.json({ kind: "answer", shape, vessel: "confirm", answer: await opts.onEditSection(args.section, args.patch) }); }
     return c.json(await engine.operate(shape, args ?? {}));
+  });
+  // Jobs (admin/jobs.ts): the operator shapes, started from /admin and run in the background
+  op.get("/jobs", (c) => c.json({ jobs: jobs.list() }));
+  op.post("/jobs/:name", async (c) => {
+    const { args } = await c.req.json().catch(() => ({}));
+    const r = jobs.start(c.req.param("name"), args && typeof args === "object" ? args : {}, c.get("operator")?.username ?? "token");
+    return r.ok ? c.json({ run: r.run }, 202) : c.json({ error: r.error }, r.status);
   });
   op.post("/reload", async (c) => {
     if (!opts.onReload) return c.json({ error: "reload not wired" }, 501);

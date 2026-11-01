@@ -466,6 +466,18 @@ async function main() {
       process.exitCode = await present(app, dir, { shapes: positional.slice(1).map(String), live: flags.live === true, core, args });
       return;
     }
+    case "admin": {
+      // fishtea admin reset [--username admin]: a lost /admin password, back to the first one. No app needed,
+      // only the database: in a deployed image, `bun packages/cli/src/index.ts admin reset` beside migrate.
+      if (positional[1] !== "reset") throw new Error("usage: fishtea admin reset [--username admin]");
+      const db = connect(databaseUrl(flags));
+      const { OperatorAuth, DEFAULT_OPERATOR } = await import("@fishtea/core");
+      const username = typeof flags.username === "string" ? flags.username : DEFAULT_OPERATOR;
+      const done = await new OperatorAuth(db).reset(username);
+      console.log(pc.green(`✓ ${username} ${done === "created" ? "created" : "reset"}: sign in at /admin with ${process.env.FISHTEA_ADMIN_PASSWORD ? "FISHTEA_ADMIN_PASSWORD" : "the documented first password (docs/OPERATING.md)"}; it must be changed at once`));
+      await db.end();
+      return;
+    }
     case "visitors": {
       // fishtea visitors prune [--yes]: visitors only tooling produced. Previews unless told --yes.
       if (positional[1] !== "prune") throw new Error("usage: fishtea visitors prune [--yes]");
@@ -854,6 +866,8 @@ async function main() {
   fishtea restart [service]   default: core
   fishtea bench               performance harness against a running stack
   fishtea notify <visitorId> "<text>"
+  fishtea admin reset [--username admin]
+                              a lost /admin password: back to the first one, changed at next sign-in
 
   --app <dir>        application directory (default FISHTEA_APP or cwd)
   --db <url>         Postgres, overriding DATABASE_URL

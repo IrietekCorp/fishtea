@@ -413,6 +413,11 @@ Two things fell out of this that are worth knowing:
 ### 7. Later
 - ~~Operator auth beyond `FISHTEA_OPERATOR_TOKEN`~~ — done, see §3c.
 - Offline notification delivery (email) — see the `channel` note above.
+- **A scheduler for operator jobs.** 1.8.4 gave `/admin` a Jobs page (`POST /op/jobs/:name`, run in the
+  background, last run kept in memory). Applications still lean on their host for the clock: ChicDuJour
+  asks Dokploy to call `/op/utter` daily. The natural next step is a `schedule` on an operator shape
+  (`"schedule": "daily 05:00"`), run by the core through the same `Jobs.start`, with runs written to a
+  table so the page can show more than the last one and a restart forgets nothing.
 - ~~needle LoRA fine-tune per archetype on its own utterances~~ — done, and it is the only lever that
   moved the accuracy/latency curve rather than sliding along it (+5 of 56 at any depth, no latency
   cost). `docs/TUNING.md`; `fishtea tune data | install`, `fishtea eval`.
