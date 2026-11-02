@@ -272,8 +272,8 @@ function landing(): string {
   return `
 <div class="hero"><div class="wrap">
   <div>
-    <img class="hero-mark on-ebony" src="static/img/logo-mark.svg" alt="" width="64" height="64">
-    <img class="hero-mark on-oak" src="static/img/logo-mark-light.svg" alt="" aria-hidden="true" width="64" height="64">
+    <img class="hero-mark on-ebony" src="static/img/logo-mark.svg" alt="" width="128" height="128">
+    <img class="hero-mark on-oak" src="static/img/logo-mark-light.svg" alt="" aria-hidden="true" width="128" height="128">
     <p class="tag">solid ground, liquid UI</p>
     <h1>Describe a business once.<br>Derive everything else.</h1>
     <p class="lede">

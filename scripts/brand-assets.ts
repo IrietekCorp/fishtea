@@ -27,20 +27,34 @@ const IMG = join(HOME, "site/static/img");
 const BOWL = "M5 12.5 H23 V17 Q23 26 14 26 Q5 26 5 17 Z";
 const HANDLE = "M23.4 16.2 Q28.8 16.2 28.8 19.6 Q28.8 23 23.4 23";
 const LIQUID = "M4 17.6 Q9.5 14.4 14 17.6 T24 17.6 V27 H4 Z";
-const STROKE = 2.1;
-/** The drawing's own bounding centre and a scale that fills the box — so the mark is optically
- *  centred in a square, which is what a favicon and an app icon both assume. */
-const [CX, CY, SCALE] = [16.9, 19.25, 1.12];
+
+/**
+ * Two cuts of one mark, because 16px is not a small 32px.
+ *
+ * `full` is the drawing: cup, handle, wave, a 2.1 stroke, centred on the whole bounding box (the
+ * handle makes it wider right and lower bottom, so the box's centre is not the bowl's).
+ *
+ * `small` is the same bowl and the same wave with the handle removed and the stroke taken to 3.2,
+ * recentred on the bowl alone and scaled to fill. At 16 CSS px one unit is half a pixel: the 2.1
+ * stroke lands on 1.05px and antialiases to the grey smudge the handle had already become, while the
+ * rim and the liquid's edge merge. Dropping the handle is what buys the room to thicken the rest —
+ * and a handle at 16px was never legible as a handle, only as dirt beside the cup.
+ */
+type Cut = { stroke: number; cx: number; cy: number; scale: number; handle: boolean };
+const FULL: Cut = { stroke: 2.1, cx: 16.9, cy: 19.25, scale: 1.12, handle: true };
+const SMALL: Cut = { stroke: 3.2, cx: 14, cy: 19.25, scale: 1.41, handle: false };
 
 /** `uid` keeps the clip path unique: two of these can be inlined on one page (the social card does it). */
-function mark(ink: string, accent: string, uid: string, ground?: string): string {
+function mark(ink: string, accent: string, uid: string, ground?: string, cut: Cut = FULL): string {
   const bg = ground ? `\n  <rect width="32" height="32" rx="7" fill="${ground}"/>` : "";
+  const handle = cut.handle
+    ? `\n    <path d="${HANDLE}" stroke="${ink}" stroke-width="${cut.stroke}" stroke-linecap="round" fill="none"/>`
+    : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="FishTea">${bg}
   <defs><clipPath id="${uid}"><path d="${BOWL}"/></clipPath></defs>
-  <g transform="translate(16,16) scale(${SCALE}) translate(${-CX},${-CY})">
+  <g transform="translate(16,16) scale(${cut.scale}) translate(${-cut.cx},${-cut.cy})">
     <g clip-path="url(#${uid})"><path d="${LIQUID}" fill="${accent}"/></g>
-    <path d="${BOWL}" stroke="${ink}" stroke-width="${STROKE}" stroke-linejoin="round" fill="none"/>
-    <path d="${HANDLE}" stroke="${ink}" stroke-width="${STROKE}" stroke-linecap="round" fill="none"/>
+    <path d="${BOWL}" stroke="${ink}" stroke-width="${cut.stroke}" stroke-linejoin="round" fill="none"/>${handle}
   </g>
 </svg>
 `;
@@ -50,11 +64,12 @@ function mark(ink: string, accent: string, uid: string, ground?: string): string
 // artworks carry their own fills and an <img> cannot inherit currentColor.
 const SLATE = ["#e8edf2", "#4fe0b8"] as const;      // ink, accent — tokens.json, dark
 const DAYLIGHT = ["#0e1419", "#0b6e58"] as const;   // tokens.json, light
+const GROUND = "#0b0d10";
 writeFileSync(join(IMG, "logo-mark.svg"), mark(...SLATE, "d"));
 writeFileSync(join(IMG, "logo-mark-light.svg"), mark(...DAYLIGHT, "l"));
 // The icon lands on a browser tab or a home screen, which may be any colour, so it carries its own
 // ground rather than hoping. Slate reads under a light tab bar and a dark one.
-writeFileSync(join(IMG, "icon.svg"), mark(...SLATE, "i", "#0b0d10"));
+writeFileSync(join(IMG, "icon.svg"), mark(...SLATE, "i", GROUND));
 
 // ---- the rasters -----------------------------------------------------------------------------------
 const browser = await chromium.launch();
@@ -67,10 +82,13 @@ async function png(svg: string, size: number, out: string, transparent: boolean)
   console.log(`  ${out}  ${size}px`);
 }
 const transparent = mark(...SLATE, "d");
-const icon = mark(...SLATE, "i", "#0b0d10");
+const icon = mark(...SLATE, "i", GROUND);
+const iconSmall = mark(...SLATE, "s", GROUND, SMALL);
 await png(transparent, 72, "logo-mark.png", true);
 await png(transparent, 144, "logo-mark@2x.png", true);
-await png(icon, 16, "favicon-16.png", false);
+// 16 is the only size that gets the small cut. 32 upward has the pixels for the handle, and the tab
+// strip shows 32 on every display anyone has bought this decade — 16 is the history we still serve.
+await png(iconSmall, 16, "favicon-16.png", false);
 await png(icon, 32, "favicon-32.png", false);
 await png(icon, 48, "favicon-48.png", false);
 await png(icon, 180, "apple-touch-icon.png", false);

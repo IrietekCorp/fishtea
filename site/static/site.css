@@ -66,7 +66,11 @@ header.top .wrap { display: flex; align-items: center; gap: var(--space-5); min-
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; text-decoration: none; }
 .brand .cup { height: 30px; width: auto; }
 .brand .wordmark { height: 32px; width: auto; }
-.hero-mark { height: 64px; width: auto; margin: 0 0 var(--space-5); }
+/* The mark leads the hero. It is deliberately the largest thing above the headline: at 64px it read as
+   a bullet beside the type, and the one place a mark is allowed to simply be the mark is here. It steps
+   down on a phone, where 128px would eat a third of the first screen before a word is read. */
+.hero-mark { height: 128px; width: auto; margin: 0 0 var(--space-5); }
+@media (max-width: 48rem) { .hero-mark { height: 88px; } }
 
 /* Both artworks carry their own fills — the cup's rim and the wordmark's "fish" in ink, the liquid and
    "tea" in the accent — so they swap per theme rather than inheriting currentColor. These rules own
