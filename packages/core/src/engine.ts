@@ -63,7 +63,7 @@ const escapeContext = (s: string) => s.replace(/[\r\n]+/g, " ").replace(/[<>{}]/
 export interface EngineOptions { app: App; db: Db; classifier?: Classifier; strict?: boolean; log?: (s: string) => void; channels?: Channel[] }
 
 /** A turn as a history lists it: what was said, what it matched, what came back — not the whole pour. */
-const turnSummary = (t: Turn) => ({ id: t.id, parentId: t.parentId, seq: t.seq, author: t.author, at: t.at, shape: t.shape, kind: t.kind, confidence: t.confidence, answered: t.answered, latencyMs: t.latencyMs, utterance: t.utterance, phrase: (t.pour as any).phrase ?? (t.pour as any).text });
+const turnSummary = (t: Turn) => ({ id: t.id, parentId: t.parentId, seq: t.seq, author: t.author, at: t.at, shape: t.shape, kind: t.kind, confidence: t.confidence, answered: t.answered, latencyMs: t.latencyMs, utterance: t.utterance, phrase: (t.pour as any).phrase ?? (t.pour as any).text, revisitedAt: t.revisitedAt ?? null });
 
 export class Engine {
   app: App;

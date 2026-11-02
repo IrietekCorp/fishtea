@@ -233,7 +233,14 @@ profile and saved items across devices.
 - **`saved.call`** is a query taking `ids`; `GET /account/saved` answers its rows beside the ids.
 - **The session is its own cookie** (`fishtea_account`, httpOnly, 30 days, stored hashed). The visitor id
   is not a credential: it never reads a profile. Signing in sets the visitor's `customer_id`, so the
-  conversation treats them as a customer; signing out clears it.
+  conversation treats them as a customer.
+- **One person, one visitor.** An account has its own visitor (`fishtea.account.visitor_id`). Every browser
+  that signs in uses it: the browser's earlier, anonymous visitor is folded in (its visits, echoes, queued
+  notifications and any `visitor_id` column in the `business` schema move across; the old row keeps
+  `merged_into` and its id is never honoured again). `/account/login` and `/signup` answer the id to keep;
+  a browser already holding a session is folded on its next request. Signing out leaves the account's
+  visitor alone and gives the browser a fresh, anonymous one (`/logout` answers it). Anonymous browsers
+  cannot be told apart from different people until they sign in.
 - **Google**: set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (an OAuth "Web application" client in Google
   Cloud). The redirect URI to register is `https://<site>/core/account/google/callback`; set
   `GOOGLE_REDIRECT_URI` when the site is reached some other way.
@@ -253,6 +260,19 @@ Tooling says what it is with `x-fishtea-tool` (headless and `fishtea present` do
 visit's envelope whatever `envelope.accept` says. `fishtea visitors prune` lists the visitors only
 tooling ever produced and, with `--yes`, deletes them and everything they said. A visitor with one visit
 from a person is kept.
+
+/admin → Visitors leaves out, unless asked: tooling, anything announcing itself as a bot or a script, a
+passer-by who arrived and said nothing (link previews, uptime probes), and visitors folded into an
+account's — the account is one row, marked with how many browsers joined it.
+
+## The menu's trail
+
+The trail in the menu is a reference, not a replay: newest first, each place once (a place visited again,
+or gone back to, moves to the front — the core keeps `turn.revisited_at`), at most
+`rules.site.menu.trail.max` points (12), none older than `trail.hours` (24), drawn from the visits inside
+those hours. What falls off is still on the record: /admin → Visitors has every turn. An answer's
+`phrase` may name what it found (`"$answer.product.0.name"`) so the trail reads as things, not as the
+shape's description.
 
 ## Things that will bite you
 

@@ -70,6 +70,7 @@ export interface ShapeDef {
   allow: string[];
   plan?: PlanStep[];
   assemble?: unknown;
+  /** what an answer is called: $arg, {arg? …} and, for an answer, $answer.path (pour.ts phraseFor) */
   phrase?: string;
   vessel?: VesselName;
   next?: NextDef[];

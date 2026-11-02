@@ -24,6 +24,8 @@ export interface Response { pour: Pour; turn: { id: string; seq: number; trailId
 
 export const visitorId = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 const remember = (id: string) => { try { localStorage.setItem(KEY, id); } catch {} };
+/** Use this visitor id from now on: what /account answers on signing in (the account's) and out (a fresh one). */
+export const rememberVisitor = (id: string | null | undefined) => { if (id) remember(id); };
 const headers = () => { const v = visitorId(); return { "content-type": "application/json", ...(v ? { "x-fishtea-visitor": v } : {}) }; };
 
 let seq = 0;
@@ -49,6 +51,8 @@ export async function rewind(turnId: string) { const res = await fetch(`${CORE}/
 export interface SessionTurn {
   id: string; parentId: string | null; seq: number; author: string; at: string; shape: string | null; kind: string;
   confidence: number | null; answered: boolean; latencyMs: number | null; utterance: any; phrase?: string;
+  /** when the visitor last went back to this point */
+  revisitedAt?: string | null;
 }
 export interface Session { id: string; current: boolean; openedAt: string; lastAt: string; headTurnId: string | null; envelope: Record<string, unknown>; turns: SessionTurn[] }
 export interface History { visitor: { id: string; known: boolean; firstSeen: string; lastSeen: string } | null; sessions: Session[] }

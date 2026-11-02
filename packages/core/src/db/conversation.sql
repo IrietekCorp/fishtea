@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS conversation.visitor (
   created_at   timestamptz NOT NULL DEFAULT now(),
   last_seen    timestamptz NOT NULL DEFAULT now()
 );
+-- One person on several browsers: signing in to an account folds the browser's visitor into the account's
+-- own (TrailService.merge). The folded row is kept, pointing at the one it joined, and is never used again.
+ALTER TABLE conversation.visitor ADD COLUMN IF NOT EXISTS merged_into text;
+CREATE INDEX IF NOT EXISTS visitor_customer_idx ON conversation.visitor (customer_id) WHERE customer_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS conversation.trail (
   id           text PRIMARY KEY,
@@ -98,6 +102,8 @@ CREATE INDEX IF NOT EXISTS echo_kind_at_idx ON conversation.echo (kind, at DESC)
 -- NOT EXISTS, so an existing turn table keeps whatever CHECK it was born with and every composite pour
 -- would fail to append. Restating the constraint is idempotent and cheap, and it is the only part of
 -- this file that has to run against a database that already exists.
+-- when a visitor last went back to this point (a rewind): the menu's trail puts it first again
+ALTER TABLE conversation.turn ADD COLUMN IF NOT EXISTS revisited_at timestamptz;
 ALTER TABLE conversation.turn DROP CONSTRAINT IF EXISTS turn_kind_check;
 ALTER TABLE conversation.turn ADD CONSTRAINT turn_kind_check
   CHECK (kind IN ('ask','form','confirm-write','answer','notification','composite'));
@@ -135,6 +141,8 @@ CREATE TABLE IF NOT EXISTS fishtea.account (
   created_at    timestamptz NOT NULL DEFAULT now(),
   changed_at    timestamptz
 );
+-- the account's own visitor: every browser it signs in on uses this one, so its visits are one history
+ALTER TABLE fishtea.account ADD COLUMN IF NOT EXISTS visitor_id text;
 CREATE TABLE IF NOT EXISTS fishtea.account_session (
   token_hash   text PRIMARY KEY,
   customer_id  text NOT NULL REFERENCES fishtea.account(customer_id) ON DELETE CASCADE,

@@ -33,9 +33,9 @@ export const signIn = (username: string, password: string) => call<Me>("POST", "
 export const signOut = () => call<{ ok: true }>("POST", "/auth/logout", {});
 export const changePassword = (current: string, next: string) => call<{ ok: true }>("POST", "/auth/password", { current, next });
 
-export interface VisitorRow { id: string; customer_id: string | null; created_at: string; last_seen: string; trails: number; turns: number; tool: boolean | null; user_agent: string | null }
-export const visitors = (o: { tools?: boolean; offset?: number } = {}) =>
-  call<{ visitors: VisitorRow[] }>("GET", `/visitors?limit=50&offset=${o.offset ?? 0}${o.tools ? "&tools=include" : ""}`);
+export interface VisitorRow { id: string; customer_id: string | null; created_at: string; last_seen: string; trails: number; turns: number; tool: boolean | null; user_agent: string | null; said?: number; joined?: number; account?: boolean }
+export const visitors = (o: { tools?: boolean; all?: boolean; offset?: number } = {}) =>
+  call<{ visitors: VisitorRow[] }>("GET", `/visitors?limit=50&offset=${o.offset ?? 0}${o.tools ? "&tools=include" : ""}${o.all ? "&all=include" : ""}`);
 
 export interface SessionTurn { id: string; seq: number; author: string; at: string; shape: string | null; kind: string; confidence: number | null; answered: boolean; latencyMs: number | null; utterance: any; phrase?: string }
 export interface Visit { id: string; current: boolean; openedAt: string; lastAt: string; headTurnId: string | null; envelope: Record<string, unknown>; turns: SessionTurn[] }

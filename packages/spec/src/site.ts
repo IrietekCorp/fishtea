@@ -46,7 +46,8 @@ export interface SiteRules {
   suggestions?: (string | SiteSuggestion)[];
   analytics?: { google?: string; consent?: boolean; notice?: string };
   brand?: SiteBrand;
-  menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" };
+  /** trail: how many points the menu's trail keeps (12) and for how many hours (24); see useConversation */
+  menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask"; trail?: { max?: number; hours?: number } };
   social?: Record<string, string>;
 }
 

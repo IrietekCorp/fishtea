@@ -26,7 +26,6 @@ import {
 import {
   ArrowUp,
   AtSign,
-  ChevronRight,
   CircleCheck,
   Clock,
   Columns2,
@@ -320,7 +319,6 @@ export function FishteaMenu({
               const tipId = `${drawerId}-tip-${turn.id}`;
               return (
                 <li key={turn.id} className="ft-menu__pill-item">
-                  {i > 0 && <ChevronRight className="ft-menu__sep" aria-hidden="true" />}
                   {/* hover is the wrapper's, pill and card together, so the card holds under the pointer */}
                   <span className="ft-menu__pill-wrap"
                     onMouseEnter={() => !noHover && setActiveId(turn.id)}
@@ -343,7 +341,7 @@ export function FishteaMenu({
                       <span className="ft-menu__caret" aria-hidden="true" />
                       <div className="ft-menu__card-row">
                         <span className="ft-key">
-                          Turn {turn.index} · {roomLabel(turn.roomId)}
+                          {roomLabel(turn.roomId)}
                         </span>
                         <span className="ft-mono">{formatTime(turn.at)}</span>
                       </div>

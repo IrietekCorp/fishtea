@@ -15,6 +15,8 @@ export interface Turn {
   id: string; trailId: string; parentId: string | null; seq: number; author: Author; at: string;
   shape: string | null; kind: PourKind; confidence: number | null; answered: boolean; latencyMs: number | null;
   utterance: Record<string, unknown>; pour: Record<string, unknown>; provenance: Record<string, unknown>;
+  /** when the visitor last went back to it (rewind) */
+  revisitedAt?: string;
 }
 export interface Echo {
   id: string; kind: string; visitorId: string; trailId: string; turnId: string; shape: string | null;
@@ -43,6 +45,7 @@ const rowTurn = (r: any): Turn => ({
   id: r.id, trailId: r.trail_id, parentId: r.parent_id, seq: r.seq, author: r.author, at: r.at instanceof Date ? r.at.toISOString() : r.at,
   shape: r.shape, kind: r.kind, confidence: r.confidence, answered: r.answered, latencyMs: r.latency_ms,
   utterance: r.utterance, pour: r.pour, provenance: r.provenance,
+  ...(r.revisited_at ? { revisitedAt: r.revisited_at instanceof Date ? r.revisited_at.toISOString() : r.revisited_at } : {}),
 });
 const rowEcho = (r: any): Echo => ({
   id: r.id, kind: r.kind, visitorId: r.visitor_id, trailId: r.trail_id, turnId: r.turn_id, shape: r.shape, via: r.via, shared: r.shared,
@@ -56,7 +59,8 @@ export class TrailService {
 
   async ensureVisitor(id?: string | null): Promise<{ id: string; customerId: string | null; created: boolean }> {
     if (id) {
-      const rows = await this.db`UPDATE conversation.visitor SET last_seen = now() WHERE id = ${id} RETURNING id, customer_id`;
+      // a visitor folded into an account's is spent: whoever still holds its id starts afresh
+      const rows = await this.db`UPDATE conversation.visitor SET last_seen = now() WHERE id = ${id} AND merged_into IS NULL RETURNING id, customer_id`;
       if (rows.length) return { id, customerId: rows[0].customer_id, created: false };
     }
     const vid = newId("v");
@@ -113,6 +117,31 @@ export class TrailService {
       const gone = await tx`DELETE FROM conversation.visitor WHERE id = ANY(${ids}) RETURNING id`;
       return gone.length;
     });
+  }
+
+  /**
+   * Fold visitors into one: their visits, echoes, queued notifications and every application row that
+   * names them (any `visitor_id` column in the business schema) become `into`'s, and each folded row
+   * keeps `merged_into` so the admin can tell. A row the application will not let move (a unique key the
+   * two visitors both hold, say) stays where it was rather than failing the whole fold.
+   */
+  async merge(from: string[], into: string, db: any = this.db): Promise<number> {
+    const ids = from.filter((x) => x && x !== into);
+    if (!ids.length) return 0;
+    const run = async (tx: any) => {
+      await tx`UPDATE conversation.trail SET visitor_id = ${into} WHERE visitor_id = ANY(${ids})`;
+      await tx`UPDATE conversation.echo SET visitor_id = ${into} WHERE visitor_id = ANY(${ids})`;
+      await tx`UPDATE conversation.pending_notification SET visitor_id = ${into} WHERE visitor_id = ANY(${ids})`;
+      const tables = await tx`SELECT table_name FROM information_schema.columns WHERE table_schema = 'business' AND column_name = 'visitor_id'`;
+      for (const t of tables) {
+        try { await tx.savepoint((sp: any) => sp.unsafe(`UPDATE business."${String(t.table_name).replace(/"/g, "")}" SET visitor_id = $1 WHERE visitor_id = ANY($2)`, [into, ids])); }
+        catch { /* left with the folded visitor; see above */ }
+      }
+      const done = await tx`UPDATE conversation.visitor SET merged_into = ${into}, customer_id = NULL WHERE id = ANY(${ids}) AND merged_into IS NULL RETURNING id`;
+      await tx`UPDATE conversation.visitor v SET created_at = least(v.created_at, (SELECT min(created_at) FROM conversation.visitor WHERE id = ANY(${ids}))) WHERE v.id = ${into}`;
+      return done.length;
+    };
+    return db === this.db ? this.db.begin(run) : run(db);
   }
 
   async open(visitorId: string, envelope: Record<string, unknown>): Promise<Trail> {
@@ -192,6 +221,7 @@ export class TrailService {
     const t = await this.turn(turnId);
     if (!t || t.trailId !== trailId) throw new Error("turn not in this trail");
     await this.db`UPDATE conversation.trail SET head_turn_id = ${turnId} WHERE id = ${trailId}`;
+    await this.db`UPDATE conversation.turn SET revisited_at = now() WHERE id = ${turnId}`;
     return t;
   }
 

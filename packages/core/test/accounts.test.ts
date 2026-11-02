@@ -160,6 +160,57 @@ describe("accounts", () => {
     delete process.env.GOOGLE_CLIENT_ID; delete process.env.GOOGLE_CLIENT_SECRET;
   });
 
+  test("one person on three browsers is one visitor; signing out gives the browser a fresh one", async () => {
+    // three browsers, each arriving anonymously and saying something
+    const browsers: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const v = ((await (await fetch(`${base}/`)).json()) as any).visitor.id;
+      await fetch(`${base}/utter`, { method: "POST", headers: { ...H, "x-fishtea-visitor": v }, body: JSON.stringify({ text: `browser ${i} looking` }) });
+      browsers.push(v);
+    }
+    const signIn = (v: string) => fetch(`${base}/account/login`, { method: "POST", headers: { ...H, "x-fishtea-visitor": v }, body: JSON.stringify({ email: "ada@example.com", password: PW }) });
+    const a = await signIn(browsers[0]!);
+    const home = ((await a.json()) as any).visitor as string;
+    expect(home).toBeTruthy();
+    expect(a.headers.get("set-cookie")).toContain(`fishtea_visitor=${home}`);
+    // the second browser signs in: it gets the same visitor, and its visit moves with it
+    const b = (await (await signIn(browsers[1]!)).json()) as any;
+    expect(b.visitor).toBe(home);
+    // the third already holds a session cookie from elsewhere: its first request is enough to fold it
+    const cookie = cookieOf(a);
+    const r = (await (await fetch(`${base}/`, { headers: { "x-fishtea-visitor": browsers[2]!, cookie: `fishtea_account=${cookie}` } })).json()) as any;
+    expect(r.visitor.id).toBe(home);
+    const folded = await db`SELECT id, merged_into FROM conversation.visitor WHERE id = ANY(${browsers.filter((x) => x !== home)})`;
+    expect(folded.length).toBeGreaterThan(0);
+    expect(folded.every((x: any) => x.merged_into === home)).toBe(true);
+    const said = await db`SELECT u.utterance->>'text' AS t FROM conversation.turn u JOIN conversation.trail tr ON tr.id = u.trail_id WHERE tr.visitor_id = ${home} AND u.author = 'visitor'`;
+    for (let i = 0; i < 3; i++) expect(said.map((x: any) => x.t)).toContain(`browser ${i} looking`);
+    // a folded id is spent: presenting it alone starts afresh rather than reaching the account
+    const stale = browsers.find((x) => x !== home)!;
+    const again = (await (await fetch(`${base}/`, { headers: { "x-fishtea-visitor": stale } })).json()) as any;
+    expect(again.visitor.id).not.toBe(stale);
+    expect(again.visitor.id).not.toBe(home);
+    // the admin's list counts the person once
+    const list = (await (await fetch(`${base}/op/visitors`, { headers: { "x-fishtea-operator": "t" } })).json()) as any;
+    expect(list.visitors.find((x: any) => x.id === home)).toMatchObject({ account: true });
+    expect(list.visitors.some((x: any) => browsers.includes(x.id) && x.id !== home)).toBe(false);
+    // signing out: a new anonymous visitor for this browser; the account keeps its own
+    const out = (await (await post("/logout", {}, cookie)).json()) as any;
+    expect(out.visitor).toBeTruthy();
+    expect(out.visitor).not.toBe(home);
+    const [h] = await db`SELECT customer_id FROM conversation.visitor WHERE id = ${home}`;
+    expect(h.customer_id).toBeTruthy();
+  });
+
+  test("a visitor that is another account's is never folded into this one", async () => {
+    const [{ visitor_id: ada }] = await db`SELECT a.visitor_id FROM fishtea.account a JOIN business.customer c ON c.id = a.customer_id WHERE c.email = 'ada@example.com'`;
+    const r = await fetch(`${base}/account/signup`, { method: "POST", headers: { ...H, "x-fishtea-visitor": ada }, body: JSON.stringify({ email: "eve@example.com", password: PW }) });
+    const eve = ((await r.json()) as any).visitor;
+    expect(eve).not.toBe(ada);
+    const [v] = await db`SELECT merged_into FROM conversation.visitor WHERE id = ${ada}`;
+    expect(v.merged_into).toBeNull();
+  });
+
   test("deleting an account ends it, keeps the customer row, and needs the words", async () => {
     const cookie = cookieOf(await post("/login", { email: "ada@example.com", password: PW }));
     expect((await post("", {}, cookie, "DELETE")).status).toBe(400);

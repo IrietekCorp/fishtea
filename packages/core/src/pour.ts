@@ -119,8 +119,14 @@ export function nextChips(spec: Spec, shape: ShapeDef, answer: unknown, args: Re
   return chips;
 }
 
-export function phraseFor(shape: ShapeDef, args: Record<string, unknown>): string {
-  return renderPhrase(shape.phrase, args, shape.asks);
+/**
+ * What an answer is called. Beside its arguments, an answer's phrase may name what it found as `$answer`
+ * (`$answer.product.0.name`), so a trail of product pages reads as products rather than as the shape's
+ * description twice; when that comes out empty (nothing found) it falls back to the description.
+ */
+export function phraseFor(shape: ShapeDef, args: Record<string, unknown>, answer?: unknown): string {
+  if (answer === undefined) return renderPhrase(shape.phrase?.includes("$answer") ? undefined : shape.phrase, args, shape.asks);
+  return renderPhrase(shape.phrase, { ...args, answer }, shape.asks) || shape.asks;
 }
 
 /**
@@ -168,7 +174,7 @@ export function confirmPour(shapeName: string, shape: ShapeDef, known: Record<st
   return { kind: "confirm-write", shape: shapeName, phrase: phraseFor(shape, known), summary, fields: deriveForm(shape), known, ...extra };
 }
 export function answerPour(spec: Spec, shapeName: string, shape: ShapeDef, args: Record<string, unknown>, answer: unknown, provenance: Provenance, persona: string, extra: Partial<AnswerPour> = {}): AnswerPour {
-  return { kind: "answer", shape: shapeName, phrase: phraseFor(shape, args), vessel: vesselFor(shape, spec), answer, next: nextChips(spec, shape, answer, args, persona), provenance, present: resolvePresent(spec as never, shapeName, answer), args, ...extra };
+  return { kind: "answer", shape: shapeName, phrase: phraseFor(shape, args, answer), vessel: vesselFor(shape, spec), answer, next: nextChips(spec, shape, answer, args, persona), provenance, present: resolvePresent(spec as never, shapeName, answer), args, ...extra };
 }
 
 export { vesselFor };

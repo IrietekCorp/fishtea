@@ -94,6 +94,23 @@ export function createServer(opts: ServerOptions) {
     maxAge: 600,
   }));
 
+  const accounts = new Accounts(engine.db, () => engine.app.spec);
+  const ACCOUNT_COOKIE = "fishtea_account", OAUTH_COOKIE = "fishtea_oauth";
+  /**
+   * A browser signed in to an account is that account's visitor, whichever visitor id it presents: the
+   * first request after signing in on a new machine folds that machine's visitor into the account's
+   * (Accounts.adopt), and every answer then carries the account's id, which the client keeps.
+   */
+  app.use("*", async (c, next) => {
+    const token = getCookie(c, ACCOUNT_COOKIE);
+    if (token && accounts.config && !c.req.path.startsWith("/op")) {
+      const presented = c.req.header("x-fishtea-visitor") ?? getCookie(c, COOKIE) ?? c.req.query("visitor") ?? null;
+      const home = await accounts.visitorFor(token, presented).catch(() => null);
+      if (home) c.set("visitor" as never, home as never);
+    }
+    await next();
+  });
+
   const envelopeOf = (c: any) => {
     const q = c.req.query();
     return {
@@ -116,7 +133,7 @@ export function createServer(opts: ServerOptions) {
    * a new exposure, because the client was already putting it there.
    */
   const visitorOf = (c: any): { id: string | null; hadToken: boolean } => {
-    const id = c.req.header("x-fishtea-visitor") ?? getCookie(c, COOKIE) ?? c.req.query("visitor") ?? null;
+    const id = (c.get("visitor") as string | undefined) ?? c.req.header("x-fishtea-visitor") ?? getCookie(c, COOKIE) ?? c.req.query("visitor") ?? null;
     return { id, hadToken: !!id };
   };
   /** Whether the browser reached us over HTTPS: directly, or through a proxy that says so (Traefik, Caddy). */
@@ -275,8 +292,6 @@ export function createServer(opts: ServerOptions) {
   app.route("/op/auth", opAuth);
 
   // ── visitor accounts (accounts.ts): on when spec rules.accounts names an entity ────────────────────
-  const accounts = new Accounts(engine.db, () => engine.app.spec);
-  const ACCOUNT_COOKIE = "fishtea_account", OAUTH_COOKIE = "fishtea_oauth";
   const acct = new Hono();
   acct.use("*", async (c, next) => {
     if (!accounts.config) return c.json({ error: "this application has no accounts" }, 404);
@@ -308,22 +323,28 @@ export function createServer(opts: ServerOptions) {
     const { email, password, name } = await c.req.json().catch(() => ({}));
     const r = await accounts.signUp(email, password, name);
     if (!r.ok) return c.json({ error: r.error }, r.status as any);
-    keep(c, r); await accounts.link(visitorOf(c).id, r.customerId);
-    return c.json({ ok: true });
+    keep(c, r);
+    const visitor = await accounts.adopt(r.customerId, visitorOf(c).id);
+    remember(c, visitor);
+    return c.json({ ok: true, visitor });
   });
   acct.post("/login", async (c) => {
     if (!rateLimit(`account-login:${ipOf(c)}`, opts.loginPerMinute ?? 10)) return c.json({ error: "too many attempts; wait a minute" }, 429);
     const { email, password } = await c.req.json().catch(() => ({}));
     const r = await accounts.signIn(email, password);
     if (!r.ok) return c.json({ error: r.error }, r.status as any);
-    keep(c, r); await accounts.link(visitorOf(c).id, r.customerId);
-    return c.json({ ok: true });
+    keep(c, r);
+    const visitor = await accounts.adopt(r.customerId, visitorOf(c).id);
+    remember(c, visitor);
+    return c.json({ ok: true, visitor });
   });
   acct.post("/logout", async (c) => {
     await accounts.signOut(getCookie(c, ACCOUNT_COOKIE));
     deleteCookie(c, ACCOUNT_COOKIE, { path: "/" });
-    await accounts.link(visitorOf(c).id, null);
-    return c.json({ ok: true });
+    // the account keeps its visitor; this browser starts again as nobody in particular
+    const fresh = await engine.trails.ensureVisitor(null);
+    remember(c, fresh.id);
+    return c.json({ ok: true, visitor: fresh.id });
   });
   acct.post("/password", async (c) => {
     const token = getCookie(c, ACCOUNT_COOKIE), id = await accounts.session(token);
@@ -346,7 +367,9 @@ export function createServer(opts: ServerOptions) {
     if (confirm !== "delete my account") return c.json({ error: 'send { "confirm": "delete my account" }' }, 400);
     await accounts.remove(id);
     deleteCookie(c, ACCOUNT_COOKIE, { path: "/" });
-    return c.json({ ok: true });
+    const fresh = await engine.trails.ensureVisitor(null);
+    remember(c, fresh.id);
+    return c.json({ ok: true, visitor: fresh.id });
   });
   acct.get("/saved", async (c) => {
     const id = await who(c);
@@ -377,7 +400,8 @@ export function createServer(opts: ServerOptions) {
     if (!accounts.googleEnabled || !saved.state || c.req.query("state") !== saved.state || !c.req.query("code")) return back("account=google-failed");
     const r = await accounts.signInWithGoogle(c.req.query("code")!, redirectUri(c));
     if (!r.ok) return back("account=google-failed");
-    keep(c, r); await accounts.link(visitorOf(c).id, r.customerId);
+    keep(c, r);
+    remember(c, await accounts.adopt(r.customerId, visitorOf(c).id));
     return c.redirect(localPath(saved.next));
   });
   app.route("/account", acct);
@@ -434,20 +458,35 @@ export function createServer(opts: ServerOptions) {
       visitorId: c.req.query("visitor") ?? undefined,
     }),
   }));
+  /**
+   * The people who came. By default: not tooling, not anything announcing itself as a bot or a script,
+   * not a passer-by who arrived and did nothing (a link preview, a probe), and not a visitor already
+   * folded into an account's — that one is counted once, as the account, with how many browsers it joined.
+   * ?tools=include and ?all=include bring them back.
+   */
   op.get("/visitors", async (c) => {
     const limit = Math.max(1, Math.min(200, Number(c.req.query("limit") ?? 50) || 50));
     const offset = Math.max(0, Number(c.req.query("offset") ?? 0) || 0);
     const people = c.req.query("tools") !== "include";
+    const everyone = c.req.query("all") === "include";
     const rows = await engine.db`
-      SELECT v.id, v.customer_id, v.created_at, v.last_seen,
-             count(t.id)::int AS trails,
-             bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false)) AS tool,
-             (array_agg(t.envelope->>'userAgent' ORDER BY t.opened_at DESC))[1] AS user_agent,
-             (SELECT count(*)::int FROM conversation.turn u JOIN conversation.trail tt ON tt.id = u.trail_id WHERE tt.visitor_id = v.id) AS turns
-      FROM conversation.visitor v LEFT JOIN conversation.trail t ON t.visitor_id = v.id
-      GROUP BY v.id
-      HAVING ${people} = false OR NOT coalesce(bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false)), false)
-      ORDER BY v.last_seen DESC LIMIT ${limit} OFFSET ${offset}`;
+      SELECT * FROM (
+        SELECT v.id, v.customer_id, v.created_at, v.last_seen,
+               count(t.id)::int AS trails,
+               bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false)) AS tool,
+               (array_agg(t.envelope->>'userAgent' ORDER BY t.opened_at DESC))[1] AS user_agent,
+               (SELECT count(*)::int FROM conversation.turn u JOIN conversation.trail tt ON tt.id = u.trail_id WHERE tt.visitor_id = v.id) AS turns,
+               (SELECT count(*)::int FROM conversation.turn u JOIN conversation.trail tt ON tt.id = u.trail_id WHERE tt.visitor_id = v.id AND u.author = 'visitor') AS said,
+               (SELECT count(*)::int FROM conversation.visitor m WHERE m.merged_into = v.id) AS joined,
+               EXISTS (SELECT 1 FROM fishtea.account a WHERE a.visitor_id = v.id) AS account
+        FROM conversation.visitor v LEFT JOIN conversation.trail t ON t.visitor_id = v.id
+        WHERE v.merged_into IS NULL
+        GROUP BY v.id
+        HAVING ${people} = false OR NOT coalesce(bool_and(t.envelope ? 'tool' OR coalesce(t.envelope->>'utm_campaign' = 'headless', false)), false)
+      ) x
+      WHERE ${everyone} OR x.account OR x.customer_id IS NOT NULL
+         OR (x.said > 0 AND coalesce(x.user_agent, '') !~* '(bot|crawl|spider|curl|wget|python|headless|httpclient|preview|monitor)')
+      ORDER BY x.last_seen DESC LIMIT ${limit} OFFSET ${offset}`;
     return c.json({ visitors: rows });
   });
   op.get("/visitors/:id", async (c) => {

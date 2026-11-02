@@ -11,8 +11,11 @@
  * Actions (contact, remember me) are turns too, but they open *over* the section the visitor was on, so
  * `section` is the last pour that was not an action and `current` is what was said last.
  *
- * The breadcrumb (`crumbs`) is the visit as it happened: one crumb per thing the visitor said or clicked,
- * in order, and it only ever grows. `revisit` reviews a crumb — the trail rewinds to it and its answer is
+ * The breadcrumb (`crumbs`) is not a replay of the path: it is the places that mattered, newest first, as
+ * something to go back to. One crumb per place — a place visited again moves to the front rather than
+ * appearing twice (the same shape with the same arguments, or the same words typed) — and at most
+ * `rules.site.menu.trail.max` of them (12), none older than `trail.hours` (24): older points retire from the
+ * menu but not from the record, which keeps every turn (GET /sessions, /admin → Visitors). `revisit` reviews a crumb — the trail rewinds to it and its answer is
  * shown again, no re-classification and no new crumb — and whatever is said next is appended as a new
  * crumb (the trail branches from the reviewed turn, so the engine answers in that context). The crumbs
  * are the server's record of this visit (GET /sessions), so a reload keeps them.
@@ -25,7 +28,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { resume as arrive, rewind, sessions, subscribe, utter, type Pour, type Response, type Utterance } from "@fishtea/ui/lib/client";
 import { patchPart, type StreamedPart } from "@fishtea/ui/lib/parts";
-import { actions, home, isAction, isSection, labelOf, parentOf, parseLocation, sectionOf, urlFor, type Route } from "./site";
+import { tidy, trailLimits } from "./trail";
+import { actions, home, isAction, isSection, labelOf, menu, parentOf, parseLocation, sectionOf, urlFor, type Route } from "./site";
 
 export interface View { res: Response; route: Route }
 /** A point in the visit: where it went (`title`), which section that is (`section`), and how to get back. */
@@ -47,7 +51,7 @@ export interface Conversation {
   notices: { id: number; text: string }[];
   log: Map<string, Response>;
   crumbs: Crumb[];
-  /** Review a crumb: show that point again without adding to the breadcrumb. */
+  /** Review a crumb: show that point again without adding to the breadcrumb. Newest first (tidyTrail). */
   revisit(turnId: string): void;
   go(shape: string, args?: Record<string, unknown>): void;
   ask(text: string): void;
@@ -105,6 +109,10 @@ function crumbOf(turnId: string, step: number, shape: string | undefined, kind: 
   return { turnId, step, section: title === section ? "" : section, title, typed: false, route, ...about };
 }
 
+const TRAIL = { max: menu.trail?.max, hours: menu.trail?.hours };
+const TRAIL_HOURS = trailLimits(TRAIL).hours;
+const tidyTrail = (cs: Crumb[]) => tidy(cs, TRAIL);
+
 export function useConversation(): Conversation {
   const [current, setCurrent] = useState<View | null>(null);
   const [section, setSection] = useState<View | null>(null);
@@ -122,8 +130,17 @@ export function useConversation(): Conversation {
   /** Append a crumb for a new turn (never twice for the same turn). */
   const addCrumb = useCallback((res: Response, route: Route, text?: string) => {
     routes.current.set(res.turn.id, route);
+    // crumbs are kept newest first: tidyTrail wants them in the order they happened
     setCrumbs((cs) => cs.some((c) => c.turnId === res.turn.id) ? cs
-      : [...cs, crumbOf(res.turn.id, cs.length + 1, shapeOf(res.pour), res.pour.kind, (res.pour as any).phrase, text, route)]);
+      : tidyTrail([...[...cs].reverse(), crumbOf(res.turn.id, 0, shapeOf(res.pour), res.pour.kind, (res.pour as any).phrase, text, route)]));
+  }, []);
+
+  /** Coming back to a place already on the trail: it moves to the front, as if just visited. */
+  const touch = useCallback((turnId: string) => {
+    setCrumbs((cs) => {
+      const k = cs.find((c) => c.turnId === turnId);
+      return k ? tidyTrail([...[...cs].reverse().filter((c) => c !== k), { ...k, at: new Date().toISOString() }]) : cs;
+    });
   }, []);
 
   const [pos, setPos] = useState(posNow);
@@ -238,16 +255,19 @@ export function useConversation(): Conversation {
   /** This visit's crumbs as the core recorded them, so a reload starts where the visitor was. */
   const restoreCrumbs = useCallback(async (): Promise<Crumb[]> => {
     try {
-      const visit = (await sessions(1)).sessions.find((s) => s.current);
-      if (!visit) return [];
-      const turns = [...visit.turns].filter((x) => x.author === "visitor" && !isRoom({ ...(x.utterance ?? {}), shape: x.utterance?.shape })).sort((a, b) => a.seq - b.seq);
+      // the visits still inside the trail's hours, not only this one: the trail is a reference, not a session
+      const since = Date.now() - TRAIL_HOURS * 3600e3;
+      const visits = (await sessions(5)).sessions.filter((v) => v.current || new Date(v.lastAt).getTime() > since);
+      if (!visits.length) return [];
+      const turns = visits.flatMap((v) => v.turns).filter((x) => x.author === "visitor" && !isRoom({ ...(x.utterance ?? {}), shape: x.utterance?.shape })).map((x) => ({ ...x, at: x.revisitedAt && x.revisitedAt > x.at ? x.revisitedAt : x.at }))
+        .sort((a, b) => a.at.localeCompare(b.at) || a.seq - b.seq);
       const restored = turns.map((x, i) => {
         const u = x.utterance ?? {};
         const route: Route = { shape: x.shape ?? undefined, args: (u.known ?? u.args ?? {}) as Record<string, string> };
         routes.current.set(x.id, route);
         return crumbOf(x.id, i + 1, x.shape ?? undefined, x.kind, x.phrase, typeof u.text === "string" ? u.text : undefined, route, x.at);
       });
-      setCrumbs((cs) => [...restored, ...cs.filter((c) => !restored.some((r) => r.turnId === c.turnId))].map((c, i) => ({ ...c, step: i + 1 })));
+      setCrumbs((cs) => tidyTrail([...restored, ...[...cs].reverse().filter((c) => !restored.some((r) => r.turnId === c.turnId))]));
       return restored;
     } catch { return []; /* no history to show: the breadcrumb starts with this visit's first turn */ }
   }, []);
@@ -293,7 +313,7 @@ export function useConversation(): Conversation {
       // a link to a place this visit has already been: show that point again rather than asking twice
       const here = [...restored].reverse().find((k) => samePlace(k.route, route));
       if (deepLink && !route.action && here) {
-        try { await reshow(here.turnId, route, "replace"); return; } catch { /* fall through and ask */ }
+        try { await reshow(here.turnId, route, "replace"); touch(here.turnId); return; } catch { /* fall through and ask */ }
       }
       if (deepLink) {
         await send({ shape: route.shape!, args: route.args, submit: true }, "replace");
@@ -306,7 +326,7 @@ export function useConversation(): Conversation {
       show({ res, route: { shape: leftOff, args: knownArgs(res.pour) } }, "replace");
       setResumed(true);
     })();
-  }, [send, show, reshow, restoreCrumbs]);
+  }, [send, show, reshow, restoreCrumbs, touch]);
 
   /** Browser Back/Forward: rewind the trail to the turn that history entry recorded. */
   useEffect(() => {
@@ -337,6 +357,7 @@ export function useConversation(): Conversation {
    */
   const revisit = async (turnId: string) => {
     setResumed(false);
+    touch(turnId);
     const route = routes.current.get(turnId) ?? { shape: home, args: {} };
     const p = ledgerIndexOf(turnId), q = posNow();
     if (p === q) {

@@ -9,7 +9,7 @@ import spec from "@app/spec.json";
 export interface Section { shape: string; label: string }
 export interface Action { shape: string; label: string }
 export interface Logo { src: string; alt?: string; height?: number; footerHeight?: number }
-interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: (string | { label: string; shape: string; args?: Record<string, unknown> })[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask" }; social?: Record<string, string> }
+interface SiteRules { home: string; sections: Section[]; parents: Record<string, string>; actions: Record<string, Action>; suggestions?: (string | { label: string; shape: string; args?: Record<string, unknown> })[]; copy?: { ask?: string; cta?: { title?: string; lead?: string; label?: string } }; brand?: { logo?: Logo }; menu?: { layout?: "card" | "flush"; suggestions?: "fill" | "ask"; trail?: { max?: number; hours?: number } }; social?: Record<string, string> }
 
 const rules = (spec as any).rules.site as SiteRules;
 const shapes = (spec as any).shapes as Record<string, { asks: string; input: Record<string, unknown>; effect?: string }>;
@@ -21,7 +21,7 @@ export const actions = rules.actions;
 /** The business's logo (`rules.site.brand.logo`), drawn where the shell would otherwise set its name in type. */
 export const logo: Logo | null = rules.brand?.logo ?? null;
 /** How the Ask anything menu is worn (`rules.site.menu`): a floating card or the flush band, and what a chip does. */
-export const menu = { layout: rules.menu?.layout ?? "card", suggestions: rules.menu?.suggestions ?? "fill" } as const;
+export const menu = { layout: rules.menu?.layout ?? "card", suggestions: rules.menu?.suggestions ?? "fill", trail: rules.menu?.trail ?? {} } as const;
 /** One of the business's other profiles: the network, what to call it, and where it is. */
 export interface Profile { network: string; label: string; url: string }
 const NETWORKS: Record<string, string> = { linkedin: "LinkedIn", x: "X", instagram: "Instagram", github: "GitHub", youtube: "YouTube", facebook: "Facebook", email: "Email" };

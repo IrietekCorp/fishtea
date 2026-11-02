@@ -16,7 +16,14 @@
  * sha256, 30 days. The visitor id is not a credential for this — it travels in headers and, for
  * EventSource, in URLs — so it is never enough to read a profile. Signing in also sets the visitor's
  * `customer_id`, which is what makes the conversation treat them as a customer (persona, personal
- * answers); signing out clears it.
+ * answers).
+ *
+ * **One person, one visitor.** An account has its own visitor (`fishtea.account.visitor_id`), and every
+ * browser it signs in on uses that one (`adopt`): what the browser did before signing in is folded into it
+ * (TrailService.merge), so a person on a laptop, a phone and a work machine is one visitor with one history,
+ * not three. Signing out leaves the account's visitor as it is and gives the browser a fresh, anonymous one,
+ * so the next person at that machine is nobody in particular. A visitor that is another account's is never
+ * folded into this one.
  *
  * Google: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the environment turn it on. The id token is taken
  * from Google's token endpoint over TLS with our secret, so its signature need not be checked again
@@ -29,7 +36,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { members, type Spec, type EntityDef } from "@fishtea/spec";
 import type { Db } from "./db/index.ts";
-import { newId } from "./trail/index.ts";
+import { newId, TrailService } from "./trail/index.ts";
 import { snake } from "./calls/index.ts";
 
 export const ACCOUNT_DAYS = 30;
@@ -93,6 +100,49 @@ export class Accounts {
     await this.db`INSERT INTO fishtea.account_session (token_hash, customer_id, expires_at) VALUES (${sha(token)}, ${customerId}, ${expires})`;
     await this.db`DELETE FROM fishtea.account_session WHERE expires_at < now()`;
     return { token, expires };
+  }
+
+  /**
+   * The account's own visitor, folding in the one this browser presented (and any other visitor still
+   * linked to the customer from before accounts had one). Returns the id the browser should use from now.
+   */
+  async adopt(customerId: string, presented: string | null): Promise<string> {
+    return this.db.begin(async (tx: any) => {
+      const [a] = await tx`SELECT visitor_id FROM fishtea.account WHERE customer_id = ${customerId} FOR UPDATE`;
+      const live = async (id: string | null | undefined) =>
+        !!id && (await tx`SELECT 1 FROM conversation.visitor WHERE id = ${id} AND merged_into IS NULL`).length > 0;
+      // the presented visitor joins only if it is nobody else's: anonymous, or already this customer
+      const [p] = presented ? await tx`SELECT id FROM conversation.visitor v WHERE id = ${presented} AND merged_into IS NULL
+        AND (customer_id IS NULL OR customer_id = ${customerId})
+        AND NOT EXISTS (SELECT 1 FROM fishtea.account x WHERE x.visitor_id = v.id AND x.customer_id <> ${customerId})` : [];
+      let home: string | null = a && (await live(a.visitor_id)) ? a.visitor_id : null;
+      if (!home) {
+        const [first] = await tx`SELECT id FROM conversation.visitor WHERE customer_id = ${customerId} AND merged_into IS NULL ORDER BY created_at LIMIT 1`;
+        home = first?.id ?? p?.id ?? null;
+      }
+      if (!home) { home = newId("v"); await tx`INSERT INTO conversation.visitor (id) VALUES (${home})`; }
+      const others = await tx`SELECT id FROM conversation.visitor WHERE merged_into IS NULL AND id <> ${home}
+        AND (customer_id = ${customerId} OR id = ${p?.id ?? null})`;
+      if (others.length) await new TrailService(this.db).merge(others.map((r: any) => r.id), home, tx);
+      await tx`UPDATE conversation.visitor SET customer_id = ${customerId}, last_seen = now() WHERE id = ${home}`;
+      if (a) await tx`UPDATE fishtea.account SET visitor_id = ${home} WHERE customer_id = ${customerId}`;
+      return home;
+    });
+  }
+
+  /**
+   * For a request carrying an account session: the visitor it should be, adopting on the way when the
+   * browser presented another. Null when the session is not a live one. The common case is one query.
+   */
+  async visitorFor(token: string | undefined | null, presented: string | null): Promise<string | null> {
+    if (!token) return null;
+    const [r] = await this.db`SELECT s.customer_id, a.visitor_id, (v.id IS NOT NULL) AS live
+      FROM fishtea.account_session s JOIN fishtea.account a ON a.customer_id = s.customer_id
+      LEFT JOIN conversation.visitor v ON v.id = a.visitor_id AND v.merged_into IS NULL
+      WHERE s.token_hash = ${sha(token)} AND s.expires_at > now()`;
+    if (!r) return null;
+    if (r.live && r.visitor_id === presented) return presented;
+    return this.adopt(r.customer_id, presented);
   }
 
   /** The visitor becomes this customer in the conversation (persona, personal answers). */
@@ -186,6 +236,7 @@ export class Accounts {
     const clear = this.config!.profile.filter((f) => f in fields && f !== "id" && f !== "email" && (typeof fields[f] === "string" ? fields[f].includes("?") : fields[f].optional));
     if (clear.length) await this.db.unsafe(`UPDATE ${this.table} SET ${clear.map((f) => `"${snake(f)}" = NULL`).join(", ")} WHERE id = $1`, [customerId]);
     await this.db`UPDATE conversation.visitor SET customer_id = NULL WHERE customer_id = ${customerId}`;
+    // the account's visitor stays (its history is the business's record) but is nobody's any more
     await this.db`DELETE FROM fishtea.account WHERE customer_id = ${customerId}`;
   }
 

@@ -37,13 +37,17 @@ export function Visitors({ parts, go }: { parts: string[]; go: Go }) {
 
 function VisitorList({ go }: { go: Go }) {
   const [tools, setTools] = useState(false);
+  const [all, setAll] = useState(false);
   const [offset, setOffset] = useState(0);
-  const { data, error } = useLoad(() => getVisitors({ tools, offset }), [tools, offset]);
+  const { data, error } = useLoad(() => getVisitors({ tools, all, offset }), [tools, all, offset]);
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div><h1 className="text-2xl font-black tracking-tight">Visitors</h1><p className="text-sm text-muted-foreground">Newest first. A visitor is recognised on return by a cookie and by the id their browser keeps.</p></div>
+        <div><h1 className="text-2xl font-black tracking-tight">Visitors</h1><p className="max-w-2xl text-sm text-muted-foreground">Newest first. A browser is recognised on return by a cookie and by the id it keeps; an account is one visitor on every browser it signs in on. Passers-by (arrived, did nothing) and bots are left out.</p></div>
+        <div className="flex flex-col gap-1">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={all} onChange={(e) => { setOffset(0); setAll(e.target.checked); }} className="accent-[var(--accent)]" />include passers-by and bots</label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={tools} onChange={(e) => { setOffset(0); setTools(e.target.checked); }} className="accent-[var(--accent)]" />include tooling (headless, checks, tests)</label>
+        </div>
       </div>
       {error ? <Err text={error} /> : !data ? <Loading /> : (
         <div className="overflow-x-auto rounded border border-border">
@@ -57,7 +61,12 @@ function VisitorList({ go }: { go: Go }) {
                   <td className="p-3 tabular-nums">{v.trails}</td>
                   <td className="p-3 tabular-nums">{v.turns}</td>
                   <td className="p-3 text-muted-foreground">{browser(v.user_agent)}</td>
-                  <td className="p-3">{v.customer_id ? <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-black uppercase text-accent-foreground">known</span> : v.tool ? <span className="text-xs text-muted-foreground">tool</span> : null}</td>
+                  <td className="whitespace-nowrap p-3">
+                    {v.account ? <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-black uppercase text-accent-foreground">account</span>
+                      : v.customer_id ? <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-black uppercase text-accent-foreground">known</span>
+                      : v.tool ? <span className="text-xs text-muted-foreground">tool</span> : null}
+                    {!!v.joined && <span className="ml-2 text-xs text-muted-foreground">{v.joined + 1} browsers</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
