@@ -1,4 +1,4 @@
-# FishTea — Build Blueprint
+# FishTea: Build Blueprint
 
 **Version 1.0 · 2026-09-21 · for a Claude CLI build session**
 
@@ -13,7 +13,7 @@
 - **Sections 1–3** are the *why* and the decisions already made. Do not relitigate them; they came out of a long design conversation with the owner.
 - **Sections 4–13** are the *what*, pinned concretely: file tree, the spec JSON format, the Postgres schema, the planner algorithm, the classifier service contract, the vessel vocabulary, security, accessibility, performance, Compose, TUI.
 - **Section 14** is the build order with acceptance tests per phase.
-- **Section 15** lists known unknowns — things this document could not verify. Validate them *first*.
+- **Section 15** lists known unknowns, things this document could not verify. Validate them *first*.
 - `reference/` in this package is a working spike (Bun, sqlite, lexical classifier, seven vessels). It is not the product; it is proof of the ground/water loop and a source of code to lift. Section 16 maps it.
 
 Words used precisely throughout:
@@ -40,15 +40,15 @@ FishTea (2006, PHP/XML/Smarty) described a problem in markup and grew the ORM, t
 
 Those constraints are gone. This version delivers the original imagination:
 
-1. **Describe once, derive everything.** A JSON spec describes the business — not just inventory but pricing, tax, transactions, billing, invoicing, compliance, capabilities. The data layer, the API, the classifier's tool list, the forms and the UI derive from it. Advanced operators edit it by hand; the TUI, a future conversational authoring layer, or a CLI are all just editors of the same JSON.
+1. **Describe once, derive everything.** A JSON spec describes the business: not just inventory but pricing, tax, transactions, billing, invoicing, compliance, capabilities. The data layer, the API, the classifier's tool list, the forms and the UI derive from it. Advanced operators edit it by hand; the TUI, a future conversational authoring layer, or a CLI are all just editors of the same JSON.
 2. **No routes.** Intent classification replaces routing. There are no URLs to memorize and no funnel to re-walk. The shape names *are* the routes, and the classifier picks them.
 3. **The application works with no UI.** Consumer payloads in, business payloads out. The interface is a function callback into a design system, provably the last and thinnest layer.
 4. **State is a point in a conversation.** Not a bookmarkable object. The trail is rewindable and branchable, and it never dies.
-5. **The homepage is a summary of where the conversation is.** First visit: a greeting shaped by arrival metadata. Return visit: the resumed conversation — the cart, the three outfits you were comparing, the payment offer relevant *because of where you are*. Same code path.
+5. **The homepage is a summary of where the conversation is.** First visit: a greeting shaped by arrival metadata. Return visit: the resumed conversation, the cart, the three outfits you were comparing, the payment offer relevant *because of where you are*. Same code path.
 6. **Personalisation is the conversation, not the profile.** Not colours and dark mode; not a flattened attribute list; the richness of what has been said. This also reframes analytics: the session is the conversation and the conversation is the customer record.
 7. **Two-way.** The engine informs the consumer of what's available and the business of what was asked and couldn't be answered. A failed classification is demand signal, not an error.
 
-The talk that prompted the resurrection ("Quantum UI") argues the same split from the design side and ends on *what has to stay fixed: governance, permissions, who can see what.* That is the ground. FishTea makes it a list you can read — the spec — rather than a policy you hope a model follows.
+The talk that prompted the resurrection ("Quantum UI") argues the same split from the design side and ends on *what has to stay fixed: governance, permissions, who can see what.* That is the ground. FishTea makes it a list you can read, the spec, rather than a policy you hope a model follows.
 
 ---
 
@@ -66,7 +66,7 @@ The talk that prompted the resurrection ("Quantum UI") argues the same split fro
 | D8 | **Docker Compose is the whole orchestration.** Build step only. **No deploy step, no cloud dependency, no credential management.** | Focus on the differentiated part. Deployment targets can become TUI options later. |
 | D9 | **Postgres as its own Compose service with a volume**, not baked into the app image. | Lifts out to any managed Postgres later without a rewrite. |
 | D10 | **Design system: shadcn/ui (React + Tailwind + Radix)**, pinned. Vessels map to components. | Accessible primitives once; seven vessels, not infinite generated screens. |
-| D11 | **Notifications are turns.** Authored by the system or the operator, visible to both parties, delivered over SSE. | "A way to get someone's attention that something needs doing" — part of the conversation, not a side channel. |
+| D11 | **Notifications are turns.** Authored by the system or the operator, visible to both parties, delivered over SSE. | "A way to get someone's attention that something needs doing" is part of the conversation, not a side channel. |
 | D12 | **TUI is an editor and control surface over the spec**: onboarding, live edit, restart, regenerate a *section*. Operator actions are themselves shapes with an operator-scoped registry. | Same engine pointed at itself; no second system. |
 | D13 | **Two sample specs: ChicDuJour (fashion co-shopper) and AI Explorer Camp (kids' AI program).** | Far apart on purpose. If both derive from the same spec format and engine, the framework is real. |
 | D14 | **Edge/core split at the payload boundary**: edge renders and captures; core classifies and composes. | needle needs the trail and the catalogue, which live next to Postgres. |
@@ -411,7 +411,7 @@ Rules: business tables are **regenerated by migration** when `entities.version` 
 
 **Envelope.** `GET /` and the first `POST /utter` carry whatever the visit brought: referrer, UTM fields, coupon, cookie, an issued URL token, user agent, locale. The parser accepts only `envelope.accept` keys, length-limits and pattern-validates each (a coupon is `^[A-Z0-9-]{3,32}$`), and stores the result on the trail. **Every envelope field is attacker-controlled** and is never interpolated into SQL or into text the classifier sees without escaping.
 
-**Identity resolution:** issued URL token → cookie → nothing. Resolves to a `visitor.id`; if `visitor.customer_id` is set the persona can reach `customer`. The empty case (no cookie, no token) is the `stranger` persona — a persona defined by what is missing, not a blank state.
+**Identity resolution:** issued URL token → cookie → nothing. Resolves to a `visitor.id`; if `visitor.customer_id` is set the persona can reach `customer`. The empty case (no cookie, no token) is the `stranger` persona, a persona defined by what is missing, not a blank state.
 
 **Persona** is evaluated on every utterance from the trail + identity using the spec's `personas` predicates (a tiny expression language: `identity.*`, `trail.has(shape|event, window?)`, boolean ops). The persona filters the shapes into the tool list *before* classification and decides the greeting.
 
@@ -446,9 +446,9 @@ plan(shape, args, visitor):
   provenance = { shape, calls: [{id, call, ms}], read: tables read, wrote: tables written, at, records }
 ```
 
-Call executors: `sql` (prepared statement, parameters only — never string-built), `compute` (a TypeScript module exporting `(input, ctx) => output`), `external` (HTTP with an allowlist and timeout; not used by the two samples). `transaction: true` on a mutation wraps that step in a Postgres transaction. Rules are applied inside compute calls (`tax.quote`) and by the planner's write gate (§12); the classifier never evaluates a rule.
+Call executors: `sql` (prepared statement, parameters only, never string-built), `compute` (a TypeScript module exporting `(input, ctx) => output`), `external` (HTTP with an allowlist and timeout; not used by the two samples). `transaction: true` on a mutation wraps that step in a Postgres transaction. Rules are applied inside compute calls (`tax.quote`) and by the planner's write gate (§12); the classifier never evaluates a rule.
 
-**Compound requests.** The classifier may return several `function_calls`. Pour handles them in order of confidence: if the top is a shape whose plan already composes the others (as `bridgeStyles` does), take it alone; otherwise run the top shape and offer the rest as `next[]`. A general multi-shape composer is deliberately *out of scope* for v1 — shapes compose calls, and that is where compound questions are expressed. Record this as an open question (§15).
+**Compound requests.** The classifier may return several `function_calls`. Pour handles them in order of confidence: if the top is a shape whose plan already composes the others (as `bridgeStyles` does), take it alone; otherwise run the top shape and offer the rest as `next[]`. A general multi-shape composer is deliberately *out of scope* for v1, because shapes compose calls, and that is where compound questions are expressed. Record this as an open question (§15).
 
 ---
 
@@ -470,7 +470,7 @@ Core-side rules:
 - Budget: `rules.classify.budgetMs` (default **60 ms** end-to-end from core's perspective, including transport). Exceeded → cancel and pour `ask` (or `form` if `current` shape is obvious). Never wait past budget.
 - Confidence floor: `rules.classify.floor` (default 0.35). Below → `ask`.
 - Empty `function_calls` → `ask`, and the turn is recorded `answered=false` (unmet).
-- Strict mode (`FISHTEA_STRICT=1`): pool unhealthy → pour a `notification` turn "One moment — getting things ready" with a retry affordance; never answer from the lexical classifier.
+- Strict mode (`FISHTEA_STRICT=1`): pool unhealthy → pour a `notification` turn "One moment, getting things ready" with a retry affordance; never answer from the lexical classifier.
 - Dev mode (`FISHTEA_INTENT=lexical`): the lexical classifier from `reference/` runs in-process. Used by tests and the benchmark baseline only. The UI shows the classifier name in the meta line so nobody mistakes it for the product.
 
 The sidecar in `reference/src/intent/needle_sidecar.py` is the starting point: it already turns JSON-Schema tool specs into typed `@needle.tool` functions. **Validate the real `cactus-needle` API before anything else** (§15).
@@ -493,7 +493,7 @@ The answer schema picks the vessel. Deterministic; the model never chooses. Over
 | pour kind `ask` | **ask** | `Command`-style option list of shapes as chips (`Badge` buttons) |
 | `notification` turns | **notice** | `Toast`/`Sonner` + an inline row above the vessel |
 
-The container (`ui/src/container.tsx`) has one input, the understood-line (phrase + confidence dot), the vessel, the **verify strip** (provenance: shape, read, wrote, records, time — writes in accent colour), and `next[]` chips. Field-level treatments are by *name* (`price` → money, `imageUrl` → image, `heat`/`rating` → glyphs), never by shape. The UI has no knowledge of any entity.
+The container (`ui/src/container.tsx`) has one input, the understood-line (phrase + confidence dot), the vessel, the **verify strip** (provenance: shape, read, wrote, records, time, with writes in accent colour), and `next[]` chips. Field-level treatments are by *name* (`price` → money, `imageUrl` → image, `heat`/`rating` → glyphs), never by shape. The UI has no knowledge of any entity.
 
 Client behaviour: debounce 250 ms on input; sequence numbers so a stale pour never overwrites a newer one; chips and forms post structured utterances; SSE subscription for notifications; the visitor token in a cookie; `aria-live="polite"` region announces each pour's phrase (§12).
 
@@ -518,7 +518,7 @@ The claim is "faster than a conventional multi-page implementation of the same t
 | core cold start to first pour | ≤ 2 s |
 | pool cold start (model load) | ≤ 5 s |
 
-**Harness** (`packages/bench`): `bun bench` runs a fixed script of 40 utterances (stranger → known → bridge → cart → checkout → status) against a Compose stack, 200 iterations, reports p50/p95/p99 per metric, writes `bench/results/<date>.json`, and diffs against `bench/baseline.json`. **Baseline to beat:** `bench/conventional/` — a minimal multi-page Hono app doing the same task with routes and full page loads; the harness scripts it with Playwright and reports task-completion time and bytes transferred alongside FishTea's numbers.
+**Harness** (`packages/bench`): `bun bench` runs a fixed script of 40 utterances (stranger → known → bridge → cart → checkout → status) against a Compose stack, 200 iterations, reports p50/p95/p99 per metric, writes `bench/results/<date>.json`, and diffs against `bench/baseline.json`. **Baseline to beat:** `bench/conventional/`, a minimal multi-page Hono app doing the same task with routes and full page loads; the harness scripts it with Playwright and reports task-completion time and bytes transferred alongside FishTea's numbers.
 
 **Design levers already in the architecture:** no navigation round-trips; needle sized for per-keystroke; planner concurrency; prepared statements; persona-filtered tool lists (fewer tools → faster classification); embeddings and recall off the hot path (recall runs concurrently with classification and is dropped if it misses budget); SSE instead of polling; the client holds no state to rehydrate.
 
@@ -526,7 +526,7 @@ The claim is "faster than a conventional multi-page implementation of the same t
 
 ## 12. Security and accessibility
 
-**Security — the specific risk here is that utterances become actions.**
+**Security: the specific risk here is that utterances become actions.**
 1. **Authorization before classification.** The tool list handed to the classifier is filtered by persona `allow`. A capability the visitor may not use is never in their toolset; there is nothing to inject into.
 2. **Writes always confirm.** `effect: "write"` shapes pour `confirm-write` regardless of confidence (`rules.writes.confirmAlways`), and the submitted form is validated against the input schema server-side again.
 3. **Envelope is untrusted.** Allowlisted keys, length and pattern validation, stored as data, escaped before entering classifier context.
@@ -535,10 +535,10 @@ The claim is "faster than a conventional multi-page implementation of the same t
 6. **Classifier context is bounded**: last *k* turns (default 6), each truncated; recalled turns are labelled as prior context. The model's output is validated against the input schema before use; `reasoning` is logged, never shown to visitors.
 7. Boring but mandatory: rate limit `/utter` per visitor; CSRF on the cookie'd form posts; HTTPS terminated by whatever fronts Compose (out of scope); secrets via env only.
 
-**Accessibility — a property of the architecture, not a pass at the end.**
+**Accessibility: a property of the architecture, not a pass at the end.**
 - Seven vessels built once on Radix primitives means keyboard navigation, focus management and ARIA roles are solved per vessel, not per screen. This is the direct answer to the "quieter cost" the talk warns about.
 - Each pour announces its phrase through an `aria-live="polite"` region; `form` pours move focus to the first empty required field; `confirm-write` uses a proper `AlertDialog` with focus trap.
-- The per-keystroke re-pour is *not* announced on every keystroke — only when the vessel kind or shape changes, or on submit — to avoid screen-reader flooding.
+- The per-keystroke re-pour is *not* announced on every keystroke, only when the vessel kind or shape changes, or on submit, to avoid screen-reader flooding.
 - Colour never carries meaning alone (confidence dot has text; write provenance is bold *and* coloured). Tokens support light/dark and `prefers-reduced-motion` disables the pour transition.
 - The headless mode is itself an accessibility affordance: the entire product is usable as JSON over HTTP, so any assistive front end can be built on it.
 
@@ -578,10 +578,10 @@ volumes: { pgdata: {}, models: {} }
 
 `bun run up` = `docker compose up --build`. `bun run tui` attaches the console. There is no deploy target. The `models` volume is the one network-dependent step (first pull of the weights from Hugging Face); document it, and support `NEEDLE_MODEL_PATH` for an offline copy.
 
-**TUI** (`packages/tui`, Bun + a terminal UI library — use `@clack/prompts` for flows and `ink` if a persistent screen is wanted; keep it small). Three jobs, all expressed as operator shapes over the same core:
-1. **Onboard** — walk an operator through a new spec: business basics, pick a starting template (`specs/templates/commerce.json`, `specs/templates/program.json` derived from the two samples), entities, a first shape. Writes `specs/<id>.spec.json`.
-2. **Edit** — pick a section, open it in `$EDITOR` or answer scoped prompts, validate, bump that section's version, hot-reload (entities changes prompt for a migration and a restart).
-3. **Run** — status of the three services, restart core, regenerate a section, tail the unmet channel (`op.unmetReport`), send an operator notification.
+**TUI** (`packages/tui`, Bun + a terminal UI library; use `@clack/prompts` for flows and `ink` if a persistent screen is wanted, and keep it small). Three jobs, all expressed as operator shapes over the same core:
+1. **Onboard.** Walk an operator through a new spec: business basics, pick a starting template (`specs/templates/commerce.json`, `specs/templates/program.json` derived from the two samples), entities, a first shape. Writes `specs/<id>.spec.json`.
+2. **Edit.** Pick a section, open it in `$EDITOR` or answer scoped prompts, validate, bump that section's version, hot-reload (entities changes prompt for a migration and a restart).
+3. **Run.** Status of the three services, restart core, regenerate a section, tail the unmet channel (`op.unmetReport`), send an operator notification.
 
 ---
 
@@ -589,32 +589,32 @@ volumes: { pgdata: {}, models: {} }
 
 Build in this order. Each phase has a test that must pass before the next begins. Prefer lifting code from `reference/` where it fits.
 
-**Phase 0 — Validate unknowns (½ day).** Install `cactus-needle`, load needle3, run a tool call and an embedding. Confirm the response fields (`function_calls`, `confidence`, whether embeddings are exposed). Record findings in `packages/classifier/contract.md`. Confirm `pgvector` image and `bun:ffi` are not needed yet. *Accept:* a script prints a real classification for "move my Italian suit look toward Japanese minimal, under $80".
+**Phase 0, validate unknowns (½ day).** Install `cactus-needle`, load needle3, run a tool call and an embedding. Confirm the response fields (`function_calls`, `confidence`, whether embeddings are exposed). Record findings in `packages/classifier/contract.md`. Confirm `pgvector` image and `bun:ffi` are not needed yet. *Accept:* a script prints a real classification for "move my Italian suit look toward Japanese minimal, under $80".
 
-**Phase 1 — Spec + loader + derive (1 day).** JSON Schema, loader, `derive.ts` producing DDL, tool specs, forms, vessels. Both sample specs validate. *Accept:* `bun run derive specs/chicdujour.spec.json` prints DDL for five tables and eight tool specs; `aiexplorercamp.spec.json` derives with zero code changes.
+**Phase 1, spec + loader + derive (1 day).** JSON Schema, loader, `derive.ts` producing DDL, tool specs, forms, vessels. Both sample specs validate. *Accept:* `bun run derive specs/chicdujour.spec.json` prints DDL for five tables and eight tool specs; `aiexplorercamp.spec.json` derives with zero code changes.
 
-**Phase 2 — Postgres + migrations + calls (1 day).** Compose `db`, migration runner, business schema generation, conversation schema, prepared-statement executors, seed data for both samples. *Accept:* `SELECT count(*) FROM business.product` > 0; `conversation.unmet` view exists.
+**Phase 2, Postgres + migrations + calls (1 day).** Compose `db`, migration runner, business schema generation, conversation schema, prepared-statement executors, seed data for both samples. *Accept:* `SELECT count(*) FROM business.product` > 0; `conversation.unmet` view exists.
 
-**Phase 3 — Headless core (2 days).** Trail service, persona, planner, pour, provenance, lexical classifier in dev mode. *Accept:* `bun run headless` runs the 40-utterance script for ChicDuJour and prints pours; `bridgeStyles` shows two calls in provenance with the second depending on the first; a bare "check out" as `stranger` yields `form` for `becomeKnown`, not `checkout`; the write shape pours `confirm-write`; rewind to turn 12 and a new utterance creates a branch.
+**Phase 3, headless core (2 days).** Trail service, persona, planner, pour, provenance, lexical classifier in dev mode. *Accept:* `bun run headless` runs the 40-utterance script for ChicDuJour and prints pours; `bridgeStyles` shows two calls in provenance with the second depending on the first; a bare "check out" as `stranger` yields `form` for `becomeKnown`, not `checkout`; the write shape pours `confirm-write`; rewind to turn 12 and a new utterance creates a branch.
 
-**Phase 4 — Classifier service (1 day).** Python pool, `/classify`, `/embed`, `/reload`, budgets, strict mode, embeddings on turns, `recall()`. *Accept:* headless script passes with `FISHTEA_INTENT=needle`; killing the pool mid-script yields `ask` pours within budget, never lexical answers; a second trail for the same visitor gets a recalled turn in classifier context when the utterance resonates.
+**Phase 4, classifier service (1 day).** Python pool, `/classify`, `/embed`, `/reload`, budgets, strict mode, embeddings on turns, `recall()`. *Accept:* headless script passes with `FISHTEA_INTENT=needle`; killing the pool mid-script yields `ask` pours within budget, never lexical answers; a second trail for the same visitor gets a recalled turn in classifier context when the utterance resonates.
 
-**Phase 5 — HTTP + notifications (1 day).** Hono routes, SSE, homepage-as-resume, envelope parsing, rate limits. *Accept:* `curl -H 'Referer: ...' -b coupon=SPRING10 /` returns the stranger greeting; after a cart add, `GET /` returns the cart answer; an operator notification appears on the visitor's SSE stream as a turn.
+**Phase 5, HTTP + notifications (1 day).** Hono routes, SSE, homepage-as-resume, envelope parsing, rate limits. *Accept:* `curl -H 'Referer: ...' -b coupon=SPRING10 /` returns the stranger greeting; after a cart add, `GET /` returns the cart answer; an operator notification appears on the visitor's SSE stream as a turn.
 
-**Phase 6 — UI (2 days).** Vite + React + shadcn, seven vessels, container, verify strip, live region. *Accept:* Playwright walkthrough (lift `reference/` walkthrough): stranger → find → outfit → known → cart → checkout → timeline; axe-core reports zero serious violations on every vessel; light and dark screenshots.
+**Phase 6, UI (2 days).** Vite + React + shadcn, seven vessels, container, verify strip, live region. *Accept:* Playwright walkthrough (lift `reference/` walkthrough): stranger → find → outfit → known → cart → checkout → timeline; axe-core reports zero serious violations on every vessel; light and dark screenshots.
 
-**Phase 7 — TUI (1 day).** Onboard, edit, run. *Accept:* create a third spec from the `program` template in under five prompts; edit `rules.pricing.freeShippingOver` and see it hot-reload without restart; entity edit prompts for migration.
+**Phase 7, TUI (1 day).** Onboard, edit, run. *Accept:* create a third spec from the `program` template in under five prompts; edit `rules.pricing.freeShippingOver` and see it hot-reload without restart; entity edit prompts for migration.
 
-**Phase 8 — Bench (1 day).** Harness, budgets in CI, conventional baseline. *Accept:* `bun bench` produces the table in §11 with every budget green on the reference machine, and reports FishTea vs conventional task-completion time.
+**Phase 8, bench (1 day).** Harness, budgets in CI, conventional baseline. *Accept:* `bun bench` produces the table in §11 with every budget green on the reference machine, and reports FishTea vs conventional task-completion time.
 
-**Phase 9 — ChicDuJour refactor (open-ended).** Inspect the existing chicdujour repo; migrate its catalogue and intent into `specs/chicdujour.spec.json`; keep what fits the mood-driven co-shopper (mood equaliser as `findAccessories.mood`, trend signals as a `products.trending` call, engagement reactions as a write shape). The AI Explorer Camp spec (sessions, enrolment, scholarships, device loans, parent notifications) must keep deriving unchanged as the check that nothing became fashion-specific.
+**Phase 9, ChicDuJour refactor (open-ended).** Inspect the existing chicdujour repo; migrate its catalogue and intent into `specs/chicdujour.spec.json`; keep what fits the mood-driven co-shopper (mood equaliser as `findAccessories.mood`, trend signals as a `products.trending` call, engagement reactions as a write shape). The AI Explorer Camp spec (sessions, enrolment, scholarships, device loans, parent notifications) must keep deriving unchanged as the check that nothing became fashion-specific.
 
 ---
 
-## 15. Known unknowns — validate first
+## 15. Known unknowns, validate first
 
 1. **needle3's actual API surface.** This document was written without running the weights (blocked in the design sandbox). The `function_calls / reasoning / confidence` shape comes from the model card; whether `/embed` is exposed through `cactus-needle` and at what dimension (768 assumed) must be confirmed in Phase 0. If embeddings are unavailable, use a small sentence-transformer in the same pool and keep the contract.
-2. **needle3 with 8–10 tools and persona filtering.** Accuracy on the compound `bridgeStyles` case vs. two separate calls. If it prefers separate calls, keep `bridgeStyles` and add a `next[]` for the second half — do *not* build a general composer in v1.
+2. **needle3 with 8–10 tools and persona filtering.** Accuracy on the compound `bridgeStyles` case vs. two separate calls. If it prefers separate calls, keep `bridgeStyles` and add a `next[]` for the second half; do *not* build a general composer in v1.
 3. **General multi-shape composition** is out of scope. Shapes compose calls; that is where compound questions live. Revisit after Phase 9 if real utterances demand it.
 4. **Per-keystroke classification load** at scale: the pool is CPU-bound; measure requests/sec per worker in Phase 8 and document the worker count formula.
 5. **Familiarity threshold** (0.82) is a guess. Tune against the 40-utterance script with a second trail.
@@ -628,13 +628,13 @@ Build in this order. Each phase has a test that must pass before the next begins
 |---|---|---|
 | `src/ground/shape.ts` | `defineShape`, `inferVessel` rules | `core/src/vessel.ts` (same rules), spec `answer` → vessel |
 | `src/ground/registry.ts` | shapes → JSON-Schema tool specs via `z.toJSONSchema` | `spec/src/derive.ts` |
-| `src/ground/db.ts` | Zod object → table, `touched` provenance tracking | `core/src/db` (Postgres) — keep `touched` |
+| `src/ground/db.ts` | Zod object → table, `touched` provenance tracking | `core/src/db` (Postgres), keeping `touched` |
 | `src/intent/classifier.ts` | the `Classifier` interface | unchanged |
 | `src/intent/needle_sidecar.py` | JSON-Schema → typed `@needle.tool` functions | `classifier/needle_service.py` |
 | `src/intent/lexical.ts` | dev baseline, vocabulary matching, context carry | `core/src/classify/lexical.ts` (dev only) |
 | `src/water/pour.ts` | ask / form / answer, form fields from schema, provenance | `core/src/pour.ts` (+ confirm-write, trail append) |
 | `public/container.js`, `tokens.css` | seven vessels, verify strip, understood line, chips | re-expressed in React + shadcn |
-| `domain/*` | a spec written as TypeScript — what §5 replaces with JSON | delete after Phase 1 |
+| `domain/*` | a spec written as TypeScript, what §5 replaces with JSON | delete after Phase 1 |
 
 Run it: `cd reference && bun install && bun run dev` → http://localhost:3000 → type "jerk pork vs pepper pot", then "order" while looking at a menu.
 

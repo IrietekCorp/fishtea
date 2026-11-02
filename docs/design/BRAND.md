@@ -1,38 +1,40 @@
-Fishtea is a web framework: describe a business once in `spec.json`, derive everything else. The backend is **solid ground**; the interface is **water** that takes the shape of whatever question is being asked. The identity is dark wood and warm ivory, with the green and gold of the logo held back as accents. Three rules: **earth first, colour last**; **hairlines and one low shadow, never outlines**; **seven vessels, never a page**.
+Fishtea is a web framework: describe a business once in `spec.json`, derive everything else. The backend is **solid ground**; the interface is **water** that takes the shape of whatever question is being asked. The identity is deep slate and cool ivory, with one mint accent and one amber signal held back for meaning. Three rules: **ground first, colour last**; **hairlines, no shadow at rest**; **seven vessels, never a page**.
 
 ## Voice and content
 
 - Plain, calm, second person. "What do you need?" not "Enter your query". "A few more details and I can answer that." not "Required fields missing."
-- The product's own words, lowercase in running text: **spec**, **shape**, **call**, **vessel**, **pour**, **trail**, **utterance**, **envelope**, **persona**.
-- Sentence case. No exclamation marks. No emoji; the cup mark is the only illustration.
+- The product's own words, lowercase in running text: **spec**, **shape**, **call**, **vessel**, **pour**, **trail**, **utterance**, **envelope**, **persona**, **echo**.
+- Sentence case. No exclamation marks. No emoji; the cup mark is the only illustration, and it appears as an icon rather than as a drawing.
 - Name the thing that answered. Every answer ends with its provenance in `mono-small`: *`placeOrder` answered · read vendor, dish · wrote order · 1:10 PM*. A write is never silent — *wrote* is set in `broth-ink`.
 - Errors come from the ground and say so in its words, in `danger`, inside the form that lets you reshape the question.
 - Tagline: *solid ground, liquid UI*. Headline: *Describe a business once. Derive everything else.*
+- Money is in US dollars in every example, and the catalogue examples are priced in whole dollars.
 
 ## Color
 
-- **Ebony** is the primary theme: `ground` near-black walnut, `pot` one shade up, `tan` one more. **Oak** is the light theme, sanded and warm. Every token has both; Ebony is listed first.
-- Surfaces stack by shade, not by line: ground → pot → tan, each edged with a 1px `line` hairline and lifted with `shadow-low`. Never a 2px outline, never a hard shadow.
-- Text: `ink` (ivory on Ebony), `ink-2`, `ink-3` (not on `tan`). All ≥ 4.5:1 on their grounds in both themes.
-- **Green** is the accent for what is settled and what is primary: the one filled button on a screen, the confidence dot at high, done steps, the active nav bar (`accent-bar`), links in `green-ink`, *read* in provenance. Two green things on one screen is one too many.
-- **Gold** is rarer still — the moment: focus ring on Ebony, the notice badge, the confidence dot at mid, *Shaping…* in `gold-ink`. Fill only. If gold appears twice on a screen, remove one.
-- **Amber** (`broth`) is money and consequence: price badges; `broth-ink` for prices as text and for *wrote*.
-- **Wood** and `wood-2` are the marketing accents: hero bands, the header, the cover. They are surfaces, not text.
+- **Slate** is the primary theme: `ground` near-black with a blue cast, `pot` one step up, `tan` one more. **Daylight** is the light theme, cool paper rather than warm. Every token has both; Slate is listed first.
+- Surfaces stack by shade, not by line: ground → pot → tan, each edged with a 1px `line` hairline. **Nothing floats at rest** — `shadow-low` resolves to nothing, and `shadow-mid` is reserved for hover and for the moment a vessel pours.
+- Text: `ink`, `ink-2`, `ink-3`. All three clear 4.5:1 on ground, pot **and** tan in both themes — `ink-3` on `tan` measures 4.60:1 on Slate and 4.74:1 on Daylight, which is the one thing the old warm ramp could not do.
+- **Green** (a mint, `#2fb894` / `#0a7357`) is the accent for what is settled and what is primary: the one filled button on a screen, the confidence dot at high, done steps, the active nav bar (`accent-bar`), links in `green-ink`, *read* in provenance. Two green things on one screen is one too many.
+- **Gold** (amber) is rarer still — the moment: the notice badge, the confidence dot at mid, *Shaping…* in `gold-ink`. Fill only on Daylight, where it is never text. If it appears twice on a screen, remove one.
+- **Broth** is money and consequence: price badges; `broth-ink` for prices as text and for *wrote*. It is a warmer orange than gold, so the two never read as the same signal.
+- **Focus** is the accent in both themes: a 2px ring in a colour that appears nowhere else on a focused control.
+- **Wood** and `wood-2` are the band: the hero plank and any one panel that steps out of the page. They are surfaces, not text. The names survive the walnut they replaced; the values are now a shade of the ground, which is why the band needs no per-theme substitution.
 - No gradients. No translucent overlays over content. No coloured left borders on cards — the `accent-bar` is for a selected row only.
 
 ## Type
 
-- One family. **Manrope** 700 with −0.02em tracking for `display-xl`, `display-lg` and the vessel `title`; Manrope 400/600 for text. Hosted on Google Fonts.
-- `body-lg` for the mouth, `body` inside vessels, `small` for row subtext and chips, `key` uppercase 600 at 0.08em in `ink-3` above facts.
-- `JetBrains Mono` for `mono` (CLI, spec) and `mono-small` (the verify strip, the meta line).
+- Two faces from one family tree. **Inter Tight** 600 for `display-xl`, `display-lg` and the vessel `title`, cut tight (−0.035em at display size); **Inter** 400/500/600 for text. Hosted on Google Fonts.
+- `body-lg` for the mouth, `body` inside vessels, `small` for row subtext and chips, `key` uppercase 600 at 0.12em in `ink-3` above facts — wider tracking than the text it labels, because it is a label and not a word.
+- `JetBrains Mono` for `mono` (CLI, spec) and `mono-small` (the verify strip, the understood line, the meta line).
 
 ## Layout and shape
 
-- One column, max 720px; `space-4` gutters on phones; `space-5` between the mouth, the understood line, the vessel, the verify strip and the chips. Marketing pages widen to 1120px on a 12-column grid.
-- Radii: `radius-sm` badges and fields, `radius-md` vessels and buttons, `radius-lg` marketing panels, `radius-pill` chips.
-- Depth: `hairline` in `line` on everything raised, `shadow-low` at rest, `shadow-mid` on hover and while pouring. Buttons press by darkening 6%, not by moving.
+- One column, max 720px; `space-4` gutters on phones; `space-5` between the mouth, the understood line, the vessel, the verify strip and the chips. Marketing pages widen to 1140px.
+- Radii are tight: `radius-sm` 4px for badges and fields, `radius-md` 6px for vessels and buttons, `radius-lg` 10px for marketing panels, `radius-pill` for chips.
+- Depth: `hairline` in `line` on everything raised, and nothing else at rest. `shadow-mid` on hover and while pouring. Buttons press by darkening 6%, not by moving.
 - Focus: `outline: 2px solid var(--focus); outline-offset: 2px`.
-- Motion: the vessel *pours* on `pour` timing — opacity, an 8px rise, a 1.5% scale-in. Chips and buttons transition colour on `quick`. Nothing else moves. Honour `prefers-reduced-motion`.
+- Motion: the vessel *pours* on `pour` timing — opacity, an 8px rise, a 1.5% scale-in. The mouth's caret blinks. Chips and buttons transition colour on `quick`. Nothing else moves. Honour `prefers-reduced-motion`.
 
 ## The vessels
 
@@ -53,6 +55,13 @@ Around every vessel: `Mouth` above, `Understood` between, `VerifyStrip` below, `
 
 ## Iconography and imagery
 
-- No icon set. The confidence dot, the check in `Confirm`, timeline dots and the steam are CSS or inline SVG in token colours, 1.5px strokes.
-- The wordmark is flat type, `assets/Logos/fishtea-wordmark-A-dark.svg` on Ebony and wood, `-A-light.svg` on Oak: "fish" in `ink`, "tea" in `green`, no outline. It is the header brand at 28–36px and the hero at up to 120px. The cup mark (`fishtea-cup-mark.png`) is the app icon, the favicon and the hero illustration. Never recolour either; never place them on green or gold.
+- No icon set. The confidence dot, the check in `Confirm`, timeline dots and the caret are CSS or inline SVG in token colours, 1.5px strokes.
+- **The mark is a cup whose lower two-thirds is a wave**: the claim in the first paragraph, drawn — a solid vessel, and a liquid that takes its shape. It is real geometry, in `logo-mark.svg` (Slate) and `logo-mark-light.svg` (Daylight), with the rim and handle in `ink` and the liquid in the accent. `icon.svg` is the same mark on its own slate ground, for a browser tab or a home screen where the surface behind it is not ours to choose.
+- **Every size comes from that geometry**, not from a resample: `bun scripts/brand-assets.ts` writes the three SVGs and then the favicons, the app icon and the raster marks. The drawing it replaced had no vector at all, so a 28px header mark was a 945px cartoon squeezed down — which is why the mark used to be banned from the header and is welcome there now.
+- **There are two cuts of the mark, because 16px is not a small 32px.** The full cut is the drawing. The small cut drops the handle and takes the stroke from 2.1 to 3.2, recentred on the bowl alone and scaled to fill; it is used for the 16px favicon and nothing else. At 16px the 2.1 stroke lands on a single device pixel and greys out, and a handle reads as dirt beside the cup rather than as a handle. Both cuts come out of the same `BOWL` and `LIQUID` paths, so they can never drift apart.
+- **The hero mark is the largest thing above the headline** — 128px, stepping to 88px under 48rem. A mark at the size of a bullet is decoration; the hero is the one place it is allowed to simply be the mark.
+- The wordmark is flat type, `wordmark-dark.svg` on Slate and `wordmark-light.svg` on Daylight: "fish" in `ink`, "tea" in the accent, no outline. The lockup is the mark at 30px, `space-2`, then the wordmark at 32px.
+- Never recolour either; never place either on the accent. The cup's liquid is the only place the accent appears inside a mark.
+- A marketing page demonstrates the product as well as wearing the mark: the hero carries the mark at 64px above the headline, and a **console** beside it — a visitor's words, the understood line, a vessel that poured and the chips that follow — in the product's own tokens.
+- The original cartoon artwork is kept in `docs/design/fishtea-logo.png` and `fishtea-logo-transparent.png`. It is history, not a source; nothing in `site/static/img/` derives from it any more.
 - Product imagery sits at `radius-sm` with a `hairline` edge.

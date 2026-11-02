@@ -1,4 +1,4 @@
-# FishTea — what the build measured and changed
+# FishTea: what the build measured and changed
 
 This file records where the implementation deviates from `BLUEPRINT.md`, and why. Every deviation is backed by a measurement taken during the build on 2026-09-21 (Linux x86-64, CPU only, `cactus-needle 3.0.4`). The classifier engine has since moved to 3.2.8 and the confidence floor to 0; `packages/classifier/contract.md` Phases 5–8 carry the later measurements, and where they contradict a note here, they are newer.
 
@@ -18,7 +18,7 @@ Full contract: `packages/classifier/contract.md`.
 ## Design decisions made during the build
 
 - **Application directory** is the unit, not a single `spec.json`: `spec.json` + `calls/` (SQL and compute modules the spec names) + `seed/` + `rules/` + `scripts/`.
-- **Archetypes, not samples.** The blueprint's D13 samples (Chic du Jour, AI Explorer Camp) were used as *problem spaces* to design the onboarding, not shipped as templates. `templates/` holds generic archetypes — ecommerce (with vendor feed adapters: mock, CSV, eBay, HTTP), portfolio (dynamic interview), verification (consent → attestation → minimal disclosure), program, blank — each with an `onboard.json` interview whose answers patch spec paths, enum vocabularies, seed rows or template-specific consequences (affiliate-only removes the cart shapes and the mid-purchase persona). Both D13 checks still hold: every archetype derives, migrates, seeds and runs its walkthrough on the same engine (`templates.test.ts`).
+- **Archetypes, not samples.** The blueprint's D13 samples (Chic du Jour, AI Explorer Camp) were used as *problem spaces* to design the onboarding, not shipped as templates. `templates/` holds generic archetypes: ecommerce (with vendor feed adapters: mock, CSV, eBay, HTTP), portfolio (dynamic interview), verification (consent → attestation → minimal disclosure), program, blank. Each carries an `onboard.json` interview whose answers patch spec paths, enum vocabularies, seed rows or template-specific consequences (affiliate-only removes the cart shapes and the mid-purchase persona). Both D13 checks still hold: every archetype derives, migrates, seeds and runs its walkthrough on the same engine (`templates.test.ts`).
 - **Generated applications** carry their own `docker-compose.yml` (framework image built from `FISHTEA_HOME`, app dir mounted at `/app`) and a `fishtea.ts` shim that runs the framework CLI, so `bun run tui | dev | up` work with nothing to install. Bun's `link:` needs a registered name and `file:` copies the tree without its dependencies, so neither was usable for a local framework checkout.
 - **`known` is what the visit brought.** `identity.cookie` is read from the trail's envelope (captured when the trail opened), not from the per-request token, otherwise every second request would be "known". A new trail opens after `rules.trail.sessionGapHours` (default 4) and is seeded with the previous head, so the return-visit homepage is the resumed conversation.
 - **The gate.** When a stranger says "check out", `checkout` is not in their toolset, so the classifier returns nothing. The engine then scores the hidden shapes lexically (a routing heuristic, not classification; the model never saw the shape) and pours a `form` for the greeting's first offered write shape the persona *can* use (`becomeKnown`), with a hint. Only greeting offers can be gates.
@@ -42,15 +42,15 @@ Full contract: `packages/classifier/contract.md`.
 | POST /utter, structured (chip/form/confirm) | 12 ms | 16 ms | 60 |
 | GET / resume | 6 ms | 12 ms | 100 |
 
-100/100 text utterances answered (the bench counts pour kinds so a fast `ask` cannot pass as a fast answer). The whole scripted task (10 requests, 32 KB of JSON) takes 1.3 s p50; the classifier is ~90 % of it. The conventional baseline as scripted (24 requests, 467 KB) measures server time only — no browser parse or render — so it is not yet the task-completion comparison the blueprint asks for; a Playwright run of `bench/conventional` is the remaining step. Warm-up matters: a cold worker switching subsets costs 0.7–3.7 s depending on machine load, and the first bench run after a reload showed every text utterance timing out until the pool had settled; `/reload` now warms in the background, one worker at a time.
+100/100 text utterances answered (the bench counts pour kinds so a fast `ask` cannot pass as a fast answer). The whole scripted task (10 requests, 32 KB of JSON) takes 1.3 s p50; the classifier is ~90 % of it. The conventional baseline as scripted (24 requests, 467 KB) measures server time only, with no browser parse or render, so it is not yet the task-completion comparison the blueprint asks for; a Playwright run of `bench/conventional` is the remaining step. Warm-up matters: a cold worker switching subsets costs 0.7–3.7 s depending on machine load, and the first bench run after a reload showed every text utterance timing out until the pool had settled; `/reload` now warms in the background, one worker at a time.
 
 ## The operator console is Ink, not a prompt library
 
 The blueprint suggested "@clack/prompts for flows and ink if a persistent screen is wanted". The first build
 used clack and was unusable: **under Bun, `node:readline` echoes every keystroke**, so typing `hello` rendered
 `hheelllloo` and the prompt resolved `undefined`. Measured with a pty harness (`packages/tui/test/pty-drive.py`):
-`process.stdin.setRawMode(true)` works correctly under Bun on its own, and Ink — which reads stdin directly and
-never touches readline — takes the same keystrokes cleanly. So the console is [Ink](https://github.com/vadimdemedes/ink)
+`process.stdin.setRawMode(true)` works correctly under Bun on its own, and Ink, which reads stdin directly and
+never touches readline, takes the same keystrokes cleanly. So the console is [Ink](https://github.com/vadimdemedes/ink)
 (React for terminals, the same mental model as `packages/ui`), rendered as a persistent screen in the terminal's
 alternate buffer.
 
@@ -58,7 +58,7 @@ What that bought, beyond correct typing:
 
 - A standing frame: service dots for core, classifier and database refreshing every five seconds, and a spec
   version in the header, so the operator always knows what they are pointed at.
-- Five screens on number keys — Dashboard, Spec, Conversations, Run, Onboard — instead of a prompt tree that has
+- Five screens on number keys (Dashboard, Spec, Conversations, Run, Onboard) instead of a prompt tree that has
   to be re-walked from the top after every action.
 - Conversations reads the trail store directly, so visitors, their turns and the unmet channel are visible with
   the core offline.
@@ -90,7 +90,7 @@ classifier is only a warning, because the core still runs and pours `ask`. `fish
 
 `fishtea new` used to resolve its target against the current directory, so running it inside the framework
 checkout nested the application in fishtea's own git history. The target is now `--dir`, else
-`--workspace`/`FISHTEA_WORKSPACE`, else the current directory — and a directory inside the framework is refused
+`--workspace`/`FISHTEA_WORKSPACE`, else the current directory, and a directory inside the framework is refused
 outright with the three ways out. The default id is `myapp`. The console asks where the directory should go.
 
 ## What a clean `docker compose up` needed
@@ -103,7 +103,7 @@ all now fixed and, where testable, covered:
   now, which is also what someone editing a generated file wants to read. A test parses both.
 - **The core container ran Vite.** `Dockerfile.core` has two stages and the `core` service set no `target:`,
   so Docker built the *last* stage. Stages are named `base`, `core`, `ui`, and both services name their target.
-- **PostgreSQL 18 refuses a mount at `/var/lib/postgresql/data`** — it keeps data in a major-version
+- **PostgreSQL 18 refuses a mount at `/var/lib/postgresql/data`.** It keeps data in a major-version
   subdirectory so `pg_upgrade --link` can work, and wants the volume one level up at `/var/lib/postgresql`.
 - **Three classifier workers raced to download the same weights** and the service never became healthy. The
   ~70 MB engine and weights are baked into the image at build time, so a container starts offline and every
@@ -112,7 +112,7 @@ all now fixed and, where testable, covered:
 Running the stack also showed the ecommerce archetype's search was too literal. needle drops a whole phrase
 into `text` and invents a `category` the catalogue does not have ("linen" is a tag here, not a category), and the
 query returned nothing. It now matches text word by word, and treats `category`, `brand` and `tag` as hard
-filters **only when the catalogue actually contains that value** — otherwise the guess becomes one more search
+filters **only when the catalogue actually contains that value**; otherwise the guess becomes one more search
 word. Price stays a hard filter, because a budget is a promise. Against the live stack, six representative
 utterances all answer, including the two the classifier got partly wrong.
 
@@ -123,7 +123,7 @@ credentialed request may not be answered with a wildcard. On one machine nothing
 the core were same-origin enough in practice; the moment the UI was opened at `http://10.10.10.19:5173` every
 request failed the preflight.
 
-The origin is reflected now, not starred — and because reflecting *anything* would let any site make
+The origin is reflected now, not starred, and because reflecting *anything* would let any site make
 credentialed calls, only origins on a hostname this core answers on are echoed back. That covers the UI on
 another port of the same machine with no configuration, which is the common case. `FISHTEA_CORS_ORIGINS` names
 others explicitly, comma separated, or `*` to reflect anything. Five tests cover the allowed, refused,
@@ -138,5 +138,5 @@ The blueprint pins `pgvector/pgvector:pg16`. The stack runs **`pgvector/pgvector
 
 1. Per-keystroke classification load at scale: measured single-stream only. The pool is CPU-bound; `NEEDLE_WORKERS` ≈ cores/2 is a guess.
 2. Familiarity threshold 0.82: untuned. The needle test asserts a recall happens, not that it is well-calibrated.
-3. Small-model quirks: bare verbs ("check out") return low confidence or a hallucinated argument; "my email is …" as a customer maps to whichever visible shape has an email field. Persona filtering helps, `triggers` and input `doc` strings help, and fine-tuning on the spec's own utterances turned out to be the one lever that moves accuracy and latency together (+5 of 56, `docs/TUNING.md`). The confidence floor does *not* absorb any of it — measured against a labelled set, wrong routes sit inside the distribution of correct ones, so the floor now ships at 0 (contract.md Phase 8).
+3. Small-model quirks: bare verbs ("check out") return low confidence or a hallucinated argument; "my email is …" as a customer maps to whichever visible shape has an email field. Persona filtering helps, `triggers` and input `doc` strings help, and fine-tuning on the spec's own utterances turned out to be the one lever that moves accuracy and latency together (+5 of 56, `docs/TUNING.md`). The confidence floor does *not* absorb any of it: measured against a labelled set, wrong routes sit inside the distribution of correct ones, so the floor now ships at 0 (contract.md Phase 8).
 4. Playwright + axe walkthrough of the UI is written as a manual checklist in `packages/ui/e2e/README.md`; no browser was available in the build environment.

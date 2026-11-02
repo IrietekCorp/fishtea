@@ -21,12 +21,12 @@ The product grid rendered each item with its first six fields. A shopper saw `ve
 
 It never showed the price.
 
-Not because of a bug in the price logic — there was no price logic. The card took
+Not because of a bug in the price logic. There was no price logic. The card took
 `Object.entries(row).slice(0, 6)`: the first six keys *in the order the entity happened to declare them*.
 `price` is the tenth field on a product. It never made the cut, on any product, ever.
 
 The fix was to rank fields by how interesting they are rather than by declaration order, using names and
-value shapes only — the UI is not allowed to know what a product is. Prices sort to the top; foreign keys,
+value shapes only: the UI is not allowed to know what a product is. Prices sort to the top; foreign keys,
 audit timestamps and objects sort to the bottom and fall off the end. A record that has *nothing* but
 identifiers still shows them, because an order confirmation needs that.
 
@@ -35,7 +35,7 @@ identifiers still shows them, because an order confirmation needs that.
 This one was worse, and it is the kind of bug a type system cannot see.
 
 react-hook-form treats a dot in a field name as a **path**. Registering `shipTo.line1` produces nested
-state — `{ shipTo: { line1 } }` — not a flat key. The code that turned form values back into arguments
+state, `{ shipTo: { line1 } }`, not a flat key. The code that turned form values back into arguments
 read `values["shipTo.line1"]`, got `undefined`, and skipped it as empty.
 
 Every address line was dropped. Checkout submitted an address containing nothing but its country default,
@@ -47,7 +47,7 @@ integration bugs live and exactly where unit tests are not looking.
 
 ## The form that ate its own fields
 
-Submit checkout without a city, and the server — correctly — drops empty values from what it echoes back.
+Submit checkout without a city, and the server correctly drops empty values from what it echoes back.
 The form rendered its sub-fields from whatever keys came back. So the city input **disappeared**, and
 there was no way to ever supply one. The form had made itself impossible to complete.
 
@@ -57,13 +57,13 @@ An address now always offers its full set of lines regardless of what came back.
 
 Fields showed an asterisk and the word "Required". Neither was real: `register(..., { required })` is
 validation inside the form library and sets no DOM attribute, so there was no `aria-required` for a
-screen reader to find. And the library's own validation errors were never rendered — so submitting an
+screen reader to find. And the library's own validation errors were never rendered, so submitting an
 incomplete form did *nothing at all*, with no message, and no explanation of why the button seemed dead.
 
 ## The notification stream that never came back
 
 `EventSource` retries a dropped connection by itself, which is why nobody notices this. It gives up
-permanently once the stream reaches `CLOSED` — which is what happens when the server restarts underneath
+permanently once the stream reaches `CLOSED`, which is what happens when the server restarts underneath
 an open page.
 
 There was no `onerror` handler. Restart the core with a tab open, and that tab was silently deaf to every
@@ -72,7 +72,7 @@ stopped seeing updates.
 
 ## Four type errors nobody could see
 
-`packages/ui` was excluded from the typechecker. Inside it, four instances of `unknown && <JSX>` — which
+`packages/ui` was excluded from the typechecker. Inside it, four instances of `unknown && <JSX>`, which
 is both a type error and a rendering trap, because a field that happens to be `0` renders a literal "0"
 rather than being skipped.
 
@@ -83,7 +83,7 @@ consequence.
 
 Three of the seven were caught by **unit tests written afterwards**, not by clicking. That is the useful
 observation. Once you know react-hook-form nests dotted names, you can test it in twelve lines with no
-browser at all — and that test will still be there in a year, which a manual pass will not.
+browser at all, and that test will still be there in a year, which a manual pass will not.
 
 Clicking found the bugs. Tests are what keep them found. The UI now has both, and the browser pass is
 headless so it can run where there is no screen.

@@ -138,7 +138,7 @@ interface Turn {
 }
 ```
 
-Every field comes from what Fishtea already records per turn: the utterance, the shape and args from needle3, the vessel the planner picked, and the provenance. `short` and `summary` can be templated per shape in `spec.json` (e.g. `findProducts` → "{count} pieces, £{min} to £{max}").
+Every field comes from what Fishtea already records per turn: the utterance, the shape and args from needle3, the vessel the planner picked, and the provenance. `short` and `summary` can be templated per shape in `spec.json` (e.g. `findProducts` → "{count} pieces, ${min} to ${max}").
 
 ## 5. Tokens
 

@@ -140,7 +140,7 @@ interface Page {
   landing?: boolean;
 }
 
-const NAV_GROUPS = ["Start", "Operating", "Reference", "Design", "Project"] as const;
+const NAV_GROUPS = ["Start", "Built with it", "Operating", "Reference", "Design", "Project"] as const;
 
 /**
  * A documentation page: the section list, the article, and a rail of the article's own h2s.
@@ -189,7 +189,7 @@ function layout(page: Page, pages: Page[]): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(page.title)}${page.landing ? "" : " — FishTea"}</title>
+<title>${esc(page.title)}${page.landing ? "" : " · FishTea"}</title>
 <meta name="description" content="Describe a business once in JSON; derive the database, the classifier's tools, the planner, the UI and the operator console from it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -212,7 +212,8 @@ function layout(page: Page, pages: Page[]): string {
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
   <a class="brand" href="${href("")}" aria-label="FishTea">
-    <img class="cup" src="${root}static/img/logo-mark.png" srcset="${root}static/img/logo-mark.png 1x, ${root}static/img/logo-mark@2x.png 2x" alt="" width="34" height="32">
+    <img class="cup on-ebony" src="${root}static/img/logo-mark.svg" alt="" width="30" height="30">
+    <img class="cup on-oak" src="${root}static/img/logo-mark-light.svg" alt="" aria-hidden="true" width="30" height="30">
     <img class="wordmark on-ebony" src="${root}static/img/wordmark-dark.svg" alt="FishTea" width="97" height="39">
     <img class="wordmark on-oak" src="${root}static/img/wordmark-light.svg" alt="" aria-hidden="true" width="97" height="39">
   </a>
@@ -234,7 +235,7 @@ ${isDoc ? docsMain(page, side) : `<main id="main">${page.body()}</main>`}
 })();
 </script>
 <footer class="bottom"><div class="wrap">
-  <span>FishTea ${VERSION} — solid ground, liquid UI.</span>
+  <span>FishTea ${VERSION} · solid ground, liquid UI.</span>
   <span><a href="${href("welcome")}">Docs</a> · <a href="${href("blog")}">Blog</a> · <a href="${href("about")}">About</a></span>
 </div></footer>
 </body>
@@ -245,14 +246,14 @@ ${isDoc ? docsMain(page, side) : `<main id="main">${page.body()}</main>`}
 // ---- the landing page ----------------------------------------------------------------------------
 function landing(): string {
   const archetypes: [string, string][] = [
-    ["ecommerce", "A catalogue, a cart, orders — and vendor feeds, so stock can come from somewhere else."],
+    ["ecommerce", "A catalogue, a cart, orders, and vendor feeds, so stock can come from somewhere else."],
     ["portfolio", "A person you can interview: skills, projects, an honest assessment of fit."],
     ["verification", "Consent, attestation, and disclosure limited to the purpose asked for."],
     ["program", "Sessions and registration: capacity, ages, sibling discounts, scholarships."],
     ["blank", "One entity, one read, one write. Start here when nothing else fits."],
   ];
   const seams: [string, string][] = [
-    ["integration", "Calls, entities and shapes — Stripe, a frontier model, a shipping quote."],
+    ["integration", "Calls, entities and shapes: Stripe, a frontier model, a shipping quote."],
     ["ui", "A design system: tokens, and optionally its own vessels."],
     ["auth", "How a visitor becomes known."],
     ["classifier", "An alternative to the on-device needle pool."],
@@ -263,59 +264,85 @@ function landing(): string {
   // for exactly one of them to carry the wood accent — so SPEC, the thing everything else derives from.
   const concepts: [string, string, string, string][] = [
     ["spec", "SPEC", "One file", "A business described once: entities, shapes, calls, rules, personas. Everything below is derived from it, and nothing may contradict it."],
-    ["shape", "SHAPE", "A question it answers", "Not a route. A shape is something a visitor may ask, with typed arguments — which is also, exactly, a tool the classifier can choose."],
+    ["shape", "SHAPE", "A question it answers", "Not a route. A shape is something a visitor may ask, with typed arguments, which is also, exactly, a tool the classifier can choose."],
     ["call", "CALL", "A typed step", "SQL or a compute module, declared with its inputs and outputs. The planner composes calls; the model never writes one."],
-    ["vessel", "VESSEL", "Where the answer pours", "Seven shapes of answer — list, card, detail, form, confirm, timeline, note. Never a page; the vessel is chosen by the answer."],
+    ["vessel", "VESSEL", "Where the answer pours", "Seven shapes of answer: list, card, detail, form, confirm, timeline, note. Never a page; the vessel is chosen by the answer."],
   ];
 
   return `
 <div class="hero"><div class="wrap">
   <div>
+    <img class="hero-mark on-ebony" src="static/img/logo-mark.svg" alt="" width="128" height="128">
+    <img class="hero-mark on-oak" src="static/img/logo-mark-light.svg" alt="" aria-hidden="true" width="128" height="128">
     <p class="tag">solid ground, liquid UI</p>
     <h1>Describe a business once.<br>Derive everything else.</h1>
     <p class="lede">
       One <code>spec.json</code> gives you the Postgres schema, the classifier's tool list, the planner, the
-      UI and an operator console. Conversation replaces routing: a small on-device model turns what a
-      visitor says into a <strong>shape</strong>, the planner composes typed <strong>calls</strong>, and the
-      answer pours into one of seven <strong>vessels</strong>.
+      UI, visitor accounts and an operator console. Conversation replaces routing: a small on-device model
+      turns what a visitor says into a <strong>shape</strong>, the planner composes typed
+      <strong>calls</strong>, and the answer pours into one of seven <strong>vessels</strong>.
     </p>
     <div class="cta">
       <a class="btn" href="beta.html">Apply for access</a>
       <a class="btn ghost" href="welcome.html">Read the argument</a>
     </div>
     <p class="stack">FishTea ${VERSION}, in closed beta. The binary and the source come with the
-    invitation — <a href="welcome.html">start with Welcome</a> to see whether it is for you.</p>
+    invitation. <a href="welcome.html">Start with Welcome</a> to see whether it is for you.</p>
     <p class="stack">Bun · PostgreSQL + pgvector · needle3 on device · React. No cloud model in the hot path.</p>
   </div>
-  <div class="hero-art">
-    <img src="static/img/logo-mark@2x.png" alt="" width="256" height="242">
+  <!-- The product, not a picture of it: a visitor's words, what the classifier made of them, the vessel
+       that poured, and the chips that follow. Decorative to a screen reader, since the same turn is written
+       out in full, as text, in the section immediately below. -->
+  <div class="console" aria-hidden="true">
+    <div class="console-bar">
+      <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+      <span class="what">a shop, described once</span>
+    </div>
+    <div class="console-body">
+      <p class="said">something linen for a summer wedding, under $80</p>
+      <p class="understood"><span class="dot high"></span> findProducts · fabric: linen · occasion: wedding · max: 80</p>
+      <div class="vessel pour">
+        <h4>Three that fit</h4>
+        <div class="row"><span class="name">Ravello linen shirt</span><span class="price">$68</span></div>
+        <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">ships Thu</span></div>
+        <hr class="rule">
+        <div class="row"><span class="name">Bari linen trouser</span><span class="price">$74</span></div>
+        <div class="row"><span class="meta">sand · two left</span><span class="meta">ships Thu</span></div>
+        <p class="verify"><span class="read">read</span> products, stock · 41 ms · shape findProducts</p>
+      </div>
+      <div class="chips">
+        <span class="chip">warmer tones</span>
+        <span class="chip">under $60</span>
+        <span class="chip">ships this week</span>
+      </div>
+    </div>
   </div>
 </div></div>
 
 <section><div class="wrap">
-  <p class="key">Try it — the answer shapes itself</p>
+  <p class="key">Try it: the answer shapes itself</p>
   <h2>One turn, end to end</h2>
   <p class="sub">What a visitor types, what the classifier understood, what poured, and the provenance
   underneath it. Every part of this is derived; none of it is a page.</p>
   <div class="demo">
     <div>
-      <p class="mouth">something linen for a summer wedding, under £80</p>
+      <p class="mouth">something linen for a summer wedding, under $80</p>
       <p class="understood"><span class="dot high"></span> findProducts · fabric: linen · occasion: wedding · max: 80</p>
       <p class="post-meta">The classifier picks a shape and fills its arguments. Below the budget it asks
-      instead of guessing — never a dumber model.</p>
+      instead of guessing, never a dumber model.</p>
     </div>
     <div class="vessel">
       <h4>Three that fit</h4>
-      <div class="row"><span class="name">Ravello linen shirt</span><span class="price">£68</span></div>
+      <div class="row"><span class="name">Ravello linen shirt</span><span class="price">$68</span></div>
       <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">ships Thu</span></div>
-      <hr style="border:0;border-top:var(--hairline) solid var(--line);margin:var(--space-3) 0">
-      <div class="row"><span class="name">Bari linen trouser</span><span class="price">£74</span></div>
+      <hr class="rule">
+      <div class="row"><span class="name">Bari linen trouser</span><span class="price">$74</span></div>
       <div class="row"><span class="meta">sand · two left</span><span class="meta">ships Thu</span></div>
       <p class="verify"><span class="read">read</span> products, stock · 41 ms · shape findProducts</p>
     </div>
     <div>
       <p class="mouth">not those, something warmer</p>
-      <p class="understood shaping"><span class="dot mid"></span> same shape, next turn — tone: warm</p>
+      <p class="understood shaping"><span class="dot mid"></span> same shape, next turn · tone: warm</p>
       <p class="post-meta">A refinement is not a filter control. It is the next thing said, and the trail
       keeps both turns so the visitor can rewind to either.</p>
     </div>
@@ -325,11 +352,11 @@ function landing(): string {
 <section><div class="wrap">
   <h2>A business is not a set of pages. It is an authority that answers questions.</h2>
   <p class="sub">A shoe store is a place where you can ask anything about shoes. That is the whole
-  definition — and none of it requires a page.</p>
+  definition, and none of it requires a page.</p>
   <div class="split">
     <div>
-      <p>Software is assembled from modules built for everyone, so every variation — a different customer,
-      tier, market or permission — becomes conditional logic draped over something generic. That is
+      <p>Software is assembled from modules built for everyone, so every variation (a different customer,
+      tier, market or permission) becomes conditional logic draped over something generic. That is
       inherited, not careless: we store data in rows and columns, so we build software in the shape of
       that storage, and anything not uniform arrives late as a layer bolted on top. It shows up most
       painfully in the URL, a string we have spent two decades forcing to act like a memory.</p>
@@ -344,7 +371,7 @@ function landing(): string {
         <li><strong>Search is not a result set to filter.</strong> The search <em>is</em> the question, and
         what comes back is an opportunity to ignore or to go deeper.</li>
         <li><strong>Personalisation stops being a layer.</strong> If the interaction <em>is</em> the
-        conversation, every surface is already personal — by what was actually said, not by a profile.</li>
+        conversation, every surface is already personal, by what was actually said, not by a profile.</li>
       </ul>
       <p><a href="blog/why-a-business-is-not-a-set-of-pages.html">The longer argument →</a></p>
     </div>
@@ -358,7 +385,7 @@ function landing(): string {
 <section><div class="wrap">
   <h2>A whole application in one command</h2>
   <p class="sub">Answer an interview about your business; get a running stack. The archetype is a starting
-  point, not a cage — everything it wrote is yours to edit.</p>
+  point, not a cage; everything it wrote is yours to edit.</p>
   <div class="split">
     <div>
       <pre><code>$ fishtea new myshop --template ecommerce --interactive
@@ -371,11 +398,149 @@ $ fishtea up
   ui          http://10.0.0.19:5173</code></pre>
     </div>
     <div>
-      <p>The visitor types <em>"something linen for a summer wedding, under £80"</em>. The classifier picks
+      <p>The visitor types <em>"something linen for a summer wedding, under $80"</em>. The classifier picks
       the <code>findProducts</code> shape and fills its arguments; the planner runs the typed calls the
-      shape names; the answer pours into a list vessel with the provenance strip underneath — which shape
+      shape names; the answer pours into a list vessel with the provenance strip underneath, saying which shape
       answered, what it read, what it wrote, how long it took.</p>
       <p>Nothing about that is hand-written. It is all derived from the spec.</p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">Accounts</p>
+  <h2>A conversation that remembers who it is talking to</h2>
+  <p class="sub">One rule turns on sign-up, sign-in with a password or with Google, a profile the holder
+  owns, and items saved across devices. The account is a row of your own entity, not a parallel idea of
+  a person kept somewhere else.</p>
+  <div class="split">
+    <div>
+      <pre><code>"rules": {
+  "accounts": {
+    "entity": "customer",
+    "profile": ["name", "photo", "preferences"],
+    "saved": { "call": "products.byIds" }
+  }
+}</code></pre>
+    </div>
+    <div>
+      <ul class="claims">
+        <li><strong>The account is your row.</strong> Signing up creates the <code>customer</code>, or
+        claims the one an email-only form made earlier. Credentials live apart, in the framework's own
+        table: an argon2id password, a Google subject, or both.</li>
+        <li><strong>The profile is a short list, not the table.</strong> Only the fields you name can be
+        read or written by the holder. A <code>photo</code> field takes an image; everything else is
+        bounded.</li>
+        <li><strong>A visitor id is still not a credential.</strong> Signing in sets the conversation's
+        customer, so the same trail becomes personal, and the account session is its own cookie.</li>
+      </ul>
+      <p><a href="operating.html#visitor-accounts">Visitor accounts →</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">The operator console</p>
+  <h2>Reports and jobs you declare, not build</h2>
+  <p class="sub">An application says what its operators need to see and to run; <code>/admin</code> draws
+  it. A report is query calls arranged into panels. A job is an operator shape with a Run button and,
+  if you want, a clock.</p>
+  <div class="split">
+    <div>
+      <pre><code>"operator": {
+  "reports": {
+    "performance": {
+      "label": "Performance",
+      "panels": [
+        { "title": "The period",
+          "call": "report.totals",
+          "view": "tiles",
+          "columns": ["visits", "clicks"] },
+        { "title": "Clicks",
+          "call": "report.daily",
+          "view": "line", "x": "day",
+          "y": ["visits", "clicks"] }
+      ]
+    }
+  }
+}</code></pre>
+    </div>
+    <div>
+      <ul class="claims">
+        <li><strong>A panel can only read.</strong> Its call must be a <code>query</code>; the loader
+        refuses anything else and the core refuses SQL that writes. The period above the page arrives as
+        <code>from</code> and <code>to</code>.</li>
+        <li><strong>Four views, and a format per column.</strong> Tiles, line, bar and table, with
+        <code>money</code>, <code>percent</code>, <code>date</code> and <code>link</code> so a number
+        reads the way it means.</li>
+        <li><strong>A job outlives the request.</strong> Pressing Run answers immediately and the work
+        carries on in the core, because a catalogue sync takes longer than a proxy will wait. Every run
+        is kept, so the last good answer survives a restart.</li>
+        <li><strong>Or it runs itself.</strong> <code>"schedule": { "daily": ["05:00"], "afterDeploy":
+        true }</code>: a missed run catches up when the core comes back, and a new release fills what it
+        needs without a plain restart doing it again.</li>
+      </ul>
+      <p><a href="operating.html#admin">The console →</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">Echoes</p>
+  <h2>What the visitor did next</h2>
+  <p class="sub">An answer can end somewhere else: the shop that sells it, the paper behind the citation,
+  the map to the venue. Until echoes, the conversation lost the visitor at that point. It knew what it
+  had shown and not what they followed.</p>
+  <div class="split">
+    <div>
+      <div class="vessel">
+        <div class="row"><span class="name">Ravello linen shirt</span><span class="price">$68</span></div>
+        <div class="row"><span class="meta">oatmeal · in stock</span><span class="meta">at Ravello →</span></div>
+        <hr class="rule">
+        <p class="verify"><span class="read">read</span> products · 41 ms ·
+        <span class="wrote">echo</span> ravello.example → turn 4</p>
+      </div>
+      <p class="post-meta">An echo is recorded beside the turn whose answer offered the link, never as a
+      turn of its own. The head does not move; a rewind does not show it.</p>
+    </div>
+    <div>
+      <ul class="claims">
+        <li><strong>The trail is the signature.</strong> A destination is followed only when the
+        conversation published it: the turn's stored pour must contain that URL exactly. A link no
+        answer ever carried is refused.</li>
+        <li><strong>So it is not an open redirect,</strong> and it needs no signing secret: there is no
+        token to mint, rotate or leak.</li>
+        <li><strong>It is the fact a business needs.</strong> An affiliate site joins a sale back to the
+        question that produced it; a publication sees which sources readers trust.</li>
+      </ul>
+      <p><a href="echoes.html">Echoes →</a></p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <p class="key">Built with it</p>
+  <h2>Two of these are live right now</h2>
+  <p class="sub">Not demos. Two businesses in production on this framework, each one leaning on a
+  different part of it, each with a write-up of what the spec actually bought.</p>
+  <div class="split">
+    <div>
+      <h3><a href="case-chicdujour.html">ChicDuJour</a></h3>
+      <p>A fashion shop that owns no stock. Moods are declared once in <code>rules.moods</code> and read
+      by four things that never meet: the classifier's hints, the catalogue search, the copy at the top
+      of the answer, and the overnight vendor sync. Suppliers are rows with adapters; the catalogue is a
+      cache with an expiry. A stranger who says "save this" gets the form that unblocks it, not a wall.</p>
+      <p><a href="case-chicdujour.html">Read the case study →</a> &middot;
+         <a href="https://chicdujour.com">chicdujour.com</a></p>
+    </div>
+    <div>
+      <h3><a href="case-shawnstewart.html">shawnstewart.me</a></h3>
+      <p>A portfolio built around the one question recruiters actually arrive with. Paste a job
+      description and a compute call returns it requirement by requirement, each marked strong, partial
+      or gap with the evidence rows behind it. No model grades anything. The write-up includes the
+      labelled set's first score, which was 37%, and what that turned out to mean.</p>
+      <p><a href="case-shawnstewart.html">Read the case study →</a> &middot;
+         <a href="https://shawnstewart.me">shawnstewart.me</a></p>
     </div>
   </div>
 </div></section>
@@ -419,7 +584,7 @@ files      2 to update, 1 new, 1 conflicting, 3 yours
     </div>
     <div>
       <p>Every framework version you install stays on disk and <code>fishtea use &lt;version&gt;</code>
-      switches between them by moving one symlink. Going back is as cheap as going forward — which is the
+      switches between them by moving one symlink. Going back is as cheap as going forward, which is the
       only reason going forward is comfortable.</p>
       <p><a href="versioning.html">Versioning and updates →</a></p>
     </div>
@@ -594,7 +759,7 @@ const BETA_EMAIL = "shawn@irietek.com";
 
 function beta(): string {
   return `<h1>Join the beta</h1>
-<p>FishTea installs today — <a href="getting-started.html">four commands</a> and you have a running
+<p>FishTea installs today: <a href="getting-started.html">four commands</a> and you have a running
 application. What is still private is the <strong>source</strong>, and the help that goes with it.</p>
 <p>Ask for access if you want to read the code, file issues, or have a hand getting something real
 built. Tell me what you would make with it.</p>
@@ -611,7 +776,7 @@ built. Tell me what you would make with it.</p>
   <div class="field">
     <label for="beta-what">What would you build?</label>
     <textarea id="beta-what" name="what" rows="5"
-      placeholder="A shop, a booking system, something stranger — and roughly what you would want to ask it."></textarea>
+      placeholder="A shop, a booking system, something stranger, and roughly what you would want to ask it."></textarea>
   </div>
   <div class="field">
     <button type="submit" class="btn">Compose the email</button>
@@ -639,13 +804,13 @@ classifier pool run in Docker; everything else is one binary.</p>
     var email = (form.email.value || "").trim();
     var what = (form.what.value || "").trim();
     if (!name || !email) {
-      document.getElementById("beta-note").textContent = "A name and an email, please — the rest is optional.";
+      document.getElementById("beta-note").textContent = "A name and an email, please. The rest is optional.";
       (!name ? form.name : form.email).focus();
       return;
     }
     var body = "Name: " + name + "\\nEmail: " + email + "\\n\\nWhat I would build:\\n" + (what || "(not said)") + "\\n";
     window.location.href = "mailto:${BETA_EMAIL}"
-      + "?subject=" + encodeURIComponent("FishTea beta — " + name)
+      + "?subject=" + encodeURIComponent("FishTea beta: " + name)
       + "&body=" + encodeURIComponent(body);
   });
 })();
@@ -655,7 +820,7 @@ classifier pool run in Docker; everything else is one binary.</p>
 // ---- about ------------------------------------------------------------------------------------------
 function about(): string {
   return `<h1>About</h1>
-<p>FishTea is built by Shawn J. Stewart. It is the second life of a project he first wrote in 2006 — and
+<p>FishTea is built by Shawn J. Stewart. It is the second life of a project he first wrote in 2006, and
 the first version able to finish the idea, because the piece that was missing then is a small language
 model that now runs on an ordinary machine.</p>
 
@@ -674,7 +839,7 @@ model that now runs on an ordinary machine.</p>
 <h2 id="why-this-exists">Why this exists</h2>
 <p>We assemble software from modules built for everyone, and pay for every variation in conditional logic.
 That habit is inherited from storing data in rows and columns and then building software in the shape of
-the storage — which is why permissions and personalisation always arrive late, as layers on something
+the storage, which is why permissions and personalisation always arrive late, as layers on something
 that never expected them.</p>
 <p>FishTea starts from a different premise: a business is an authority that answers questions, and the
 interface is the last and thinnest layer rather than the first and thickest.</p>
@@ -688,7 +853,7 @@ are settled and why, is in <a href="blueprint.html">the blueprint</a>.</p>
 <p>The most useful contribution is a plugin. Everything outside the conversation itself is one:
 integrations, design systems, auth, notification channels, whole archetypes. Write it locally with
 <code>fishtea plugin create</code>, and when it is good, <code>fishtea plugin promote</code> moves it into
-the framework — a move, not a rewrite, so the application you wrote it for keeps working untouched.</p>
+the framework: a move, not a rewrite, so the application you wrote it for keeps working untouched.</p>
 <p>See <a href="plugins.html">Plugins</a> for the mechanism.</p>`;
 }
 
@@ -702,11 +867,17 @@ function fromMarkdown(file: string, title: string): string {
 async function pages(): Promise<Page[]> {
   const cli = await cliReference();
   return [
-    { slug: "", title: "FishTea — describe a business once, derive everything else", body: landing, landing: true },
+    { slug: "", title: "FishTea: describe a business once, derive everything else", body: landing, landing: true },
 
     { slug: "welcome", title: "Welcome", nav: "Welcome", group: "Start", body: () => fromMarkdown("docs/WELCOME.md", "Welcome") },
     { slug: "getting-started", title: "Getting started", nav: "Getting started", group: "Start", body: () => fromMarkdown("docs/GETTING-STARTED.md", "Getting started") },
     { slug: "archetypes", title: "Archetypes", nav: "Archetypes", group: "Start", body: () => fromMarkdown("docs/ARCHETYPES.md", "Archetypes") },
+
+    // Two applications that are live, written by the same person, running on this framework. They sit in
+    // their own group because they answer a question no reference page can: not "what can it express"
+    // but "what did expressing it actually buy you".
+    { slug: "case-chicdujour", title: "ChicDuJour: a shop that owns no stock", nav: "ChicDuJour", group: "Built with it", body: () => fromMarkdown("docs/CASE-CHICDUJOUR.md", "ChicDuJour") },
+    { slug: "case-shawnstewart", title: "shawnstewart.me: a portfolio that answers the question you actually have", nav: "shawnstewart.me", group: "Built with it", body: () => fromMarkdown("docs/CASE-SHAWNSTEWART.md", "shawnstewart.me") },
 
     { slug: "versioning", title: "Versioning and updates", nav: "Versioning & updates", group: "Operating", body: () => fromMarkdown("docs/VERSIONING.md", "Versioning and updates") },
     { slug: "plugins", title: "Plugins", nav: "Plugins", group: "Operating", body: () => fromMarkdown("docs/PLUGINS.md", "Plugins") },

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="FishTea">
+  <rect width="32" height="32" rx="7" fill="#0b0d10"/>
+  <defs><clipPath id="i"><path d="M5 12.5 H23 V17 Q23 26 14 26 Q5 26 5 17 Z"/></clipPath></defs>
+  <g transform="translate(16,16) scale(1.12) translate(-16.9,-19.25)">
+    <g clip-path="url(#i)"><path d="M4 17.6 Q9.5 14.4 14 17.6 T24 17.6 V27 H4 Z" fill="#4fe0b8"/></g>
+    <path d="M5 12.5 H23 V17 Q23 26 14 26 Q5 26 5 17 Z" stroke="#e8edf2" stroke-width="2.1" stroke-linejoin="round" fill="none"/>
+    <path d="M23.4 16.2 Q28.8 16.2 28.8 19.6 Q28.8 23 23.4 23" stroke="#e8edf2" stroke-width="2.1" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>

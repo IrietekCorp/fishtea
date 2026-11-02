@@ -3,14 +3,14 @@
 **Short answer: on the call, after classification. Never on needle.**
 
 The classifier is a router. It decides *what you probably meant*. It must never decide *what you are
-allowed to do*, and FishTea already puts the gate in the right place — `packages/core/src/engine.ts`,
+allowed to do*, and FishTea already puts the gate in the right place: `packages/core/src/engine.ts`,
 where both paths converge.
 
 ## Why needle cannot be the guard
 
 Three reasons, and any one of them is sufficient.
 
-**The chip path does not go through it.** The client can post `{shape, args}` directly — that is what a
+**The chip path does not go through it.** The client can post `{shape, args}` directly, which is what a
 next chip is, and what a forged chip would be. Nothing is classified. If the only thing keeping a
 stranger out of `checkout` were its absence from a tool list, a single `curl` would walk straight past
 it.
@@ -26,7 +26,7 @@ that arrives as a jailbreak.
 
 ## What tool filtering is actually for
 
-The engine still filters the tool list by persona before classifying — `allowedShapes(spec, persona)` —
+The engine still filters the tool list by persona before classifying, via `allowedShapes(spec, persona)`,
 and that remains worth doing, for reasons that are not security:
 
 - **Accuracy.** A smaller tool list is an easier choice, and the prompt is mostly tool JSON.
@@ -40,7 +40,7 @@ Every one of these is in the code now.
 
 | # | layer | where | what it stops |
 |---|---|---|---|
-| 1 | persona derived from identity | `persona.ts`, from the visitor's `customer_id` and the trail | — |
+| 1 | persona derived from identity | `persona.ts`, from the visitor's `customer_id` and the trail | none |
 | 2 | tool list filtered | `engine.ts` before `classify` | the model suggesting what you cannot have |
 | 3 | **shape gate** | `engine.ts`, `!allowed.includes(shapeName)` | **a classified *or posted* shape this persona may not ask** |
 | 4 | operator shapes refused | same place, `shapeName.startsWith("op.")` | the operator surface being reached from the visitor surface |
@@ -67,7 +67,7 @@ yours*, and no amount of classification or gating substitutes for it.
 The permission model above is sound. What it rests on is not, and this is the finding worth acting on.
 
 `visitorOf` in `http.ts` accepts the visitor id from the `x-fishtea-visitor` header **or** the cookie,
-and `ensureVisitor` hands back that visitor's `customer_id` — hence their persona, their cart, their
+and `ensureVisitor` hands back that visitor's `customer_id`, hence their persona, their cart, their
 orders. **The visitor id is a bearer credential.** Whoever presents one is that visitor.
 
 Until this was written down, that credential was minted as `Date.now()` plus six characters of
@@ -88,14 +88,14 @@ id short enough to guess.
   really the credential and XSS can read it. That is a deliberate trade for a cross-origin SPA, but it
   should be a decision rather than an accident: same-site cookie plus a CSRF token is the alternative.
 - **Identifier and credential are the same string.** They should probably not be. A visitor id shows up
-  in operator views (`/op/visitors`), in logs, and — unavoidably — **in a URL**: EventSource cannot set
+  in operator views (`/op/visitors`), in logs, and, unavoidably, **in a URL**: EventSource cannot set
   request headers, so `/events?visitor=…` is the browser's only way to identify itself on the stream.
   That puts a bearer credential in access logs and browser history. Splitting the identifier from the
   credential would fix it properly; a short-lived stream token would fix it cheaply.
 - ~~**Operator auth is one shared token.**~~ **Done.** People sign in at `/admin`: argon2id passwords,
   a session token stored as a hash in an httpOnly SameSite=Strict cookie, a first password that must be
   replaced before anything else opens, lockout after five wrong attempts, and `x-fishtea-admin` on any
-  cookie'd change. `FISHTEA_OPERATOR_TOKEN` remains the *script* door — the TUI and `fishtea notify` —
+  cookie'd change. `FISHTEA_OPERATOR_TOKEN` remains the *script* door for the TUI and `fishtea notify`,
   and a new application gets a random one rather than a shared constant. See
   [Running it](operating.html#admin).
 - **The rate limiter is in-memory per process**, so it does not survive a restart or bind across
@@ -105,7 +105,7 @@ id short enough to guess.
 
 The persona expression language reads `identity` and trail facts. Roles would be a column on the
 customer entity surfaced through `Engine.identity()`, then `verifier: { when: "identity.roles has
-'verifier'" }` — which needs a `has` operator the language does not have yet (already noted under the
+'verifier'" }`, which needs a `has` operator the language does not have yet (already noted under the
 verification archetype).
 
 The thing to resist is putting roles anywhere the classifier can see them. A role is an input to

@@ -1,6 +1,6 @@
 # Archetypes
 
-An archetype is a complete, runnable application — spec, calls, seed data, a walkthrough — plus an
+An archetype is a complete, runnable application (spec, calls, seed data, a walkthrough) plus an
 **onboarding interview** (`onboard.json`) that turns it into a specific business. `fishtea new` copies it
 and applies your answers.
 

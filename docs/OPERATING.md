@@ -17,7 +17,7 @@ dial.
 | `CLASSIFIER_URL` | `--classifier` | the needle pool, wherever it lives |
 
 Detection is a heuristic: a machine with several NICs, or one behind NAT, needs `FISHTEA_PUBLIC_HOST` set
-by hand. There is no TLS story — the core speaks HTTP and expects something in front of it.
+by hand. There is no TLS story: the core speaks HTTP and expects something in front of it.
 
 ## CORS
 
@@ -45,15 +45,15 @@ baseline, never production.
 
 Each worker holds **one persona tool subset**, because switching a worker between subsets costs a
 `needle_init` of 0.7–1.2 s against 125–310 ms for the classification itself. So `NEEDLE_WORKERS` must be
-at least the number of distinct persona subsets — three for every shipped archetype, which is the Compose
+at least the number of distinct persona subsets, three for every shipped archetype, which is the Compose
 default.
 
-Every classify call has a hard budget (`rules.classify.budgetMs`). Past it the pour is `ask` — never a
+Every classify call has a hard budget (`rules.classify.budgetMs`). Past it the pour is `ask`, never a
 dumber brain.
 
 **Never put a CPU limit on the classifier.** The engine starts twelve threads and keeps them, reads no
 environment variables, and ignores the affinity mask it is given, so a limit does not make it use fewer
-threads — it makes twelve spinning threads fight over fewer cores. Measured, one classify that takes
+threads; it makes twelve spinning threads fight over fewer cores. Measured, one classify that takes
 238 ms on sixteen cores takes **9.9 s** pinned to eight and **92.7 s** pinned to one. A `--cpus` setting
 or a Kubernetes quota on this container is the difference between working and not.
 
@@ -61,15 +61,15 @@ For the same reason workers compute one at a time: two classifies side by side a
 throughput than two in a row. Capacity is about **four to five classifies a second per host**, and the
 only way to scale out is more hosts.
 
-What does move the needle is how much the model has to say. Latency is decode length — `latency ≈ 110 ms
-+ tokens ÷ 310` — so the pool caps it at 64 tokens (`NEEDLE_MAX_NEW_TOKENS`, or `rules.classify.maxTokens`
+What does move the needle is how much the model has to say. Latency is decode length (`latency ≈ 110 ms
++ tokens ÷ 310`), so the pool caps it at 64 tokens (`NEEDLE_MAX_NEW_TOKENS`, or `rules.classify.maxTokens`
 per application), which cuts p90 by 61% and the worst case by 79% without costing accuracy. Repeats are
 cached (`NEEDLE_CACHE`, 512 entries, cleared on reload), because classification is a pure function of the
 tool subset, the text and the cap: a repeat answers in 11 ms and spends no turn in the queue.
 `GET /healthz` reports the cap and the cache's hits and misses.
 
 Warm-up matters: a cold worker switching subsets costs 0.7–3.7 s depending on load. `/reload` warms in the
-background, one worker at a time, deliberately sequential — parallel inits thrashed to 48 s.
+background, one worker at a time, deliberately sequential, because parallel inits thrashed to 48 s.
 
 ## Database
 
@@ -86,7 +86,7 @@ Migration is additive by default and refuses destructive changes unless asked. A
 with the spec: a value the spec adds widens the column's CHECK on the next migrate (reported as
 `changed`), and a value it removes is refused unless `--allow-destructive` is passed, and even then
 only while no row still holds that value. A `pgdata` volume created
-by an older major version will not start under 18 — dump and restore, or `fishtea down -v` for a
+by an older major version will not start under 18: dump and restore, or `fishtea down -v` for a
 throwaway stack.
 
 ## When the classifier chooses nothing
@@ -95,12 +95,12 @@ A small model sometimes reasons its way to the right shape and still emits no ca
 busy or switching subsets can miss the turn's budget. In both cases the core no longer gives up at once:
 
 1. the keyword classifier answers when it is sure (a trigger phrase, or a value it knows, like a mood);
-2. otherwise `rules.classify.fallback` — `{ "shape": "findProducts", "arg": "text" }` — answers with the
+2. otherwise `rules.classify.fallback`, a value like `{ "shape": "findProducts", "arg": "text" }`, answers with the
    visitor's own words as that argument: a shop searches its catalogue rather than saying "I didn't catch
    that". It must be a shape that reads;
 3. otherwise the ask, offering only shapes a chip can start (nothing that needs an id).
 
-The pool is warmed with each persona's *classifiable* shapes — what a request actually sends — so a
+The pool is warmed with each persona's *classifiable* shapes, which is what a request actually sends, so a
 worker is already on the right subset; a `classify: false` shape is never one of them. The pool matches a
 call's name on letters alone (`find_products` is findProducts) and reports what it could not match as
 `dropped`.
@@ -114,15 +114,15 @@ fishtea bench -- --conventional
 ```
 
 `packages/bench/budgets.json` holds the budgets; `baseline.json` holds the last recorded run. The
-conventional multi-page baseline currently measures **server time only** — no browser parse or render —
+conventional multi-page baseline currently measures **server time only**, with no browser parse or render,
 so it is not yet the task-completion comparison the blueprint asks for.
 
 ## Admin
 
 `/admin` on the ui server is where the people who run an application sign in. It shows every visitor,
 their visits and each turn in full (what was said, what it matched, what the plan read and wrote, the
-layout the answer carried), the questions nobody could answer, the spec — edited whole, validated on
-save, refused if someone saved since, the replaced version kept in `.fishtea/spec-history/` — and the
+layout the answer carried), the questions nobody could answer, the spec (edited whole, validated on
+save, refused if someone saved since, the replaced version kept in `.fishtea/spec-history/`), and the
 lighter settings: the scalar values in `rules` and each plugin's configuration. What guards visitors
 (`rules.writes`) and what is structure (the layout, the menu) stays in the spec editor.
 
@@ -166,8 +166,8 @@ across every core on the database (a second press is a 409); a run a stopped cor
 ```
 
 `daily` is times of day in UTC; one missed while the core was down runs when it comes back. `afterDeploy`
-runs the job once for a release that has not had a successful run of it yet — a release being spec.json,
-`calls/`, `seed/` and the framework's version — so a new image fills what it needs and a plain restart does
+runs the job once for a release that has not had a successful run of it yet, a release being spec.json,
+`calls/`, `seed/` and the framework's version, so a new image fills what it needs and a plain restart does
 not (a failed one is tried again an hour later). `fishtea serve` keeps the clock; `FISHTEA_SCHEDULE=0`
 turns it off, for a second core on the same database or a quiet debugging session.
 
@@ -204,7 +204,7 @@ them; `GET /op/reports/:name?from=&to=` answers the rows, for anything that want
 
 `/op` has two doors: a person's session, or `FISHTEA_OPERATOR_TOKEN` for scripts (the TUI,
 `fishtea notify`). New applications get a random token in `.env`; the core warns while it is
-`change-me`. There is no TLS here either — behind anything public, put the ui server behind HTTPS, and
+`change-me`. There is no TLS here either. Behind anything public, put the ui server behind HTTPS, and
 the session cookie is marked Secure when the request says it came over it.
 
 ## Seed files and /admin edits
@@ -279,10 +279,10 @@ shape's description.
 - Tests reset the `business`, `conversation` and `fishtea` schemas, and default to port **5434**. Never
   point `FISHTEA_TEST_DATABASE_URL` at a stack you care about.
 - The needle test must run alone, with the pool up and warm (`GET /healthz` → `warming: false`).
-- Classifier accuracy varies between process instances on identical inputs — 15 to 18 of the same 24
+- Classifier accuracy varies between process instances on identical inputs, 15 to 18 of the same 24
   cases. One run is an anecdote; measure repeatedly before concluding anything about accuracy.
 - jsonb parameters are passed as JS values; pre-stringifying double-encodes them.
-- All DDL identifiers are quoted, so a field named `order` works — and your SQL must quote it too
+- All DDL identifiers are quoted, so a field named `order` works, and your SQL must quote it too
   (`f."order"`).
 - The HTTP rate limiter is in-memory per process. Fine for one core; note it if you scale out.
 - `fishtea serve` watches `spec.json`. Edits to `calls/*.sql|ts` need a restart.

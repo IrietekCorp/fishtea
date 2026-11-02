@@ -30,13 +30,13 @@ UI — none of it hand-written.
 
 ## What it looks like
 
-A visitor types *"something linen for a summer wedding, under £80"*. The classifier picks the
+A visitor types *"something linen for a summer wedding, under $80"*. The classifier picks the
 `findProducts` shape and fills its arguments. The planner runs the typed calls that shape names. The
 answer pours into a list vessel, with a provenance strip underneath: which shape answered, what it read,
 what it wrote, how long it took.
 
 ```
-POST /utter  "something linen for a summer wedding under £80"
+POST /utter  "something linen for a summer wedding under $80"
   → findProducts@0.94 · list · 6 records
     calls products.search · 157ms (classify 149, plan 3)
 ```
