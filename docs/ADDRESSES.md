@@ -3,7 +3,7 @@
 *A proposal, not built. It does not depend on [shapes nesting](nested-shapes.html) and could ship first.*
 
 A trail is append-only, rewindable and branchable. A URL is a string. The question is how to step through
-the first using the second — forward and backward, deep in some areas and shallow in others — without
+the first using the second, forward and backward, deep in some areas and shallow in others, without
 turning the URL back into the memory the whole framework argues it should not be.
 
 ## Four needs, usually conflated
@@ -18,7 +18,7 @@ answers.
 | **share** | look at *this* | somebody else, who has no trail |
 | **deep link** | a search result lands on something | a stranger, who has no trail |
 
-Only the first is about the timeline at all. The other three are about *things* and *places* — and a
+Only the first is about the timeline at all. The other three are about *things* and *places*, and a
 stranger following a link has no timeline to be a point in.
 
 ## The idea: a point in a conversation is a question
@@ -30,13 +30,13 @@ is a snapshot of a screen, it does not fit in a URL, and the machinery to make i
 essay complains about.
 
 Here, the state that produced any answer is **a shape and its typed arguments**. `findProducts` with
-`{tag: "wedding", maxPrice: 80}`. That is not a snapshot — it is the question, complete, because a
+`{tag: "wedding", maxPrice: 80}`. That is not a snapshot. It is the question, complete, because a
 shape's input is declared and finite. And a question has a property a snapshot does not:
 
 > **Re-asking it regenerates the answer.**
 
 So a marker does not need to *store* a point in a timeline. It needs to name the question, and the point
-reconstitutes itself — against today's prices, today's stock, and this visitor's personas. Nothing is
+reconstitutes itself against today's prices, today's stock, and this visitor's personas. Nothing is
 remembered; something is re-asked.
 
 That is why this is safe to put in a URL when "page 3, sorted by price" was not. It carries intent, not
@@ -46,10 +46,10 @@ memory. Two people opening it ask the same question and get their own answers.
 
 Keep them apart and the problem mostly dissolves.
 
-**Where you are — the URL.** An area, and optionally a question within it. Public, stable, crawlable,
+**Where you are: the URL.** An area, and optionally a question within it. Public, stable, crawlable,
 shareable. Carries no trail id, no turn id, no cursor.
 
-**When you are — the history entry.** `history.pushState(state, "", url)` stores an object *in the
+**When you are: the history entry.** `history.pushState(state, "", url)` stores an object *in the
 browser's session history*, not in the URL. It survives back, forward and reload of that entry; it is
 not copied when someone copies the link; it does not exist for a stranger opening a bookmark. Which is
 exactly the privacy envelope a turn id needs.
@@ -69,7 +69,7 @@ press.
 
 ## Coarse and fine: the "deeper in some areas" part
 
-If every utterance pushes a history entry, back becomes useless — twenty presses to leave a browse. If
+If every utterance pushes a history entry, back becomes useless: twenty presses to leave a browse. If
 none do, back leaves the site from the first screen. Both are familiar failures.
 
 The split:
@@ -79,7 +79,7 @@ The split:
 
 Then the back button means **"the previous place I was"**, which is what people expect it to mean, and
 the entry's `turnId` means "and you were eighteen turns deep when you left it". Coming back to an area
-returns you to where you were in it, not to its beginning — depth per area, for free, with no bookkeeping.
+returns you to where you were in it, not to its beginning: depth per area, for free, with no bookkeeping.
 
 Fine-grained stepping stays where it already is: the trail rail in the UI, which can rewind to any turn.
 **The browser's back button is for places; the trail widget is for turns.** Two controls, two
@@ -127,14 +127,14 @@ That is the right answer and nobody wrote it. The four discovery shapes are exac
 indexable; the cart is correctly private because it is persona-guarded rather than because someone
 remembered to exclude it; `checkout` is correctly absent because it is a write.
 
-**This is also where "deep in some areas, shallow in others" comes from.** Browse is deep — four
-addressable shapes with arguments, so thousands of real addresses. Purchase is shallow — `/purchase` and
+**This is also where "deep in some areas, shallow in others" comes from.** Browse is deep, with four
+addressable shapes with arguments, so thousands of real addresses. Purchase is shallow, just `/purchase` and
 nothing beneath it, because its contents are guarded. The depth of an area is a property of its shapes,
 derived from the spec, not a decision anybody makes twice.
 
 ## Writes are not addressable; their results are
 
-You cannot name "the moment I placed order 1234" as a question — re-asking it would place another order.
+You cannot name "the moment I placed order 1234" as a question, because re-asking it would place another order.
 Writes have no address, and that is not a limitation to work around: an addressable write is a CSRF
 vulnerability with a nice URL.
 
@@ -168,7 +168,7 @@ The difference is what the string is a picture *of*. A conventional query string
 one UI decision at a time, has no schema, grows until half the state no longer fits, and gets propped up
 with session storage and router state to cover the half that fell out. It is a picture of a screen.
 
-This one is a picture of a question, and it is complete by construction — a shape's input is declared,
+This one is a picture of a question, and it is complete by construction: a shape's input is declared,
 typed and finite, so there is no overflow to reconcile anywhere. Nothing accumulates: a new question
 replaces the old one rather than adding a parameter to it. And it never carries who you are or what you
 did, because personas come from the visitor and memory lives on the trail.
@@ -178,7 +178,7 @@ memory. If parameters ever start piling up across turns, this has failed and sho
 
 ## A bookmark that answers differently is correct
 
-Bookmark `/browse/wedding?under=80` today, open it in a month, and the answer will have changed —
+Bookmark `/browse/wedding?under=80` today, open it in a month, and the answer will have changed,
 different stock, different prices, possibly a different set entirely. That is not staleness to fix. The
 bookmark saved a question, and a business that answers it the same way in a month is not answering, it
 is replaying.
@@ -189,12 +189,12 @@ belong in the compatibility rules alongside the format version.
 
 ## What to build, and in what order
 
-1. **Client-side addressing only** — `pushState` on area and question boundaries, `popstate` → the
+1. **Client-side addressing only.** `pushState` on area and question boundaries, `popstate` → the
    existing rewind. No server changes, no format change, and it makes back/forward correct today. This
    is worth doing on its own merits even if nothing else here ever happens.
 2. **Derive the addressable set** from the spec (`read` + `stranger`) and expose it, so the UI knows
    which turns deserve a push and which only a replace.
-3. **`GET /<address>` content-negotiating** — the same pour as JSON or as HTML. This is the server
+3. **`GET /<address>` content-negotiating.** The same pour as JSON or as HTML. This is the server
    rendering work, and it is the expensive part.
 4. **`sitemap.xml` and structured data**, generated from the addressable set crossed with real rows.
 5. **Slugs**, if entity addresses turn out to matter as much as they probably do.

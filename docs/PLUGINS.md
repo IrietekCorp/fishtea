@@ -1,8 +1,8 @@
 # Plugins
 
 Everything outside the conversation itself is a plugin: payments, auth, a design system, a frontier model,
-where a notification goes. The conversational core — shapes, personas, the planner, the vessels, the
-confirm-write rule — is the framework and stays the framework.
+where a notification goes. The conversational core (shapes, personas, the planner, the vessels, the
+confirm-write rule) is the framework and stays the framework.
 
 ## Seven seams, one mechanism
 
@@ -16,8 +16,8 @@ confirm-write rule — is the framework and stays the framework.
 | `channel` | notification delivery | email, SMS, Slack |
 | `archetype` | a template `fishtea new` starts from | your own house archetype |
 
-They are all the same shape, because archetypes were already de-facto plugins — a spec fragment plus
-`calls/`, `seed/` and an interview — long before anything was called one.
+They are all the same shape, because archetypes were already de-facto plugins: a spec fragment plus
+`calls/`, `seed/` and an interview, long before anything was called one.
 
 ## Two rules
 
@@ -37,7 +37,7 @@ generated code to reconcile later, no diff churn when a plugin is upgraded, and 
 everything it brought. `App.provenance` tags each contribution with its origin (`"calls.ai.ask" →
 "anthropic"`), so it is always visible where something came from.
 
-A contributed call is validated exactly as strictly as one you wrote — the same `$1..$n` SQL parameter
+A contributed call is validated exactly as strictly as one you wrote, by the same `$1..$n` SQL parameter
 rules, the same file-existence checks, no exemption. Its `impl` paths are rewritten absolute at merge
 time, so neither the loader nor the executor needs to know plugins exist.
 
@@ -46,8 +46,8 @@ time, so neither the loader nor the executor needs to know plugins exist.
 Name something a plugin also defines and **yours stands**, with a warning. That is the override
 mechanism: to replace a plugin's call, declare a call with the same name.
 
-Two plugins claiming one name is a different matter — nobody asked for that, and silently picking one is a
-bug you would find months later — so it is an error. Rename one with `--as`, or disable it.
+Two plugins claiming one name is a different matter. Nobody asked for that, and silently picking one is a
+bug you would find months later, so it is an error. Rename one with `--as`, or disable it.
 
 ## Using one
 
@@ -93,7 +93,7 @@ That scaffolds `plugins/loyalty/` in your application, with a manifest and a wor
 ```
 
 `{{config.x}}` is substituted when the spec loads, so a configuration answer arrives as an ordinary input
-default — no new mechanism, and the classifier sees the same tool description it would for any call.
+default, with no new mechanism, and the classifier sees the same tool description it would for any call.
 
 A plugin may contribute `entities`, `calls`, `shapes`, `rules`, `personas`, `notifications` and
 `operator`. It may **not** contribute `business` or `envelope`: who you are and how you greet people are
@@ -130,7 +130,7 @@ fishtea plugin promote loyalty
 
 It moves out of your application's `plugins/` and into the framework's, where every application resolves
 it by name. A plugin is "local" or "core" only by *where it sits*, so promoting is a move rather than a
-rewrite — nothing about the plugin changes, and the application that had it keeps working untouched.
+rewrite: nothing about the plugin changes, and the application that had it keeps working untouched.
 
 It is a move, not a copy, on purpose: leaving both would mean the local one always shadows the promoted
 one, and the next person to change the core copy would wonder why nothing happened. `--copy` overrides
@@ -146,7 +146,7 @@ A `ui` plugin is a stylesheet of design tokens:
 ```
 
 Every value it sets is a token `packages/ui/src/index.css` already defines, so a design system replaces no
-component and rewrites no vessel — the base accessibility, contrast and focus behaviour are inherited
+component and rewrites no vessel, so the base accessibility, contrast and focus behaviour are inherited
 rather than re-earned.
 
 Each config question needs a matching custom property: config id `accentHue` is the property
@@ -166,12 +166,12 @@ picks a hue at 3am:
 fishtea ui-assets    # regenerate the browser bundle's stylesheet
 ```
 
-A knob that matches no declaration is **reported**, not ignored — an answered question that changes
+A knob that matches no declaration is **reported**, not ignored, because an answered question that changes
 nothing is otherwise invisible and maddening.
 
 ## Shells and views
 
-The container — one input, the understood line, the vessel, the verify strip — is the framework's answer
+The container (one input, the understood line, the vessel, the verify strip) is the framework's answer
 to "show me the conversation". Some applications are a *site*: a menu of sections, pages you can link
 to, a contact form that opens over whatever you were reading. That is a shell.
 
@@ -180,31 +180,31 @@ to, a contact form that opens over whatever you were reading. That is a shell.
 ```
 
 A shell exports `Shell`, and is handed the application's **views**: a `ui` plugin maps shape names to
-files that export `View` — the application's own page for that shape.
+files that export `View`, the application's own page for that shape.
 
 ```json
 { "name": "piscopour", "kind": "ui", "tokens": "tokens.css",
   "views": { "home": "views/home.view.tsx", "getInTouch": "views/getInTouch.view.tsx" } }
 ```
 
-A view's words that belong to one site rather than to the design — a heading, a placeholder, a name —
+A view's words that belong to one site rather than to the design, such as a heading, a placeholder or a name,
 are config questions marked `"for": "views"`: each application answers them in its spec (so they appear
 in /admin → Settings), and the view reads them from `@app/spec.json`. They are not stylesheet knobs, so
 `ui-assets` does not look for a custom property for them.
 
-A shape with no view is drawn from the layout its answer carries (`pour.present` — see
+A shape with no view is drawn from the layout its answer carries (`pour.present`, see
 [generative UI](generative-ui.html)), so most shapes need none. `fishtea ui-assets` writes the registry
 into the application's `.fishtea/ui/`, never into the framework install; `--typecheck` checks the
 application's views and shells with the framework's TypeScript. Inside them, `@fishtea/ui/*` is the UI
 package (its client, the layout renderer, the vessels), `@fishtea/plugins/*` the builtin plugins and
-`@app/*` the application — `@app/spec.json` is how a view reads its business's own rules. An
+`@app/*` the application, so `@app/spec.json` is how a view reads its business's own rules. An
 application's `public/` is served as is, and the page's title and description come from
 `rules.site.copy`.
 
-**`sections`** ships as the builtin shell. It navigates by `rules.site` — sections in a header, a
-command bar, "up" from a child to its section, actions that open over a page — and makes browser
+**`sections`** ships as the builtin shell. It navigates by `rules.site`: sections in a header, a
+command bar, "up" from a child to its section, actions that open over a page. It also makes browser
 history the conversation: Back and Forward rewind the trail rather than asking again. What it used to
-show on `/debug` — visits, turns, layouts — is in `/admin`, behind a sign-in; an old `/debug` link goes
+show on `/debug` (visits, turns, layouts) is in `/admin`, behind a sign-in; an old `/debug` link goes
 there.
 
 A composite's parts are streamed: the lead is drawn with the response, and each part (a strip of fresh
@@ -214,15 +214,15 @@ cannot pick it over the lead.
 
 Three more things in `rules.site` are for a business whose look is its own:
 
-- **`brand`** — its marks. `logo` (an image in `public/`, at `height` in the header and `footerHeight` in
+- **`brand`**: its marks. `logo` (an image in `public/`, at `height` in the header and `footerHeight` in
   the footer) replaces the name set in type; `icons` are the favicon and touch icons written into
   `<head>`; `themeColor`, and `image` + `url` for what a shared link shows. Every path is in `public/` or
   an https URL, and the spec refuses anything else.
-- **`menu`** — how the Ask anything menu is worn. `layout: "card"` floats it (the default); `"flush"`
-  makes it the full-width sub-header under the header, with no border, corners or shadow — the input
+- **`menu`**: how the Ask anything menu is worn. `layout: "card"` floats it (the default); `"flush"`
+  makes it the full-width sub-header under the header, with no border, corners or shadow, so the input
   across the width with send at its right, the trail and suggestions on the line beneath.
   `suggestions: "ask"` sends a chip at once instead of filling the input with it.
-- A `ui` plugin's **`chrome`** — its own `header` and/or `footer`, each a file exporting `View`. The
+- A `ui` plugin's **`chrome`**: its own `header` and/or `footer`, each a file exporting `View`. The
   shell keeps navigation (which sections, which is active, what a click does, history) and hands it over
   as `HeaderProps` / `FooterProps` (`@fishtea/plugins/sections/types`); the brand only decides how it
   looks. A header that is not 4rem tall says so with `--shell-header-h`, which is where the menu band
@@ -236,22 +236,22 @@ Three more things in `rules.site` are for a business whose look is its own:
 
 ## What ships
 
-- **`boutique`** — a design system for shops: warm paper, one decisive accent, a distinct colour reserved
+- **`boutique`**: a design system for shops: warm paper, one decisive accent, a distinct colour reserved
   for writes.
-- **`sections`** — a shell for a site: sections from `rules.site`, views from the application, every
+- **`sections`**: a shell for a site: sections from `rules.site`, views from the application, every
   other shape from its layout.
-- **`anthropic`** — put a question to a frontier Claude model. Explicitly **not** a classifier: routing
+- **`anthropic`**: put a question to a frontier Claude model. Explicitly **not** a classifier: routing
   stays with the on-device needle pool under its millisecond budget, and past that budget the pour is
   still `ask`, never a slower brain. This is for composing an answer that needs more capability than a
-  small on-device model has — summarising a long policy, drafting a reply, reading a pasted document.
+  small on-device model has: summarising a long policy, drafting a reply, reading a pasted document.
   Set `ANTHROPIC_API_KEY`.
 
 ## Which connectors belong here
 
-A connector to a **specific vendor** — eBay, Amazon, a particular wholesaler — is built in the product
+A connector to a **specific vendor** (eBay, Amazon, a particular wholesaler) is built in the product
 that needs it, where there are credentials and live traffic, and comes back here as a plugin if it is
-worth sharing. A connector to a **general service** every business needs — a frontier model, an email
-relay, analytics, payments — belongs here, because every archetype wants it and because it can be tested
+worth sharing. A connector to a **general service** every business needs, such as a frontier model, an email
+relay, analytics or payments, belongs here, because every archetype wants it and because it can be tested
 here.
 
 The line is not how hard the integration is. It is who can honestly test it. See

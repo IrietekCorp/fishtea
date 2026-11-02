@@ -2,12 +2,12 @@
 
 *A proposal, not built. Written down so it can be argued with before anything is committed to.*
 
-Today a spec has a flat list of shapes. `findProducts`, `addToCart`, `checkout`, `orderStatus` — eleven
+Today a spec has a flat list of shapes. `findProducts`, `addToCart`, `checkout`, `orderStatus`: eleven
 of them in the ecommerce archetype, each a question a visitor may ask, each with its own guard, plan,
 vessel and next chips. The classifier is handed all the ones the current persona allows and picks one.
 
-The proposal is that shapes **nest**. A top-level shape is an *area* of the business — something you can
-walk up to and ask about — and inside it are the smaller things you can actually say there.
+The proposal is that shapes **nest**. A top-level shape is an *area* of the business, something you can
+walk up to and ask about, and inside it are the smaller things you can actually say there.
 
 ```
 vendor                          a top-level shape: an area with a boundary
@@ -26,7 +26,7 @@ For a shop:
 
 The interesting claim is not the grouping. It is what the boundary *owns*: the classification vocabulary
 inside it, the data it may touch, the UI components it may compose, the guard that says who may be here
-at all — stitched together by service calls, and rendered as a **loose amalgamation of UI elements**
+at all, stitched together by service calls, and rendered as a **loose amalgamation of UI elements**
 rather than one component. Server-driven UI, except the components are composed and shaped per turn
 instead of being a tree the server names.
 
@@ -39,7 +39,7 @@ than treat it as a rewrite.
   the classifier ever sees a tool. A boundary's guard is the same mechanism raised one level: `allow` on
   the parent, inherited by the children, which is strictly less to write than today.
 - **The stitching is `next`.** `findProducts` already offers `relatedProducts` and `trending`;
-  `addToCart` offers `viewCart` and `checkout`. The graph the areas describe is already drawn — one hop
+  `addToCart` offers `viewCart` and `checkout`. The graph the areas describe is already drawn: one hop
   at a time, by hand, in eleven places. Grouping would let most of those chips be derived from the area
   rather than enumerated.
 - **Scoped classification already happens, keyed by persona.** `Engine.personaSubsets` computes the
@@ -62,7 +62,7 @@ classification, and needle's cost is dominated by tool JSON in the prompt.
 **It is also where the measured cost is.** From `packages/classifier/contract.md`: switching a worker to
 another tool subset costs **0.7–1.2 s**, against 125–310 ms to complete a call, and each worker holds
 ~160 MB. The pool wants `NEEDLE_WORKERS ≥ the number of distinct subsets`; ecommerce has **3** today,
-one per persona. Areas multiply that — four areas against three personas is up to twelve subsets, which
+one per persona. Areas multiply that: four areas against three personas is up to twelve subsets, which
 is ~1.9 GB resident and twelve sequential warms at start.
 
 So the first question is not "is this a nicer model" but **does the accuracy and latency gain inside a
@@ -71,16 +71,16 @@ should, before any of this is built.
 
 ### 2. Two-level classification against one budget
 
-If the conversation is inside an area, one classify call over that area's tools is all that is needed —
+If the conversation is inside an area, one classify call over that area's tools is all that is needed,
 the common case, and the fast one. The cost appears when a visitor changes the subject: "actually, where
 is my last order?" said in the middle of checkout.
 
 Options, none free:
 
-- **Classify twice** — which area, then which shape. Two calls inside one hard budget of 400 ms. Against
+- **Classify twice**: which area, then which shape. Two calls inside one hard budget of 400 ms. Against
   measured needle latency of 125–310 ms per call that is tight to impossible.
 - **Classify once over the current area plus every area's top-level shape.** The tool list is the area's
-  shapes plus three or four area names — still far smaller than today's flat list, one call, and a miss
+  shapes plus three or four area names, still far smaller than today's flat list, one call, and a miss
   falls back to `ask`, which is what a miss does now.
 - **Do not scope at all until the second turn.** The first utterance of a visit sees everything; once an
   area is established, subsequent turns are scoped, with an escape hatch tool for leaving.
@@ -106,12 +106,12 @@ What has to be decided:
   return is more fluid and much harder to reason about when it goes wrong.
 - **What a part is.** Most cheaply: a pour is a *list of the existing pours*, so every vessel keeps its
   current contract and the container renders a sequence. Vessel overrides (already wired) then compose
-  too, for free. **But a list is probably the wrong encoding** — see
+  too, for free. **But a list is probably the wrong encoding**; see
   [Generative UI](generative-ui.html): json-render's `{root, elements}`, a flat map of ids, is what lets
   an element be patched or streamed without resending its ancestors. A composite that can only be
   replaced whole cannot stream, and none of its parts can be referred to afterwards.
 - **The verify strip.** Today it reports one shape, its calls, its reads and writes. A composite has
-  several, and the strip is the thing that makes the system inspectable — so it has to say which part
+  several, and the strip is the thing that makes the system inspectable, so it has to say which part
   came from where, not collapse into one line. This is a feature, not an obstacle: a composite answer
   that cannot be taken apart is exactly the opacity the framework exists to avoid.
 - **The write rule still holds absolutely.** A composite containing a write still pours `confirm-write`
@@ -119,7 +119,7 @@ What has to be decided:
 
 ## What it would look like
 
-Sketch only — the nesting is the point, not the syntax.
+Sketch only: the nesting is the point, not the syntax.
 
 ```jsonc
 "shapes": {
@@ -139,7 +139,7 @@ Sketch only — the nesting is the point, not the syntax.
 ```
 
 Two things follow that are worth noticing. A connector plugs into an **area**, not a loose adapter
-interface — which is the thread this started on: `vendor` as a top-level shape gives a plugin one place
+interface, which is the thread this started on: `vendor` as a top-level shape gives a plugin one place
 to contribute subjects, verbs, calls and UI together, instead of dropping a file into `calls/adapters/`
 and hoping the dispatcher finds it. And `next` mostly disappears: within an area the siblings are the
 chips.
@@ -149,7 +149,7 @@ chips.
 *Added after the first draft: for SEO, bookmarking and linking, top-level shapes should be pages.*
 
 This looks like it contradicts the whole thesis, and it does not. The essay is precise about what the
-complaint actually is — "it is a location pretending to be a **memory**" — and the blueprint already said
+complaint actually is, "it is a location pretending to be a **memory**", and the blueprint already said
 where the locations would come from: "**the shape names *are* the routes**". `/browse`, `/purchase`,
 `/orders` is that sentence taken literally. The address carries the area and nothing else, memory stays
 on the trail, and two people opening the same link get the same place and different conversations. The
@@ -158,7 +158,7 @@ page is an entrance, not a corridor.
 **The full argument, including how to step through a timeline without putting it in the URL, is in
 [Addresses and the timeline](addresses.html).** It does not depend on shapes nesting and could ship
 first. The short version of what it costs: `packages/ui` is a Vite SPA and the core serves JSON only, so
-a crawler receives an empty div — SEO here is a rendering problem, not a metadata one, and server
+a crawler receives an empty div. SEO here is a rendering problem, not a metadata one, and server
 rendering is a capability the framework does not have at all.
 
 ## Where this conflicts with what is written down
@@ -167,7 +167,7 @@ Being honest about the tensions, because the blueprint is explicit and this is n
 
 - **"Seven vessels, never a page."** A composite of four vessels is close to being a page, and the rule
   exists to stop exactly that drift. The defence is that the composition is per-turn and derived from
-  what was asked, not a layout somebody drew — but it is a real risk and it should be stated as one.
+  what was asked, not a layout somebody drew, but it is a real risk and it should be stated as one.
 - **The spec format changes.** Nested shapes are a `spec.fishtea` format change, so migrations
   (`packages/spec/src/migrate.ts`) and the three-way reconcile both have work, and every archetype needs
   regrouping. The versioning machinery for that already exists and has been exercised.
@@ -175,7 +175,7 @@ Being honest about the tensions, because the blueprint is explicit and this is n
   bench and the e2e suite all switch on pour kind.
 - **Server rendering is a new capability, not a change to an existing one.** Nothing in the framework
   renders HTML today. This is the largest single piece of work the proposal implies, and it arrives for
-  a reason — findability — that the original design did not weigh.
+  a reason, findability, that the original design did not weigh.
 
 ## What to do first
 
@@ -189,7 +189,7 @@ In order, and each one answers a question rather than building the thing:
    predicts ~1 s each and ~160 MB each; confirm it.
 3. **Prototype the composite pour** as a list of existing pours, behind one archetype, and see what the
    verify strip has to become.
-4. **Prototype one area as an address** — `GET /purchase` content-negotiating JSON and HTML — before
+4. **Prototype one area as an address**, with `GET /purchase` content-negotiating JSON and HTML, before
    nested shapes exist at all. It can be tested against the flat shape list, it answers whether the
    rendering cost is what it looks like, and it is the part with a deadline attached: a site nobody can
    find is a problem today, not after a format change.

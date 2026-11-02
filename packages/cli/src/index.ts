@@ -838,13 +838,13 @@ async function main() {
       return;
     }
     default:
-      console.log(`fishtea — describe once, derive everything
+      console.log(`fishtea · describe once, derive everything
 
   fishtea templates           list the archetypes and their onboarding interviews
   fishtea new <id> --template <archetype> [--dir path] [--name "Name"] [--answers a.json | --interactive]
   fishtea version             framework, spec format, and what this application pins
   fishtea versions            every installed version; * is the one running
-  fishtea use <version>       switch to another installed version (and back — it is one symlink)
+  fishtea use <version>       switch to another installed version (and back; it is one symlink)
   fishtea upgrade [--from <checkout>]
                               install a newer framework beside the current one and switch to it
   fishtea uninstall <version> remove an installed version that is not current

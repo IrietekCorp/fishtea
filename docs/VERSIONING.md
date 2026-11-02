@@ -20,7 +20,7 @@ The framework is semver. An application pins a range in its `package.json`:
 ```
 
 A minor release satisfies `^1.1.0`, so most upgrades need no action from an application at all. That is
-the entire point of a pin — not ceremony, but permission to do nothing.
+the entire point of a pin: not ceremony, but permission to do nothing.
 
 The spec format moves only when the vocabulary changes shape, which is far rarer than the code changing.
 Migrations key off the *format*, never off the framework version, so one migration serves many releases
@@ -46,13 +46,13 @@ application /home/you/projects/myshop
 ```
 
 `fishtea doctor` reports the same compatibility line alongside the database, classifier and binding, and
-every command that runs an application warns once if the pin is not satisfied — because the symptom
+every command that runs an application warns once if the pin is not satisfied, because the symptom
 otherwise shows up much deeper, as something confusing.
 
 Two ways to be incompatible, with opposite fixes:
 
-- **framework-behind** — the application wants a newer framework than this one. Upgrade the framework.
-- **framework-ahead** — the framework has moved past the application's pin. Run `fishtea update`.
+- **framework-behind**: the application wants a newer framework than this one. Upgrade the framework.
+- **framework-ahead**: the framework has moved past the application's pin. Run `fishtea update`.
 
 ## Updating an application
 
@@ -71,14 +71,14 @@ Moved forward to accept the running framework and its future minors.
 
 `package.json`'s `fishtea.home`, `.env`'s `FISHTEA_HOME`, `.env.example` and the compose defaults all name
 the framework install the core image is built from. Where they point into `~/.fishtea/versions/<older>`,
-they move to this version too — otherwise the pin says 1.2 while the core is still built from 1.1. Only
+they move to this version too; otherwise the pin says 1.2 while the core is still built from 1.1. Only
 installed-version paths move, and only when this version is installed: a checkout you pointed
 `FISHTEA_HOME` at is yours, and an update run from a checkout never points at a directory that is not there.
 
 ### The spec
 
-If `spec.json` is at an older format, the migration chain runs against it. An *additive* format change —
-a new optional section, a new allowed form for an existing field — rewrites nothing and says so rather
+If `spec.json` is at an older format, the migration chain runs against it. An *additive* format change,
+a new optional section or a new allowed form for an existing field, rewrites nothing and says so rather
 than manufacturing activity:
 
 ```
@@ -95,7 +95,7 @@ A migrated spec is validated before it is written. A spec this build could not l
 created. `.fishtea/manifest.json` records, for every one of those files, **two** hashes: what the
 archetype said, and what was actually left in your directory.
 
-Two hashes rather than one, because they are not always the same — the scaffolder *transforms* files as
+Two hashes rather than one, because they are not always the same: the scaffolder *transforms* files as
 it copies them, filtering seed rows and rewriting fields from your interview answers. Recording only one
 would make every untouched archetype file look like an upstream change on the very next update.
 
@@ -105,11 +105,11 @@ With both, an update is a three-way merge and never a guess:
 |---|---|---|
 | no | no | nothing |
 | **yes** | no | updated in place |
-| no | **yes** | left alone — it is yours now, and stays yours through every future release |
+| no | **yes** | left alone: it is yours now, and stays yours through every future release |
 | **yes** | **yes** | conflict: your file stands, theirs lands beside it as `<file>.new` |
-| — | you deleted it | left deleted; files are never resurrected |
+| n/a | you deleted it | left deleted; files are never resurrected |
 
-A conflict clears when your file and the archetype's agree again — however they got there. Accept the
+A conflict clears when your file and the archetype's agree again, however they got there. Accept the
 `.new`, revert your edit, or happen to make the same change; any of them ends it. Ignoring a `.new` does
 not: the conflict is reported again next time, because silently adopting it would lose your edit.
 
@@ -133,7 +133,7 @@ fishtea update --adopt --template ecommerce
 ```
 
 Adoption claims only files that *currently match* the archetype exactly. Anything that differs is left
-unrecorded, which reads as "yours" forever — so adoption can never cause a later update to overwrite an
+unrecorded, which reads as "yours" forever, so adoption can never cause a later update to overwrite an
 edit you made before tracking began.
 
 ## Installing and switching framework versions
@@ -144,7 +144,7 @@ edit you made before tracking began.
 
 That is the only route while the beta is closed: no release binaries are published at `fishtea.io`, so
 the installer's download path has nothing to fetch and `fishtea upgrade` says so and points at `--from`.
-The same script serves both — once releases are published it will also install from the site and take a
+The same script serves both; once releases are published it will also install from the site and take a
 version argument, with no change to what lands on disk.
 
 The layout is deliberate:
@@ -176,7 +176,7 @@ framework forward across several projects without auditing all of them at once.
 ## In the console
 
 `fishtea tui` → screen **6, Versions**. What is running, what else is installed, and where this
-application stands — its pin, whether the running build satisfies it, its spec format, which build
+application stands: its pin, whether the running build satisfies it, its spec format, which build
 generated it. It can plan and apply an update, or switch framework version, without leaving the
 application directory. The plan is shown first and applied only on a second keypress.
 
@@ -189,10 +189,10 @@ bun run build-release --install --tarball
 ```
 
 `release` rewrites the literal in `packages/spec/src/release.ts`, every workspace `package.json`, and
-`bun.lock` — which repeats each member's version, and which nothing regenerated until 1.7.1, so the
+`bun.lock`, which repeats each member's version, and which nothing regenerated until 1.7.1, so the
 committed lockfile said 1.1.0 for six releases and dirtied every clean clone's first `bun install`. It is
 regenerated with `bun install --lockfile-only`, and `--check` now reads it as a version site like any
-other. `build-release` compiles the binary and stages the runtime files beside it — `--compile` embeds
+other. `build-release` compiles the binary and stages the runtime files beside it; `--compile` embeds
 code, not data directories, so `templates/`, `plugins/` and `packages/ui` ship alongside it.
 
 Publishing is deliberately not automated:

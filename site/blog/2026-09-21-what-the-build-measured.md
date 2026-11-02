@@ -7,7 +7,7 @@ tags: classifier, performance
 ---
 
 Every framework's design document is a set of predictions. Ours made five about the classifier, and four
-of them were wrong. None of the corrections made the system worse — but all of them would have been
+of them were wrong. None of the corrections made the system worse, but all of them would have been
 expensive to find later, which is the argument for measuring the risky parts before building on them.
 
 ## The embedding was four times larger than planned
@@ -30,7 +30,7 @@ subset.
 
 We did not try to make it faster. We changed the budget to 1000ms in the shipped samples and re-baselined
 the benchmark around the truth. What matters is not the number; it is that the number is a *hard ceiling*
-with a defined behaviour past it. Past the budget the pour is `ask` — the system says "tell me more"
+with a defined behaviour past it. Past the budget the pour is `ask`: the system says "tell me more"
 rather than silently swapping in a worse model or holding the request open. A deadline you actually honour
 is more valuable than a deadline you wish were shorter.
 
@@ -39,7 +39,7 @@ For the record, end to end: a scripted ten-step task takes 1.3s at the median, a
 
 ## The model was not stateless
 
-The design assumed classification calls were independent. They are not — needle carries conversation state
+The design assumed classification calls were independent. They are not: needle carries conversation state
 across `complete()` calls, which meant an earlier utterance could quietly colour a later one.
 
 The pool now `reset()`s before every request. This is the kind of assumption that produces bugs which look
@@ -52,7 +52,7 @@ The plan was to give the classifier the last *k* turns, summarised. We tried it.
 shape instead of reading the current utterance, and the longer prefill cost time for the privilege.
 
 What works instead is narrower and cheaper. Context is (a) recalled turns from *other* trails, when they
-genuinely resonate, and (b) for anaphoric utterances only — "the second one", "again" — the previous
+genuinely resonate, and (b) for anaphoric utterances only ("the second one", "again"), the previous
 answer's items by id and name. That is enough to make "add the second one" resolve to
 `addToCart(productId=p_chrome_studs)`, and nothing more is needed.
 
@@ -61,14 +61,14 @@ More context is not better context. Anaphora needs a list; everything else needs
 ## One worker per persona subset, not one pool for everything
 
 The obvious design is a pool of interchangeable workers. Measured, switching a worker between tool subsets
-costs a `needle_init` of **0.7–1.2 seconds** with documentation-rich tool JSON — against 125–310ms for the
+costs a `needle_init` of **0.7–1.2 seconds** with documentation-rich tool JSON, against 125–310ms for the
 classification itself. Under load it reached 3.7 seconds, and one abandoned slow request queued behind the
 next produced a timeout cascade.
 
 So each worker holds one persona subset. The dispatcher assigns unassigned workers first, then
 least-recently-used, and prefers a worker already on the subset it needs. Requests whose client deadline
 has passed are skipped rather than run. `NEEDLE_WORKERS` must be at least the number of distinct persona
-subsets — three for every archetype we ship.
+subsets, three for every archetype we ship.
 
 Warm-up is sequential on purpose: parallel initialisation thrashed to 48 seconds.
 

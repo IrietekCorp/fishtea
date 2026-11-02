@@ -27,7 +27,7 @@ declared the material:
 
 | in the spec | becomes |
 |---|---|
-| a shape's `triggers` | the queries — the phrases the author said people use |
+| a shape's `triggers` | the queries, the phrases the author said people use |
 | its `input`, with each field's `doc` | the arguments, and which ones are required |
 | its `allow` | which persona subset the example is trained against, since a subset is what a worker binds |
 | `seed/*.json` | real ids, categories, tags and brands to put in the arguments |
@@ -52,7 +52,7 @@ Two behaviours are trained separately, and the distinction matters more here tha
 - **A trigger carrying a value fills it completely.** "add p_coral_hoops to my cart" has to come back
   with the id, not the word "add".
 
-A half-filled call is the one case that is neither, and the corpus never contains one — it would teach
+A half-filled call is the one case that is neither, and the corpus never contains one, because it would teach
 the model to drop a value it had already extracted.
 
 Refusals are in there too. Needle is good at them out of the box ("what's the weather in Lagos" comes
@@ -74,12 +74,12 @@ difference between its two backends decides whether tuning is a scheduled job or
 | the 120-example ecommerce corpus, 12 epochs | ~3 hours (extrapolated) | **~5 minutes** |
 
 That is about **30×**, and it is a consumer desktop card rather than a datacentre one. It does need
-`pip install "jax[cuda12]"` — the plain `cactus-needle` install is CPU-only and says so in one line at
-startup, which is easy to miss — plus `sentencepiece`, `flax`, `optax` and `orbax-checkpoint`, which the
+`pip install "jax[cuda12]"` (the plain `cactus-needle` install is CPU-only and says so in one line at
+startup, which is easy to miss) plus `sentencepiece`, `flax`, `optax` and `orbax-checkpoint`, which the
 base package does not pull in. And it wants `--batch-size 2 --max-len 768`: the default batch exhausts
 12 GB and fails with `RESOURCE_EXHAUSTED` partway through the first step.
 
-So the earlier advice here — a nightly or weekly job on a GPU box, or the hosted service — understated
+So the earlier advice here, a nightly or weekly job on a GPU box or the hosted service, understated
 what a developer machine can do. At five minutes a run, tuning on a spec change is reasonable, and the
 build-time/schedule split below is about *where it is appropriate*, not about what is affordable.
 
@@ -88,10 +88,10 @@ pool degraded with it: the same labelled set that scores a 227 ms median on a qu
 **951 ms** and lost eight points of accuracy while training ran beside it. That is the concurrency
 collapse in `contract.md` Phase 5 arriving by a side door, and it means a benchmark taken during a
 training run is not a benchmark. `fishtea eval` records its median latency in the baseline for exactly
-this reason — a baseline whose median is four times the expected one was measured under load.
+this reason: a baseline whose median is four times the expected one was measured under load.
 
 **Staleness is the trigger.** `.fishtea/tune/manifest.json` records the `shapes` and `personas` hashes
-the corpus was derived from — the only two sections that can make a model wrong, since the first is what
+the corpus was derived from, the only two sections that can make a model wrong, since the first is what
 the tools come from and the second decides which subsets exist. A call's SQL, a layout or a notification
 can change freely. When either moves:
 
@@ -124,8 +124,8 @@ fishtea tune install tuned.cact                          # into models/, with a 
 ```
 
 `install` reads the archive rather than taking your word for it. A `.cact` header states its depth,
-tensor count and engram sites, and the probe heads fall out of those — nine in a stock archive, two
-after any LoRA merge — so it can tell you, without running anything:
+tensor count and engram sites, and the probe heads fall out of those (nine in a stock archive, two
+after any LoRA merge) so it can tell you, without running anything:
 
 ```
 ✓ installed tuned.cact  63.4 MB  20 layers
@@ -136,8 +136,8 @@ after any LoRA merge — so it can tell you, without running anything:
   no embedding head — familiarity and recall go quiet; the pool reports "embeddings": false
 ```
 
-Those hashes are **provenance, not a claim**. They come from the corpus manifest — what the model
-actually learned — not from the spec as it stands at install time. Edit the spec between deriving and
+Those hashes are **provenance, not a claim**. They come from the corpus manifest, what the model
+actually learned, not from the spec as it stands at install time. Edit the spec between deriving and
 installing and `install` says so instead of absorbing it, because that is the one edit most easily
 forgotten.
 
@@ -168,13 +168,13 @@ curl -s localhost:8081/healthz | jq '{weights, embeddings}'
 ```
 
 If the record names a file that is not there, the pool says so and serves the stock weights rather than
-refusing to start — a missing 60 MB binary is a deploy mistake, and an application that answers with a
+refusing to start: a missing 60 MB binary is a deploy mistake, and an application that answers with a
 worse classifier beats one that does not answer.
 
 ### Knowing when it has gone stale
 
 `fishtea doctor` **fails** when the spec's `shapes` or `personas` have moved since the model was
-trained — the same two sections the corpus depends on, for the same reason: the tools come from the
+trained, the same two sections the corpus depends on, for the same reason: the tools come from the
 first and the subsets from the second, so a model trained before either moved is routing to a world
 that no longer exists. A call's SQL, a layout or a notification cannot make it wrong.
 
@@ -199,10 +199,10 @@ $ needle build --lora adapter.safetensors --layers 8 --out tuned.cact
 
 Every answer then comes back with `confidence: None`, which the core reads as `0`, which is below
 `rules.classify.floor`, which pours `ask`. A tuned model dropped in as-is would make the application
-stop answering altogether. This is the blocker, and it is a gating problem rather than a modelling one —
+stop answering altogether. This is the blocker, and it is a gating problem rather than a modelling one:
 the routing was good.
 
-Cactus's hosted fine-tuning would solve it — the head is trained with the model and calibrated on your
+Cactus's hosted fine-tuning would solve it, because the head is trained with the model and calibrated on your
 tools, and it is the only documented way to keep a calibrated confidence. **It is not an option for the
 framework.** FishTea is meant to be distributed and to run locally; a framework that cannot produce a
 working classifier without someone's API key has moved the dependency it was trying to remove. An
@@ -222,7 +222,7 @@ model cannot fake:
 That last one is the interesting one: FishTea carries a *second, independent* router, and two routers
 agreeing is evidence while disagreement is exactly when you want to pour `ask`.
 
-That set now exists — 194 labelled cases across the four archetypes, `fishtea eval` — and it says
+That set now exists (194 labelled cases across the four archetypes, `fishtea eval`) and it says
 something different from what this section expected. See **What the labelled set found** below: the
 answer is not that a derived confidence rescues the gate, it is that *no* gate rescues this classifier,
 and the order of the work is the other way round from how it is written above.
@@ -230,7 +230,7 @@ and the order of the work is the other way round from how it is written above.
 
 ## The labelled set
 
-`fishtea eval` runs a file of hand-labelled utterances — `eval/classify.jsonl`, one JSON object a line —
+`fishtea eval` runs a file of hand-labelled utterances, `eval/classify.jsonl`, one JSON object a line,
 and reports accuracy by population, the floor the answers imply, and how the classifier compares with
 the lexical router that ships anyway. The archetypes carry 194 cases between them.
 
@@ -243,7 +243,7 @@ fishtea eval --json out.json              # the raw answers, for sweeping anythi
 This is the only artefact here a spec cannot derive, and that is the point: it is a person saying what a
 sentence means. Which makes a quietly wrong label worse than a missing one, so `checkCases` refuses a
 case naming a persona or shape that does not exist, an argument the shape does not take, a refusal tag
-that names a shape, a bare case demanding arguments, a duplicate, and — the most damaging one — a shape
+that names a shape, a bare case demanding arguments, a duplicate, and, the most damaging one, a shape
 the asking persona is never offered, which looks like a hard case and is an impossible one.
 
 **The tags are the design.** Accuracy over a bag of sentences is nearly meaningless, because the
@@ -251,7 +251,7 @@ composition of the bag sets the number:
 
 | tag | what it asks |
 |---|---|
-| `plain` | carries the shape's own trigger — the lexical router gets these free |
+| `plain` | carries the shape's own trigger; the lexical router gets these free |
 | `paraphrase` | contains no trigger at all, **the population that justifies the model** |
 | `collision` | one shape's trigger inside a sentence that means another |
 | `bare` | a trigger with no arguments, which must still route so a form can be poured |
@@ -262,22 +262,22 @@ composition of the bag sets the number:
 
 About a third of every set is a refusal, deliberately. A set of positives cannot distinguish a floor
 that keeps good answers from one that admits bad ones, which is the only question a floor exists to
-settle — it would recommend zero every time and look right doing it.
+settle: it would recommend zero every time and look right doing it.
 
 ## What the labelled set found
 
 Three things, and the third one reorders the work.
 
 **The model earns its keep exactly where it was supposed to, and only there.** On ecommerce the lexical
-dev harness scores 42/56 against needle's 27/56 — the *dictionary beats the production classifier
-overall* — but split by population the picture inverts where it matters: `plain` 11/11 lexical against
+dev harness scores 42/56 against needle's 27/56, so the *dictionary beats the production classifier
+overall*, but split by population the picture inverts where it matters: `plain` 11/11 lexical against
 7/11 needle, and `paraphrase` 3/13 lexical against 7/13 needle. The lexical router wins the aggregate by
 being cautious, and loses the sentences nobody phrased in the shop's own words.
 
 **On engine 3.0.4 the classifier substitutes rather than declines.** Every archetype scores **0** on
 `out-of-subset`. Offered only a stranger's five tools, "check out" comes back as `trending` at
 confidence 0.57, reasoning *"User wants to check out. Use trending to see what's popular."* The gate
-does not catch this, because `trending` is a shape a stranger may ask — the gate is working exactly as
+does not catch this, because `trending` is a shape a stranger may ask. The gate is working exactly as
 designed and the wrong answer is a routing error, not an access one. Engine 3.2.8 is far better here
 (refusals 69–83% against 13–62%) and marginally worse at routing, which is the right trade for a
 framework whose rule is that a failed classify pours `ask` and never a worse answer.
@@ -292,8 +292,8 @@ framework whose rule is that a failed classify pours `ask` and never a worse ans
 | arguments present **and** the lexical router agrees | 59/75 · **2/59** | 52/63 · **2/20** | **0/12 · 0/7** |
 | arguments present and lexical does not contradict | 67/75 · 51/59 | 55/63 · 18/20 | 8/12 · 3/7 |
 
-Read the last column. The one derived gate that genuinely filters — arguments complete *and* the second
-router agrees — throws away **every single answer the model got and the dictionary missed**: all twelve
+Read the last column. The one derived gate that genuinely filters (arguments complete *and* the second
+router agrees) throws away **every single answer the model got and the dictionary missed**: all twelve
 on 3.0.4, all seven on 3.2.8. "I need a gift for my sister's birthday", "we're free the last week of
 July", "take p_brass_threaders out of my cart". A gate that requires the dictionary to agree *is* the
 dictionary, with a 35 MB model attached for decoration. It scores beautifully in aggregate because most
@@ -308,11 +308,11 @@ This document has said that the tuning path is blocked on confidence: a locally 
 `confidence: None`, so the gate rejects everything, so tuning cannot ship. The labelled set says the
 dependency runs the other way. On 3.0.4 the classifier is wrong on **59 of the 134 answers it offers**,
 and on 3.2.8 on 20 of 83. **No threshold rescues a classifier with that error rate; it only chooses
-which mistakes to make.** Confidence is not blocking tuning — accuracy is blocking confidence, and
+which mistakes to make.** Confidence is not blocking tuning; accuracy is blocking confidence, and
 tuning is the only measured lever on accuracy.
 
 That makes the sequence: tune a rung on the derived corpus, re-run `fishtea eval`, and only then ask
-what gates it — because a classifier that is right 90% of the time can be gated by signals that are
+what gates it, because a classifier that is right 90% of the time can be gated by signals that are
 useless at 60%, and `fishtea eval` is now the instrument that will say so. It also means the labelled
 set is the training set's held-out twin, and the two must not be allowed to merge: `fishtea tune data`
 derives from triggers, inputs, seed and trail, and nothing in `eval/classify.jsonl` is ever fed to it.
@@ -337,19 +337,19 @@ size at the same depth, same or better latency. Against a run-to-run variance of
 configurations (measured: the same stock run scored 26 then 25), +5 is a real effect.
 
 **This is the first thing measured here that moves the curve rather than sliding along it.** Tuned L8
-answers in **78 ms against stock L20's 249** — 3.2× faster — and loses three correct answers doing it.
+answers in **78 ms against stock L20's 249**, which is 3.2× faster, and loses three correct answers doing it.
 Every other lever traded accuracy for latency at roughly par; this one buys both at once, which is what
 the whole document predicted and had not until now demonstrated.
 
 **The shallow rungs fail in different ways, and only the labelled set shows it.** Tuned L4 routes as
 well as tuned L8 (18/41 each) but refuses almost nothing (1/15 against 5/15): it answers everything.
-That is invisible in an overall score — 19 against 23 looks like "a bit worse" — and decisive in
+That is invisible in an overall score, where 19 against 23 looks like "a bit worse", and decisive in
 practice, because a router that never declines is one that confidently mis-answers. The paraphrase
 column tells the other half: 7/13 at full depth, 2/13 at eight layers. Depth is what carries
 generalisation; the corpus cannot put it back.
 
-**Do not read the L8 drop as the corpus overfitting to triggers.** That was the obvious hypothesis — a
-corpus derived from triggers teaching the model to be a dictionary — and the control refutes it. The
+**Do not read the L8 drop as the corpus overfitting to triggers.** That was the obvious hypothesis, that a
+corpus derived from triggers teaches the model to be a dictionary, and the control refutes it. The
 same adapter at full depth *gains* paraphrases (5 → 7) and takes collisions to 6/6. The corpus is fine;
 eight layers cannot carry it.
 
@@ -358,13 +358,13 @@ eight layers cannot carry it.
 **`needle build --lora` drops the embedding head, not just the confidence head.** The tuned archive has
 seven tensors fewer than the stock one, and `needle_embed` raises `RuntimeError: needle_embed failed
 (code -1)` on every call. The pool computed its vector width during warm-up, so it reported *every*
-tuned model as a worker that failed to load — the one measured lever on accuracy was unloadable. The
+tuned model as a worker that failed to load, so the one measured lever on accuracy was unloadable. The
 pool now requires routing and treats embedding as optional, reports `"embeddings": false` in
 `/healthz`, and answers `/embed` with a refusal rather than dying. What is actually lost is
 familiarity/recall, which needs those vectors; the turn itself is answered normally.
 
 **A locally tuned archive is 1.8× the published size.** Tuned L20 is 63.4 MB against the published
-35.3 MB, entirely because the exporter writes CQ4 where the published file is CQ2 — the same
+35.3 MB, entirely because the exporter writes CQ4 where the published file is CQ2, which is the same
 `WEIGHT_BITS = 4` guard described below. So the edge arithmetic in that section applies to the stock
 archive, and a tuned one is twice the download until that guard lifts.
 
@@ -381,26 +381,26 @@ nameless tensor directory and 64-byte-aligned blobs, so every tensor can be meas
 | embedding / vocabulary | CQ4 | 3.24 | 9% |
 | layer norms, gates, Hadamard diagonals | FP16 | 1.22 | 3% |
 | mHC blocks | CQ4 | 0.76 | 2% |
-| tokenizer | RAW | 0.11 | — |
-| probe heads (embedding, confidence, router) | CQ4 | 0.04 | — |
+| tokenizer | RAW | 0.11 | n/a |
+| probe heads (embedding, confidence, router) | CQ4 | 0.04 | n/a |
 
 Three things set the size, and only one of them is a flag.
 
 **Depth, which moves more than the layers.** `needle build --layers N` exports any rung from 2 to 20, and
-it takes the engram sites down with it — five sites at 20 layers, two at 8, one at 4. Since the tables
+it takes the engram sites down with it: five sites at 20 layers, two at 8, one at 4. Since the tables
 are the biggest line in the file, depth is the dominant size lever precisely because of what it drags
 along, not because of the transformer.
 
 **Quantisation width, worth about 1.9×.** The published archive puts its two big parts at **two bits**.
-The pip package's exporter writes **four**, and refuses anything else — `WEIGHT_BITS = 4`, with
-`_cq_pack` raising on any other value — although the format defines 1, 2, 3, 4 and ternary, the runtime
+The pip package's exporter writes **four**, and refuses anything else (`WEIGHT_BITS = 4`, with
+`_cq_pack` raising on any other value) although the format defines 1, 2, 3, 4 and ternary, the runtime
 reads them (the published file proves it), and the codebook machinery in `quantize.py` already builds
 2- and 3-bit codebooks. Lifting that one guard locally and exporting at two bits produces archives the
 engine loads and runs correctly:
 
 | rung | as the public tooling builds it (4-bit) | at the published width (2-bit) | peak RSS | accuracy, 24 cases |
 |---|---|---|---|---|
-| 2 layers | — | **7.00 MB** | 36 MB | 11/24 |
+| 2 layers | n/a | **7.00 MB** | 36 MB | 11/24 |
 | 4 layers | 15.39 MB | **8.12 MB** | 40 MB | 11/24 |
 | 8 layers | 27.41 MB | **14.44 MB** | 58 MB | 13/24 |
 | 20 layers | (35.34 MB published) | 35.34 MB | 119 MB | 16/24 |
@@ -419,9 +419,9 @@ The browser target is real and small: `needle build --platform wasm` emits `need
 and `needle.js` at 62 KB, beside whichever archive you choose. So a FishTea application could ship its
 own router to the browser for **9–15 MB**, cached once.
 
-The prize is not the download. It is that [the pool's hard ceiling](operating.html) — one classify at a
+The prize is not the download. It is that [the pool's hard ceiling](operating.html), one classify at a
 time, four to five a second per host, because the engine spins twelve threads and collapses when
-oversubscribed — **is a property of classifying on the server.** A router that runs on the client brings
+oversubscribed, **is a property of classifying on the server.** A router that runs on the client brings
 its own CPU, and the ceiling stops existing. That is the version of this that can stand in for a
 conventional framework's router and session layer at any scale.
 
@@ -437,12 +437,12 @@ native number here comes from, so the two columns are comparable:
 | 4 layers, 2-bit | 8.12 MB | 47 ms | **215 ms** | 1.2 s | 20 MB | 17/29 (native 16) |
 | 2 layers, 2-bit | 7.00 MB | 30 ms | **142 ms** | 0.7 s | 17 MB | 15/29 (native 13) |
 
-**The browser is 4.7× slower than native, and it is 4.7× at every rung** — a ratio that flat is a
+**The browser is 4.7× slower than native, and it is 4.7× at every rung**, and a ratio that flat is a
 structural cost, not a quirk. It is the thread count: the published `needle.wasm` has no pthreads and
 never touches `SharedArrayBuffer`, so it runs on one core where the native engine spins twelve. The same
 spin-barrier design that makes [the native pool collapse under concurrency](operating.html) is simply
-absent here. And `needle build --platform wasm` only *downloads* a prebuilt engine — the binary is
-byte-identical whichever `cactus-needle` fetches it — so this is not a flag anyone can set. It is the
+absent here. And `needle build --platform wasm` only *downloads* a prebuilt engine; the binary is
+byte-identical whichever `cactus-needle` fetches it, so this is not a flag anyone can set. It is the
 second thing worth raising with Cactus, beside the 4-bit export guard.
 
 Accuracy survives the crossing: within the run-to-run variance already recorded, the browser scores what
@@ -451,36 +451,36 @@ the native engine scores on the same archive.
 **The cold start is the prefix, not the download.** Fetching 8 MB and compiling a 0.93 MB engine is tens
 of milliseconds; `needle_init` is 1.2 s at four layers and **6.0 s at twenty**, because it prefills the
 579-token system-and-tools prefix. It is paid once per page, it scales with the tool list, and it is the
-strongest argument for persona subsets in the browser — a smaller subset is a shorter prefix.
+strongest argument for persona subsets in the browser: a smaller subset is a shorter prefix.
 
 **The engine must run on a worker, and that is not an application's choice.** On the main thread a
 classify is a synchronous C call that blocks everything: probing `requestAnimationFrame` through one
 second of classifying gives a **worst frame gap of 1000 ms and 14 frames where idle draws 74**. The page
 is frozen. Moved to a `Worker`, the same five classifies leave the main thread at 17 ms frames and 74
-frames — indistinguishable from idle — and cost the same 203 ms each. A conversational interface that
+frames, indistinguishable from idle, and cost the same 203 ms each. A conversational interface that
 freezes while it thinks is worse than a slow one.
 
 **The floor would silence it today.** The WASM engine carries the newer calibration, not the pinned
 3.0.4 one: median confidence on a *correct* route is **0.22** at twenty layers and 0.01–0.05 on the
 shallow rungs. At `rules.classify.floor` of 0.35 a browser build would reject 11 of 19 correct routes on
-the full model and **every** correct route on the shallow ones — the application would pour `ask` at
+the full model and **every** correct route on the shallow ones, so the application would pour `ask` at
 everything. This is the same conclusion the engine-upgrade measurement reached from the other direction,
 and it is the same remedy: the floor has to be re-derived from a labelled set, or replaced by the
 derived confidence above. Shipping the browser build on 0.35 would ship a mute application.
 
 So the shape of a client-side router is already clear: **a tuned four-layer rung at two bits, on a
 worker, gated by FishTea's own confidence.** That is 8 MB, a 1.2-second cold start and roughly 200 ms a
-turn, with no per-host ceiling at all. Every piece of it is work already named — the tuning, the derived
-confidence, the labelled set — and none of it is a browser problem.
+turn, with no per-host ceiling at all. Every piece of it is work already named (the tuning, the derived
+confidence, the labelled set) and none of it is a browser problem.
 
 Two caveats on the numbers. They are Chromium on a desktop; Safari and Firefox are unmeasured, and a
 phone has neither these cores nor this memory bandwidth, so treat 4.7× as the shape and not the
-constant. And the archive fetch above is from localhost — over a real network the 8 MB is a download,
+constant. And the archive fetch above is from localhost; over a real network the 8 MB is a download,
 cached after the first visit.
 
 ## Why the floor is 0
 
-`needle3.cact` is byte-identical between `cactus-needle` 3.0.4 and 3.2.8 — only the engine differs — and
+`needle3.cact` is byte-identical between `cactus-needle` 3.0.4 and 3.2.8, with only the engine differing, and
 latency is identical at every percentile. Confidence is not, and the difference is not a rescaling that
 a new threshold would fix.
 
@@ -493,7 +493,7 @@ Over the whole labelled set on **3.2.8**, the engine this framework now pins:
 
 **The wrong routes sit inside the correct distribution, with ten of the eighteen correct ones below
 them.** There is no threshold. A floor above 0.138 excludes the wrong answers and thirteen of the right
-ones with them; a floor below 0.085 excludes nothing. Every archetype shows the same shape — the sweep
+ones with them; a floor below 0.085 excludes nothing. Every archetype shows the same shape: the sweep
 that `fishtea eval` prints loses a third to a half of correct routes at the very first non-zero step.
 
 So `rules.classify.floor` ships at **0**, and the templates set it explicitly. That is not giving up on
@@ -501,15 +501,15 @@ safety; it is declining to pretend. A number that discards correct answers witho
 is not a safety valve, it is a tax that looks like one. What actually protects a turn is the machinery
 that was always doing the work:
 
-- **the gate** — permission is checked after classification, so a shape this persona may not ask is
+- **the gate**: permission is checked after classification, so a shape this persona may not ask is
   refused no matter how confident the model was;
-- **`missingRequired`** — an incomplete call pours a form that collects the rest instead of acting;
-- **`confirm-write`** — every write is shown to the visitor before it happens, and they say yes;
+- **`missingRequired`**: an incomplete call pours a form that collects the rest instead of acting;
+- **`confirm-write`**: every write is shown to the visitor before it happens, and they say yes;
 - **the model itself**, on this engine: 3.2.8 declines rather than substituting (69–92% of the cases
   where silence is correct, against 13–62% on 3.0.4), and a refusal needs no threshold.
 
 A floor of 0 also admits a locally tuned rung, whose head is dropped at build time and reports 0 on
-every answer — so the one measured lever on accuracy stops being gated away by a number that was never
+every answer, so the one measured lever on accuracy stops being gated away by a number that was never
 measuring anything.
 
 **Raise it only from your own measurement.** `fishtea eval` prints the sweep and names the best
