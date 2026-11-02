@@ -263,12 +263,12 @@ from a person is kept.
 
 /admin → Visitors leaves out, unless asked: tooling, anything announcing itself as a bot or a script, a
 passer-by who arrived and said nothing (link previews, uptime probes), and visitors folded into an
-account's — the account is one row, marked with how many browsers joined it.
+account's: the account is one row, marked with how many browsers joined it.
 
 ## The menu's trail
 
 The trail in the menu is a reference, not a replay: newest first, each place once (a place visited again,
-or gone back to, moves to the front — the core keeps `turn.revisited_at`), at most
+or gone back to, moves to the front; the core keeps `turn.revisited_at`), at most
 `rules.site.menu.trail.max` points (12), none older than `trail.hours` (24), drawn from the visits inside
 those hours. What falls off is still on the record: /admin → Visitors has every turn. An answer's
 `phrase` may name what it found (`"$answer.product.0.name"`) so the trail reads as things, not as the
