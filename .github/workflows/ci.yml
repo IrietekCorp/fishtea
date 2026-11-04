@@ -1,0 +1,68 @@
+# The framework's own gate. Three sites build against this repository at a tag or a sha, so a break here
+# is a break in their deploy: it is cheaper to find it on a push than in a site's pipeline.
+#
+# What runs: the suite (against a real Postgres, per the house rule), both typecheck projects, and
+# `release --check`, which verifies every version site already agrees. scripts/release.ts has called that
+# "used by the test suite and CI" since it was written; this is the CI.
+#
+# What does not run: the needle pool. It is a Python service with a model behind it, and the tests that
+# want it skip cleanly when FISHTEA_TEST_CLASSIFIER_URL answers nothing. Classifier accuracy is measured
+# by `fishtea eval` against a labelled set, not by a workflow.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      # 5434, not 5432. A test never points at a running stack, and the needle test calls pool.reload(),
+      # which would otherwise swap a live application's tool set underneath it.
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: fishtea
+          POSTGRES_PASSWORD: fishtea
+          POSTGRES_DB: fishtea
+        ports: ["5434:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fishtea"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      FISHTEA_TEST_DATABASE_URL: postgres://fishtea:fishtea@localhost:5434/fishtea
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - run: bun install --frozen-lockfile
+
+      # packages/ui/src/plugins.generated.{css,ts} are derived and git-ignored; a fresh clone needs the
+      # empty versions before anything typechecks.
+      - name: Generated UI stubs
+        run: bun run ui-assets-base
+
+      - name: Versions agree
+        run: bun run release --check
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
