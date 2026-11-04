@@ -35,8 +35,12 @@ jobs:
           POSTGRES_PASSWORD: fishtea
           POSTGRES_DB: fishtea
         ports: ["5434:5432"]
+        # -h localhost matters. Postgres's entrypoint starts the server twice: once on a unix socket
+        # to run initdb and create the database, then again on TCP. A pg_isready with no host checks
+        # the socket, so it can report healthy against that first temporary server and let the steps
+        # begin on a port that is about to close. Asking over TCP cannot be satisfied by it.
         options: >-
-          --health-cmd "pg_isready -U fishtea"
+          --health-cmd "pg_isready -h localhost -U fishtea -d fishtea"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
@@ -52,6 +56,12 @@ jobs:
           bun-version: 1.4.2
 
       - run: bun install --frozen-lockfile
+
+      # The second half of the health check, from where the tests sit: connect over TCP through the
+      # framework's own connect(), and install the vector extension every migration opens with. A cold
+      # database fails here in seconds instead of as thirty-one files of ECONNREFUSED after a typecheck.
+      - name: The test database is usable
+        run: bun scripts/ci-preflight.ts
 
       # packages/ui/src/plugins.generated.{css,ts} are derived and git-ignored; a fresh clone needs the
       # empty versions before anything typechecks.
