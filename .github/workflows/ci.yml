@@ -29,7 +29,7 @@ jobs:
       # 5434, not 5432. A test never points at a running stack, and the needle test calls pool.reload(),
       # which would otherwise swap a live application's tool set underneath it.
       postgres:
-        image: pgvector/pgvector:pg18
+        image: pgvector/pgvector:0.8.7-pg18-trixie
         env:
           POSTGRES_USER: fishtea
           POSTGRES_PASSWORD: fishtea

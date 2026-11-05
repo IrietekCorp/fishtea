@@ -19,6 +19,7 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
+import { POSTGRES_IMAGE } from "../packages/cli/src/env.ts";
 
 const HOME = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const UI = join(HOME, "packages/ui");
@@ -81,7 +82,7 @@ try {
     } catch {
       skip(`no database at ${DB.replace(/:[^:@]+@/, ":***@")}`,
         "docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea " +
-        "-e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18\n" +
+        `-e POSTGRES_DB=fishtea -p 5434:5432 ${POSTGRES_IMAGE}\n` +
         "  then: docker exec fishtea-test-db psql -U fishtea -d fishtea -c 'CREATE DATABASE fishteae2e'");
     }
 

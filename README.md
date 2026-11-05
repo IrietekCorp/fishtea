@@ -148,7 +148,7 @@ git clone <this repo> fishtea && cd fishtea && bun install
 
 docker run -d --name fishtea-test-db \
   -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea \
-  -p 5434:5432 pgvector/pgvector:pg18
+  -p 5434:5432 pgvector/pgvector:0.8.7-pg18-trixie
 
 bun test packages                  # needs the container above
 bunx tsc -p tsconfig.json --noEmit

@@ -6,7 +6,7 @@ Describe a business once in `spec.json`; derive the data layer, the classifier's
 
 ```bash
 bun install
-docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18
+docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:0.8.7-pg18-trixie
 bun test packages scripts         # spec + core + http + templates + tui + release staging (needs the container above on :5434)
 bun test packages/tui             # the console, driven through a pty
 bun run e2e                       # the browser walkthrough, headless (skips cleanly with no browser/db)

@@ -19,6 +19,9 @@
  * start with thirty-one files of ECONNREFUSED.
  */
 import { connect } from "@fishtea/core";
+// The same pin the composes and CI use. scripts/build-release.ts reaches into the CLI source the same
+// way: the seams rule is about packages/tui/src at run time in a release, not about scripts/.
+import { POSTGRES_IMAGE } from "../packages/cli/src/env.ts";
 
 const URL_ = process.env.FISHTEA_TEST_DATABASE_URL ?? "postgres://fishtea:fishtea@localhost:5434/fishtea";
 const DEADLINE = Number(process.env.FISHTEA_PREFLIGHT_SECONDS ?? 60) * 1000;
@@ -61,6 +64,6 @@ while (Date.now() - started < DEADLINE) {
 console.error(`✗ no usable database at ${shown} after ${attempt} attempts over ${DEADLINE / 1000}s`);
 console.error(`  last error: ${last}`);
 console.error(`\n  locally:  docker run -d --name fishtea-test-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea \\`);
-console.error(`              -e POSTGRES_DB=fishtea -p 5434:5432 pgvector/pgvector:pg18`);
+console.error(`              -e POSTGRES_DB=fishtea -p 5434:5432 ${POSTGRES_IMAGE}`);
 console.error(`  in CI:    the postgres service in .github/workflows/ci.yml`);
 process.exit(1);

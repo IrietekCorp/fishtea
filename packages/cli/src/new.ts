@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { bumpVersion, validateSpec, FISHTEA_VERSION, SPEC_FORMAT, caretRange } from "@fishtea/spec";
-import { isInside, lanAddress, workspaceRoot, type Flags } from "./env.ts";
+import { isInside, lanAddress, workspaceRoot, POSTGRES_IMAGE, POSTGRES_READY, type Flags } from "./env.ts";
 import { captureManifest, TEMPLATE_DIRS, writeManifest } from "./manifest.ts";
 
 export interface Template { name: string; dir: string; doc: string; onboard: Onboard }
@@ -431,7 +431,7 @@ export function composeFile(home: string): string {
 
 services:
   db:
-    image: pgvector/pgvector:pg18
+    image: ${POSTGRES_IMAGE}
     environment:
       POSTGRES_USER: fishtea
       POSTGRES_PASSWORD: fishtea
@@ -442,7 +442,7 @@ services:
     ports:
       - "\${FISHTEA_DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fishtea"]
+      test: ["CMD-SHELL", "${POSTGRES_READY}"]
       interval: 3s
       retries: 20
 

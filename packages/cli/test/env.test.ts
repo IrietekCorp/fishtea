@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { bindHost, bindPort, classifierUrl, databaseUrl, isInside, nextFreePort, portFree, portWasChosen, publicHost, reachableUrls, redact, resolvePort, SetupError, workspaceRoot, DEFAULT_APP_ID } from "../src/env.ts";
+import { bindHost, bindPort, classifierUrl, databaseUrl, isInside, nextFreePort, portFree, portWasChosen, publicHost, reachableUrls, redact, resolvePort, SetupError, workspaceRoot, DEFAULT_APP_ID, POSTGRES_IMAGE } from "../src/env.ts";
 import { targetDir, scaffold } from "../src/new.ts";
 
 const HOME = resolve(import.meta.dir, "../../..");
@@ -46,7 +46,8 @@ describe("the generated docker-compose.yml", () => {
     await scaffold({ id: "composecheck", template: "ecommerce", dir, fishteaHome: HOME });
     const app = parse(readFileSync(join(dir, "docker-compose.yml"), "utf8"));
     expect(Object.keys(app.services).sort()).toEqual(["classifier", "core", "db", "ui"]);
-    expect(app.services.db.image).toContain("pg18");
+    // The constant, not a literal: a bump should not need this test edited to agree with it.
+    expect(app.services.db.image).toBe(POSTGRES_IMAGE);
     expect(app.services.core.build.context).toContain("FISHTEA_HOME");
     expect(app.services.core.restart).toBe("unless-stopped");
     // without an explicit target a build gets the last stage in the Dockerfile, and core ran Vite

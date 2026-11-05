@@ -9,6 +9,38 @@ import { createServer } from "node:net";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 
+/**
+ * The Postgres this framework is tested on, pinned exactly, in one place.
+ *
+ * Every other site reads this: the generated application's compose (new.ts), the framework's own
+ * compose, the CI service, and the "is it running?" line of a SetupError. `bun test scripts` fails when
+ * a file that cannot import it (compose, the workflow, CLAUDE.md, README.md) disagrees, so moving
+ * everyone to a new Postgres is this constant plus whatever that test names.
+ *
+ * Pinned rather than floating because `pgvector/pgvector:pg18` moves: CI resolved pgvector 0.8.7 on the
+ * same day a developer's container was still 0.8.6, which is a difference nobody chose and nobody saw.
+ *
+ * Why 18, as of 2026-11-05: **pgvector publishes no pg19 image.** PostgreSQL 19 is due 2026-11-19, and
+ * none of this moves until pgvector ships a build for it, whatever Postgres does. Check with
+ *
+ *     curl -s 'https://hub.docker.com/v2/repositories/pgvector/pgvector/tags?page_size=100&name=pg19'
+ *
+ * and note that a `pgdata` volume written by one major version will not start under the next: moving a
+ * live stack is a dump and restore, not an image bump. docs/OPERATING.md says how.
+ */
+export const POSTGRES_IMAGE = "pgvector/pgvector:0.8.7-pg18-trixie";
+
+/**
+ * Readiness, asked over TCP.
+ *
+ * `-h localhost` is the whole point. Postgres's entrypoint starts the server twice: once on a unix
+ * socket to run initdb and create the database, then again on TCP. A pg_isready with no host checks the
+ * socket, so it can pass against that first temporary server and hand out a port that is about to
+ * close. Naming the database rather than letting it default to the role is the same kind of accident
+ * waiting to happen: both are `fishtea` here, so the default was right by coincidence.
+ */
+export const POSTGRES_READY = "pg_isready -h localhost -U fishtea -d fishtea";
+
 export type Flags = Record<string, string | boolean | string[] | undefined>;
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.length ? v : undefined);
 
@@ -148,7 +180,7 @@ export async function checkDatabase(url: string, opts: { appDir?: string } = {})
     const why = (e as Error).message.split("\n")[0];
     const target = safeTarget(url);
     throw new SetupError(`cannot reach Postgres at ${redact(url)} — ${why}`, [
-      `is it running? docker run -d --name fishtea-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5432:5432 pgvector/pgvector:pg18`,
+      `is it running? docker run -d --name fishtea-db -e POSTGRES_USER=fishtea -e POSTGRES_PASSWORD=fishtea -e POSTGRES_DB=fishtea -p 5432:5432 ${POSTGRES_IMAGE}`,
       `or bring the whole stack up: bun run up`,
       `pointing at another machine? set DATABASE_URL in ${opts.appDir ? join(opts.appDir, ".env") : ".env"} (currently ${target})`,
       `or pass it once: --db postgres://user:pass@host:5432/fishtea`,
