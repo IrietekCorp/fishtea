@@ -30,6 +30,41 @@ import { dirname, join, resolve, sep } from "node:path";
  */
 export const POSTGRES_IMAGE = "pgvector/pgvector:0.8.7-pg18-trixie";
 
+/** The PostgreSQL major an image tag names, or null when it does not say. */
+export function postgresMajor(image: string): number | null {
+  const m = image.match(/[-:]pg(\d+)\b/) ?? image.match(/\bpostgres:(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+export type PostgresSite = { file: string; image: string; agrees: boolean; major: number | null };
+
+/**
+ * The Postgres an application's own compose files name.
+ *
+ * An application's docker-compose.yml is written once, at scaffold, and then never reconciled: it is not
+ * in manifest.ts TEMPLATE_DIRS, so `fishtea update` does not touch it. That is the right call for a file
+ * every application customises heavily, and it means the framework moving its pin reaches nobody. This is
+ * how an application finds out.
+ *
+ * An application with no db service is not broken; it is one pointing at a Postgres somebody else runs,
+ * which is an ordinary thing to do. It gets no row rather than a complaint.
+ */
+export function composePostgres(appDir: string): PostgresSite[] {
+  const out: PostgresSite[] = [];
+  for (const rel of ["docker-compose.yml", join("deploy", "docker-compose.yml")]) {
+    const path = join(appDir, rel);
+    if (!existsSync(path)) continue;
+    let image: string | undefined;
+    try {
+      const doc = (Bun as unknown as { YAML: { parse: (s: string) => any } }).YAML.parse(readFileSync(path, "utf8"));
+      image = doc?.services?.db?.image;
+    } catch { continue; } // an unparseable compose is `bun run up`'s problem to report, not this row's
+    if (typeof image !== "string" || !image) continue;
+    out.push({ file: rel, image, agrees: image === POSTGRES_IMAGE, major: postgresMajor(image) });
+  }
+  return out;
+}
+
 /**
  * Readiness, asked over TCP.
  *

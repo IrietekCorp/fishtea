@@ -20,7 +20,7 @@ import { readManifest } from "./manifest.ts";
 import { deriveCorpus, installModel, MODELS_DIR, modelStaleness, personaSubsets, readManifest as readTuneManifest, readModelRecord, staleness, writeCorpus } from "./tune.ts";
 import { baselinePath, caseDigest, checkCases, compare, coverage, floorSweep, headless, loadCases, readBaseline, recommendFloor, runCases, score, writeBaseline, casesPath, REFUSAL_TAGS } from "./eval.ts";
 import { present } from "./present.ts";
-import { DEFAULT_APP_ID, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, databaseUrl, nextFreePort, publicHost, publicUrl, redact, type Flags } from "./env.ts";
+import { DEFAULT_APP_ID, POSTGRES_IMAGE, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, composePostgres, databaseUrl, nextFreePort, postgresMajor, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
 /**
  * The framework's own files. Resolved by @fishtea/spec so that a source checkout, a compiled binary and a
@@ -525,6 +525,22 @@ async function main() {
         rows.push(["classifier", !!j.ok, `${cls} · ${j.model} · ${j.ready}/${j.workers} workers · ${j.tools} tools`]);
       } catch { rows.push(["classifier", false, `${cls} unreachable — text utterances will pour "ask"`]); }
       rows.push(["binding", true, `${bindHost(flags)}:${bindPort(flags)} · other machines dial ${publicUrl(flags)}`]);
+      // The Postgres this application's own compose names, against the one this framework is tested on.
+      // Its compose is written once at scaffold and never reconciled (manifest.ts TEMPLATE_DIRS), so the
+      // framework moving its pin reaches nobody: this row is how an application hears about it.
+      //
+      // A differing *major* is the only failure. pgdata is written in a major-version layout and will not
+      // start under the next one, and migrations are tested against one server, so that difference is a
+      // broken stack waiting for a restart. A differing patch or base image is drift worth saying out loud
+      // and nothing more: the stack runs, and an application is allowed to pin its own build on purpose.
+      const want = postgresMajor(POSTGRES_IMAGE);
+      for (const site of composePostgres(dir)) {
+        if (site.agrees) { rows.push(["postgres", true, `${site.file} · ${site.image}`]); continue; }
+        const majorDiffers = site.major !== null && want !== null && site.major !== want;
+        rows.push(["postgres", !majorDiffers, majorDiffers
+          ? `${site.file} names PostgreSQL ${site.major}, the framework is tested on ${want} — pgdata does not move between majors, so this is a dump and restore (docs/OPERATING.md)`
+          : `${site.file} · ${site.image}` + pc.yellow(` (the framework pins ${POSTGRES_IMAGE})`)]);
+      }
       // A tuned classifier is trained against the shapes and personas of one spec. When those move, the
       // model is answering yesterday's question, and nothing else in the system would say so.
       if (app) {
@@ -857,7 +873,7 @@ async function main() {
   fishtea validate            validate spec.json and print section hashes
   fishtea visitors prune      visitors only tooling produced (headless, present, tests); --yes deletes them
   fishtea present [shape…]    how each answer is laid out (rules.present, or derived); --live asks a running core
-  fishtea doctor              check the spec, the database, the classifier and the binding
+  fishtea doctor              check the spec, the database, the classifier, the binding and Postgres
   fishtea tune data [--trail] [--per-shape 4]
                               derive a training corpus for this application's own classifier
   fishtea tune status         is the corpus, and any installed model, still about this spec?

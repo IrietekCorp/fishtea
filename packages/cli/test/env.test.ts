@@ -2,10 +2,10 @@ import { createServer } from "node:net";
 import type { AddressInfo } from "node:net";
 import { composePorts } from "../src/index.ts";
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { bindHost, bindPort, classifierUrl, databaseUrl, isInside, nextFreePort, portFree, portWasChosen, publicHost, reachableUrls, redact, resolvePort, SetupError, workspaceRoot, DEFAULT_APP_ID, POSTGRES_IMAGE } from "../src/env.ts";
+import { join, resolve, dirname } from "node:path";
+import { bindHost, bindPort, classifierUrl, databaseUrl, isInside, nextFreePort, portFree, portWasChosen, publicHost, reachableUrls, redact, resolvePort, SetupError, workspaceRoot, DEFAULT_APP_ID, POSTGRES_IMAGE, composePostgres, postgresMajor } from "../src/env.ts";
 import { targetDir, scaffold } from "../src/new.ts";
 
 const HOME = resolve(import.meta.dir, "../../..");
@@ -253,5 +253,51 @@ describe("the ports a running stack already holds", () => {
     expect(publishedPorts([db, core, idle].map((r) => JSON.stringify(r)).join("\n"))).toEqual(want);
     expect(publishedPorts("")).toEqual({});
     expect(publishedPorts("not json")).toEqual({});
+  });
+});
+
+describe("the Postgres an application's compose names", () => {
+  // doctor's only way of telling an application that the framework moved its pin: a compose is written
+  // once at scaffold and never reconciled, so nothing else would ever mention it.
+  const write = (dir: string, rel: string, image: string | null) => {
+    mkdirSync(join(dir, dirname(rel)), { recursive: true });
+    const db = image === null ? "" : `  db:\n    image: ${image}\n`;
+    writeFileSync(join(dir, rel), `services:\n${db}  core:\n    image: x\n`);
+  };
+
+  test("reads both compose files and says which agree", () => {
+    const dir = temp();
+    write(dir, "docker-compose.yml", POSTGRES_IMAGE);
+    write(dir, "deploy/docker-compose.yml", "pgvector/pgvector:0.8.6-pg18-bookworm");
+    const sites = composePostgres(dir);
+    expect(sites.map((s) => [s.file, s.agrees, s.major])).toEqual([
+      ["docker-compose.yml", true, 18],
+      [join("deploy", "docker-compose.yml"), false, 18],
+    ]);
+  });
+
+  test("an application running Postgres somewhere else gets no row, not a complaint", () => {
+    const dir = temp();
+    write(dir, "docker-compose.yml", null);
+    expect(composePostgres(dir)).toEqual([]);
+    expect(composePostgres(join(dir, "nothing-here"))).toEqual([]);
+  });
+
+  test("an unparseable compose is not this check's to report", () => {
+    // `bun run up` fails on it with the parser's own message, which is more use than a doctor row.
+    const dir = temp();
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "docker-compose.yml"), "services: { db: image: broken\n");
+    expect(composePostgres(dir)).toEqual([]);
+  });
+
+  test("the major is what a bump cannot paper over", () => {
+    // pgdata is written in a major-version layout and will not start under the next one.
+    expect(postgresMajor("pgvector/pgvector:0.8.7-pg18-trixie")).toBe(18);
+    expect(postgresMajor("pgvector/pgvector:pg19")).toBe(19);
+    expect(postgresMajor("postgres:18-alpine")).toBe(18);
+    // Nothing is claimed from a tag that does not say, so doctor warns instead of failing.
+    expect(postgresMajor("postgres:latest")).toBeNull();
+    expect(postgresMajor("mysql:8")).toBeNull();
   });
 });
