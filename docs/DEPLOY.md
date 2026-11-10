@@ -211,9 +211,9 @@ It accumulated 1.1.0 through 1.4.x while the framework was at 1.6.0; staging tha
 it. `rm -rf dist` before a release build is the safe habit; the guard is there for when you forget. Release artefacts are not in git: they are 26–39 MB of build output, and
 `dist/` is ignored.
 
-**Both download paths verify.** `install.sh` and `fishtea upgrade` each fetch `SHA256SUMS` and refuse on a
-mismatch. A missing SHA256SUMS is only a warning, so a self-hosted `FISHTEA_RELEASES` without one still
-works — but a wrong hash stops the install.
+**Both download paths verify, and both fail closed.** `install.sh` and `fishtea upgrade` each fetch
+`SHA256SUMS` and refuse on a mismatch, on a missing file, and on a missing line for the tarball. A
+self-hosted `FISHTEA_RELEASES` that publishes no checksums says so with `FISHTEA_INSECURE_DOWNLOAD=1`.
 
 Sanity-check a release the way a new user meets it, into a throwaway root:
 

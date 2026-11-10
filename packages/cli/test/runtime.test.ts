@@ -17,7 +17,7 @@ import {
   RuntimeError, checkRelease, currentVersion, installRelease, installedVersions, linkShim,
   removeVersion, shimOnPath, shimPath, useVersion, versionsDir,
 } from "../src/runtime.ts";
-import { hostTarget } from "../src/upgrade.ts";
+import { hostTarget, upgradeFromRelease } from "../src/upgrade.ts";
 
 const roots: string[] = [];
 const scratch = () => { const d = mkdtempSync(join(tmpdir(), "fishtea-runtime-")); roots.push(d); return d; };
@@ -144,5 +144,42 @@ describe("reporting", () => {
 
   test("the host target is one the build script publishes for", () => {
     expect(["linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64", "windows-x64"]).toContain(hostTarget());
+  });
+});
+
+describe("downloading", () => {
+  // A release host on a free port. Neither case reaches installRelease, so nothing is installed anywhere.
+  const tarball = `fishtea-9.9.9-${hostTarget()}.tar.gz`;
+  function host(sums: string | null) {
+    return Bun.serve({
+      port: 0,
+      fetch(req) {
+        const path = new URL(req.url).pathname;
+        if (path === `/${tarball}`) return new Response("not really a tarball");
+        if (path === "/SHA256SUMS" && sums !== null) return new Response(sums);
+        return new Response("no", { status: 404 });
+      },
+    });
+  }
+
+  test("a release with no checksum to check it against is refused, like install.sh refuses it", async () => {
+    const server = host(null);
+    try {
+      await expect(upgradeFromRelease("9.9.9", { base: `http://127.0.0.1:${server.port}` })).rejects.toThrow(/Refusing to install what cannot be checked/);
+    } finally { server.stop(true); }
+  });
+
+  test("a checksum file that does not list the tarball is the same as none", async () => {
+    const server = host(`${"0".repeat(64)}  fishtea-9.9.9-elsewhere.tar.gz\n`);
+    try {
+      await expect(upgradeFromRelease("9.9.9", { base: `http://127.0.0.1:${server.port}` })).rejects.toThrow(/no checksum published/);
+    } finally { server.stop(true); }
+  });
+
+  test("a checksum that does not match is refused", async () => {
+    const server = host(`${"0".repeat(64)}  ${tarball}\n`);
+    try {
+      await expect(upgradeFromRelease("9.9.9", { base: `http://127.0.0.1:${server.port}` })).rejects.toThrow(/checksum mismatch/);
+    } finally { server.stop(true); }
   });
 });

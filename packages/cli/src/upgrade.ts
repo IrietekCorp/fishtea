@@ -62,8 +62,8 @@ export async function upgradeFromCheckout(checkout: string, o: { activate?: bool
 /**
  * The published checksums, as a map of filename → sha256.
  *
- * A missing SHA256SUMS is a warning rather than a failure: someone self-hosting FISHTEA_RELEASES may not
- * publish one, and refusing to upgrade over it would be worse than saying so. A *mismatch* is fatal.
+ * Absent is an empty map, and an empty map means the download cannot be checked, which upgradeFromRelease
+ * refuses: the same contract as install.sh, which fails closed on the same three things.
  */
 async function publishedSums(base: string): Promise<Record<string, string>> {
   try {
@@ -95,15 +95,18 @@ export async function upgradeFromRelease(version: string, o: { base?: string; fo
     const tgz = join(work, "release.tar.gz");
     await Bun.write(tgz, res);
 
-    // Same contract as install.sh: verify when the host publishes checksums, refuse on a mismatch.
+    // Same contract as install.sh: a mismatch is fatal, and so is having nothing to check against, unless
+    // a self-hosted mirror that publishes no checksums says so with FISHTEA_INSECURE_DOWNLOAD=1.
     const want = sums[`${name}.tar.gz`];
     if (want) {
       const got = createHash("sha256").update(readFileSync(tgz)).digest("hex");
       if (got !== want) {
         throw new RuntimeError(`checksum mismatch for ${name}.tar.gz\n  expected ${want}\n  got      ${got}\n  Refusing to install.`);
       }
+    } else if (process.env.FISHTEA_INSECURE_DOWNLOAD === "1") {
+      console.error(`⚠ no checksum published for ${name}.tar.gz — installing unverified (FISHTEA_INSECURE_DOWNLOAD=1)`);
     } else {
-      console.error(`⚠ no checksum published for ${name}.tar.gz — cannot verify the download`);
+      throw new RuntimeError(`no checksum published for ${name}.tar.gz at ${base}/SHA256SUMS\n  Refusing to install what cannot be checked. FISHTEA_INSECURE_DOWNLOAD=1 overrides this for a self-hosted mirror.`);
     }
     const tar = Bun.spawn(["tar", "-xzf", tgz, "-C", work], { stdio: ["inherit", "inherit", "inherit"] });
     if (await tar.exited !== 0) throw new RuntimeError("unpacking the release failed");
