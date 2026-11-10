@@ -90,8 +90,14 @@ install_from_release() {
   curl -fsSL "$url" -o "$WORK/release.tar.gz" || die "no release at $url"
 
   # Verify against the published checksums. This is a curl|bash installer downloading a 30 MB binary;
-  # checking what arrived is the least it can do. A missing SHA256SUMS is a warning rather than a failure,
-  # so a self-hosted FISHTEA_RELEASES without one still works.
+  # checking what arrived is the least it can do, so it fails closed: no SHA256SUMS, no line for this
+  # tarball, or no tool to hash it with, and nothing is installed. A self-hosted FISHTEA_RELEASES that
+  # publishes no checksums can say so with FISHTEA_INSECURE_DOWNLOAD=1, and is warned rather than refused.
+  unverified() {
+    if [ "${FISHTEA_INSECURE_DOWNLOAD:-}" = "1" ]; then warn "$1 — installing unverified (FISHTEA_INSECURE_DOWNLOAD=1)"; return 0; fi
+    die "$1
+  Refusing to install what cannot be checked. FISHTEA_INSECURE_DOWNLOAD=1 overrides this for a self-hosted mirror."
+  }
   if curl -fsSL "$FISHTEA_RELEASES/SHA256SUMS" -o "$WORK/SHA256SUMS" 2>/dev/null; then
     local want got=""
     want="$(awk -v n="$name.tar.gz" '$2 == n || $2 == "*"n {print $1}' "$WORK/SHA256SUMS" | head -1)"
@@ -99,18 +105,21 @@ install_from_release() {
       if command -v sha256sum >/dev/null 2>&1; then got="$(sha256sum "$WORK/release.tar.gz" | cut -d" " -f1)"
       elif command -v shasum   >/dev/null 2>&1; then got="$(shasum -a 256 "$WORK/release.tar.gz" | cut -d" " -f1)"
       fi
-      if [ -n "$got" ] && [ "$got" != "$want" ]; then
+      if [ -z "$got" ]; then
+        unverified "neither sha256sum nor shasum is installed, so $name.tar.gz cannot be checked"
+      elif [ "$got" != "$want" ]; then
         die "checksum mismatch for $name.tar.gz
   expected $want
   got      $got
   Refusing to install. Try again; if it persists, something is wrong at $FISHTEA_RELEASES."
+      else
+        say "  checksum ok"
       fi
-      [ -n "$got" ] && say "  checksum ok"
     else
-      warn "no checksum listed for $name.tar.gz"
+      unverified "no checksum listed for $name.tar.gz in $FISHTEA_RELEASES/SHA256SUMS"
     fi
   else
-    warn "no SHA256SUMS at $FISHTEA_RELEASES — cannot verify the download"
+    unverified "no SHA256SUMS at $FISHTEA_RELEASES — cannot verify the download"
   fi
 
   tar -xzf "$WORK/release.tar.gz" -C "$WORK"
