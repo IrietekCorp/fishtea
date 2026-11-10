@@ -94,3 +94,13 @@ jobs:
         run: |
           psql -h localhost -p 5434 -U fishtea -d fishtea -c 'CREATE DATABASE fishteae2e'
           bun run e2e
+
+      # A walkthrough that fails in CI and nowhere else is a timing story, and Playwright keeps the
+      # screenshot, the trace and the page's own error context that tell it.
+      - name: Keep the walkthrough's evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walkthrough-results
+          path: packages/ui/test-results
+          retention-days: 7
