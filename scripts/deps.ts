@@ -232,7 +232,7 @@ async function report(): Promise<void> {
 export const GATES: Record<string, string[]> = {
   bun: ["bun install", "bun run test", "bun run typecheck", "bun run e2e", "bun run build-release --install   (the compiled binary is Bun too)", "bun run up   (the images build from the new tag)"],
   postgres: ["docker rm -f fishtea-test-db, then recreate it from the new image (CONTRIBUTING.md)", "bun run test", "a new PostgreSQL major is a dump and restore for every application: say so in the release notes (docs/OPERATING.md)"],
-  classifier: ["bun run up   (rebuilds the classifier image)", "fishtea eval on every application's labelled set, before and after: the floor and the 194-case finding in contract.md were measured on the old engine", "bun run bench -- --conventional   (latency is decode length; a new engine can move it)"],
+  classifier: ["packages/classifier/engine.py: add the new version to PINS, with the Hub commit it shipped against and the sha256 of its engine wheels and weights (the image build refuses a version it has no pin for)", "bun run up   (rebuilds the classifier image)", "fishtea eval on every application's labelled set, before and after: the floor and the 194-case finding in contract.md were measured on the old engine", "bun run bench -- --conventional   (latency is decode length; a new engine can move it)"],
   npm: ["bun run test", "bun run typecheck", "bun run e2e", "bun audit", "build each application's ui (FISHTEA_APP_DIR=<app> bun run build in packages/ui)"],
   components: ["bun run e2e   (the a11y suite runs axe on every vessel)", "bun run deps components --record"],
 };

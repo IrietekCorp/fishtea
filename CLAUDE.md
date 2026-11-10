@@ -69,7 +69,9 @@ bunx tsc -p tsconfig.json --noEmit
   confidence **1.00**, past the floor and the gate. `checkTriggers` refuses an exact duplicate or a
   word-level containment at load, which is why it is an error and not a warning.
 - The lexical classifier is a dev harness and benchmark baseline only. Production is the needle pool,
-  pinned at `cactus-needle 3.2.8` in `packages/classifier/requirements.txt`.
+  pinned at `cactus-needle 3.2.8` in `packages/classifier/requirements.txt`, and its engine and
+  weights at the Hub commit that version shipped against, by sha256, in `packages/classifier/engine.py`:
+  upstream's `main` stopped carrying the engine on 2026-11-05.
 - **`rules.classify.floor` is 0, and that is a measurement rather than a shrug.** On the pinned engine
   the wrong routes land at 0.085–0.138 while correct ones span 0.002–0.456, ten of eighteen *below* the
   wrong ones: no threshold separates them, so a non-zero floor discards correct answers without

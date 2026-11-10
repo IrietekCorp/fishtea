@@ -224,13 +224,21 @@ Every pin has one source and a test that holds the copies to it: `BUN_VERSION` a
 Dockerfile, a compose file, CI or the docs disagree. Exact versions only, because a floating tag is a
 build that changes underneath you: `oven/bun:1` floated for months while CI ran an exact Bun.
 
+The classifier has a second pin under the first. cactus-needle is a pure-Python package that downloads
+its native engine and weights from the `main` branch of a Hugging Face repository, and on 2026-11-05
+upstream removed the engines from that branch, so every fresh image of a pinned version failed to
+build. `packages/classifier/engine.py` fetches them instead from the Hub commit each version shipped
+against, refuses any file whose sha256 is not recorded there, and the image warms up offline to prove it
+found everything. Moving cactus-needle means adding the new version's commit and hashes to it; the
+build, and `scripts/pins.test.ts`, refuse a version that has none.
+
 Moving a layer prints its gates rather than running them, because some are judgements:
 
 | Layer | Before it is a release |
 |---|---|
 | Bun | the suite, the typecheck, the walkthrough, `build-release` (the binary is Bun too), the images |
 | Postgres | recreate the test database from the new image, the suite; a new **major** is a dump and restore for every application, and the release notes say so |
-| classifier | `fishtea eval` on every labelled set, before and after (the floor was measured on the old engine), and the bench, since latency is decode length |
+| classifier | its engine pinned in `engine.py`, then `fishtea eval` on every labelled set, before and after (the floor was measured on the old engine), and the bench, since latency is decode length |
 | npm | the suite, the typecheck, the walkthrough, `bun audit`, and each application's ui built against it |
 | components | the walkthrough, whose a11y suite runs axe on every vessel |
 

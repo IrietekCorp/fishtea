@@ -9,6 +9,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { BUN_VERSION } from "../packages/cli/src/env.ts";
+import { classifierPin } from "./deps.ts";
 
 const HOME = resolve(import.meta.dir, "..");
 const read = (rel: string) => readFileSync(join(HOME, rel), "utf8");
@@ -47,4 +48,25 @@ describe("one licence", () => {
 test("a release hands on the licence and the notice (Apache-2.0 section 4)", async () => {
   const { RUNTIME_FILES } = await import("./build-release.ts");
   expect(RUNTIME_FILES).toEqual(expect.arrayContaining(["LICENSE", "NOTICE"]));
+});
+
+describe("one classifier engine", () => {
+  // cactus-needle fetches its native engine from the Hub's main branch, which stopped carrying it on
+  // 2026-11-05. engine.py fetches it from the commit each version shipped against instead, so a version
+  // with no entry there is an image that cannot build.
+  test("the pinned cactus-needle has a Hub commit and hashes in engine.py", () => {
+    const engine = read("packages/classifier/engine.py");
+    const at = engine.indexOf(`"${classifierPin(HOME)}": {`);
+    expect(at).toBeGreaterThan(-1);
+    const entry = engine.slice(at, engine.indexOf("\n    },", at));
+    expect(entry).toMatch(/"revision": "[0-9a-f]{40}"/);
+    expect(entry).toMatch(/"needle3\.cact": "[0-9a-f]{64}"/);
+    expect(entry).toMatch(/manylinux2014_x86_64\.whl": "[0-9a-f]{64}"/);
+    expect(entry).toMatch(/manylinux2014_aarch64\.whl": "[0-9a-f]{64}"/);
+  });
+  test("the classifier image fetches through it, and warms up offline", () => {
+    const docker = read("Dockerfile.classifier");
+    expect(docker).toContain("RUN python engine.py");
+    expect(docker).toContain("HF_HUB_OFFLINE=1 python -c");
+  });
 });
