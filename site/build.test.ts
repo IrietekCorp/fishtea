@@ -9,7 +9,7 @@ import { describe, expect, test, beforeAll, beforeEach, afterAll } from "bun:tes
 import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import { build, posts, readTokens, stageReleases, PUBLISH_INSTALL } from "./build.ts";
+import { build, posts, readTokens, stageReleases, PUBLISH_INSTALL, SOURCE_URL } from "./build.ts";
 import { FISHTEA_VERSION } from "@fishtea/spec";
 
 const HOME = join(import.meta.dir, "..");
@@ -31,8 +31,8 @@ describe("the site builds", () => {
     }
   });
 
-  test("while the beta is closed, the site publishes no way in", () => {
-    if (PUBLISH_INSTALL) return;                     // the open-beta shape is asserted below instead
+  test("until tarballs are published, the site serves no installer", () => {
+    if (PUBLISH_INSTALL) return;                     // the published shape is asserted below instead
 
     // Absent, not merely unlinked. `fishtea.io/install` is not a URL anyone has to guess, so the test
     // is that the file is not there — and that no page hands out the command either, which is the way
@@ -45,12 +45,12 @@ describe("the site builds", () => {
       .filter((f) => /fishtea\.io\/install|curl -fsSL/.test(read(f)));
     expect(offenders).toEqual([]);
 
-    // The way in is the application form, and it has to be reachable from the front door.
-    expect(read("index.html")).toContain('href="beta.html"');
+    // The way in is the source, and it has to be reachable from the front door.
+    expect(read("index.html")).toContain(`href="${SOURCE_URL}"`);
   });
 
   test("the installer is served, and the landing page offers it", () => {
-    if (!PUBLISH_INSTALL) return;                    // closed beta: asserted absent above
+    if (!PUBLISH_INSTALL) return;                    // not published yet: asserted absent above
     expect(existsSync(join(OUT, "install"))).toBe(true);
     expect(read("install")).toContain("FISHTEA_ROOT");
   });
@@ -241,7 +241,7 @@ describe("links", () => {
     expect(broken).toEqual([]);
   });
 
-  test("the beta page can actually be replied to", () => {
+  test("the build-with-it page can actually be replied to", () => {
     const html = read("beta.html");
     expect(html).toContain("shawn@irietek.com");
     expect(html).toContain('id="beta-form"');

@@ -27,7 +27,9 @@ const HOME = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const OUT = join(HOME, "site/dist");
 const VERSION = readFileSync(join(HOME, "packages/spec/src/release.ts"), "utf8").match(/FISHTEA_VERSION = "([^"]+)"/)![1];
 
-/** Whether this build publishes the installer and the release tarballs. Closed beta: it does not. */
+/** Where the source is. Public, Apache-2.0. */
+export const SOURCE_URL = "https://github.com/IrietekCorp/fishtea";
+/** Whether this build publishes the installer and the release tarballs. Not until tarballs exist. */
 export const PUBLISH_INSTALL = process.env.PUBLISH_INSTALL === "1";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -220,7 +222,7 @@ function layout(page: Page, pages: Page[]): string {
   <nav>${topNav}</nav>
   <div class="header-end">
     <span class="badge gold">beta</span>
-    <a class="btn small" href="${href("beta")}">Apply for access</a>
+    <a class="btn small" href="${SOURCE_URL}">Source</a>
   </div>
 </div></header>
 ${isDoc ? docsMain(page, side) : `<main id="main">${page.body()}</main>`}
@@ -283,11 +285,12 @@ function landing(): string {
       <strong>calls</strong>, and the answer pours into one of seven <strong>vessels</strong>.
     </p>
     <div class="cta">
-      <a class="btn" href="beta.html">Apply for access</a>
+      <a class="btn" href="${SOURCE_URL}">Read the source</a>
       <a class="btn ghost" href="welcome.html">Read the argument</a>
     </div>
-    <p class="stack">FishTea ${VERSION}, in closed beta. The binary and the source come with the
-    invitation. <a href="welcome.html">Start with Welcome</a> to see whether it is for you.</p>
+    <p class="stack">FishTea ${VERSION}, open source under Apache-2.0. Install it from a checkout:
+    <a href="getting-started.html">Getting started</a> has the commands, and <a href="welcome.html">Welcome</a>
+    says whether it is for you.</p>
     <p class="stack">Bun · PostgreSQL + pgvector · needle3 on device · React. No cloud model in the hot path.</p>
   </div>
   <!-- The product, not a picture of it: a visitor's words, what the classifier made of them, the vessel
@@ -593,9 +596,9 @@ files      2 to update, 1 new, 1 conflicting, 3 yours
 
 <section style="border-bottom:0"><div class="wrap">
   <h2>The homepage is where the conversation is</h2>
-  <p class="sub">FishTea ${VERSION} · beta · the source is private for now.</p>
+  <p class="sub">FishTea ${VERSION} · beta · open source, Apache-2.0.</p>
   <div class="cta">
-    <a class="btn" href="beta.html">Apply for access</a>
+    <a class="btn" href="${SOURCE_URL}">Read the source</a>
     <a class="btn ghost" href="welcome.html">Start with Welcome</a>
   </div>
 </div></section>
@@ -758,11 +761,11 @@ ${md(p.body)}
 const BETA_EMAIL = "shawn@irietek.com";
 
 function beta(): string {
-  return `<h1>Join the beta</h1>
-<p>FishTea installs today: <a href="getting-started.html">four commands</a> and you have a running
-application. What is still private is the <strong>source</strong>, and the help that goes with it.</p>
-<p>Ask for access if you want to read the code, file issues, or have a hand getting something real
-built. Tell me what you would make with it.</p>
+  return `<h1>Build something with it</h1>
+<p>The source is public: <a href="${SOURCE_URL}">${SOURCE_URL.replace("https://", "")}</a>, Apache-2.0,
+and <a href="getting-started.html">a few commands</a> give you a running application. Issues and pull
+requests go there; a security problem goes privately, as its <code>SECURITY.md</code> says.</p>
+<p>Write if you want a hand getting something real built. Tell me what you would make with it.</p>
 
 <form class="beta-form" id="beta-form" novalidate>
   <div class="field">
@@ -785,12 +788,11 @@ built. Tell me what you would make with it.</p>
   </div>
 </form>
 
-<p>Or write to <a href="mailto:${BETA_EMAIL}?subject=FishTea%20beta">${BETA_EMAIL}</a> directly.</p>
+<p>Or write to <a href="mailto:${BETA_EMAIL}?subject=FishTea">${BETA_EMAIL}</a> directly.</p>
 
-<h2 id="what-happens-next">What happens next</h2>
-<p>You get a reply with the installer and a checkout, and one command to run. There is nothing to download
-from this site in the meantime: while the beta is closed the binaries are not published here, so the
-invitation is the way in rather than a formality in front of a public link.</p>
+<h2 id="installing">Installing</h2>
+<p>Release binaries are not published here yet, so the way in is a checkout and
+<code>install.sh --from</code>, which builds the same binary they would be.</p>
 <p>Builds exist for linux-x64, linux-arm64, darwin-x64, darwin-arm64 and windows-x64. Postgres and the
 classifier pool run in Docker; everything else is one binary.</p>
 
@@ -897,7 +899,7 @@ async function pages(): Promise<Page[]> {
     { slug: "access", title: "Access control", nav: "Access control", group: "Operating", body: () => fromMarkdown("docs/ACCESS.md", "Access control") },
     { slug: "tuning", title: "A classifier for one business", nav: "Tuning the classifier", group: "Operating", body: () => fromMarkdown("docs/TUNING.md", "A classifier for one business") },
 
-    { slug: "beta", title: "Join the beta", nav: "Join the beta", group: "Project", body: beta },
+    { slug: "beta", title: "Build something with it", nav: "Build with it", group: "Project", body: beta },
     { slug: "blog", title: "Blog", nav: "Blog", group: "Project", body: blogIndex },
     { slug: "about", title: "About", nav: "About", group: "Project", body: about },
     ...posts().map((p): Page => ({ slug: `blog/${p.slug}`, title: p.title, body: () => blogPost(p) })),
@@ -979,12 +981,12 @@ export async function build(): Promise<{ written: string[] }> {
     writeFileSync(file, layout(page, all));
     written.push(file.slice(OUT.length + 1));
   }
-  // While the beta is closed, the site publishes no way to install: no `/install`, no `/releases`.
+  // Until release tarballs exist, the site publishes no way to install: no `/install`, no `/releases`.
   //
-  // Not hidden — absent. A route that merely goes unlinked is still a route, and `fishtea.io/install` is
-  // not a URL anybody has to guess. Access comes with the invitation instead, which is the whole point of
-  // asking people to apply. `bun run site` and `bun run deploy` both honour PUBLISH_INSTALL=1, so opening
-  // it back up is one environment variable and a deploy, not a hunt through this file.
+  // Not hidden but absent. A route that merely goes unlinked is still a route, and `fishtea.io/install` is
+  // not a URL anybody has to guess. The way in is the public source and `install.sh --from` instead.
+  // `bun run site` and `bun run deploy` both honour PUBLISH_INSTALL=1, so opening it is one environment
+  // variable and a deploy, not a hunt through this file.
   if (PUBLISH_INSTALL) {
     cpSync(join(HOME, "install.sh"), join(OUT, "install"));
     written.push("install");

@@ -113,9 +113,47 @@ fishtea bench                  # against a running core
 fishtea bench -- --conventional
 ```
 
+`doctor` checks the spec, the database, the classifier, the binding, the framework pin, a tuned model's
+freshness, and two things the application owns rather than the framework: the Postgres image its compose
+files name and the Bun its own Dockerfiles build from (see [Versioning](versioning.html#the-layers-underneath)).
+
 `packages/bench/budgets.json` holds the budgets; `baseline.json` holds the last recorded run. The
 conventional multi-page baseline currently measures **server time only**, with no browser parse or render,
-so it is not yet the task-completion comparison the blueprint asks for.
+so it is not yet the task-completion comparison the blueprint asks for. The bench replays one script, so
+the pool's repeat cache answers most of it: read `classify.p50` as the cached path and `classify.p95` as
+nearer the cold one.
+
+## Limits
+
+What a request may carry, and how often, is fixed in the core rather than left to whatever sits in front.
+
+- **Bodies.** 64 KB for a visitor (a pasted job description fits), 512 KB under `/account` (a profile
+  photo travels as a data URL), 1 MB under `/op` (the largest spec in use is 116 KB). Past these the
+  answer is a 413 before anything parses the body, chunked or not. Bun itself stops at 2 MB.
+- **Rates.** Per visitor and per address: an utterance 120 a minute per visitor and 600 per address;
+  resuming (which is what makes a new visitor) 120 a minute per address; signing in 10 a minute per
+  address, beside the per-account lockout. A visitor id is the client's to invent, which is why the
+  address counts too.
+- **The address** is the socket's peer, stepping back through `X-Forwarded-For` only while the hop is a
+  private address: the rule Caddy's `trusted_proxies private_ranges` uses. Behind Traefik and Caddy that
+  is the visitor; a core on the internet ignores the header. The leftmost entry is never believed,
+  because it is the one the client wrote. On a private network with no proxy, the client's own address is
+  private, so there the header is trusted; that is a development setup, and the lockout still holds.
+- The limiter lives in memory, per process. It survives neither a restart nor a second replica.
+
+The core's own answers say `nosniff`, refuse framing and keep the referrer to the origin. The page is the
+ui's, served by whatever an application puts in front (Caddy, in the applications built so far), so its
+headers are that server's to send. `/admin` is part of that page, and a page that can be framed can be
+clicked through without the operator knowing, so at least:
+
+```
+header {
+	X-Content-Type-Options nosniff
+	X-Frame-Options DENY
+	Referrer-Policy strict-origin-when-cross-origin
+	Content-Security-Policy "frame-ancestors 'none'"
+}
+```
 
 ## Admin
 
@@ -243,10 +281,18 @@ profile and saved items across devices.
   cannot be told apart from different people until they sign in.
 - **Google**: set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (an OAuth "Web application" client in Google
   Cloud). The redirect URI to register is `https://<site>/core/account/google/callback`; set
-  `GOOGLE_REDIRECT_URI` when the site is reached some other way.
+  `GOOGLE_REDIRECT_URI` when the site is reached some other way. Google is the only proof of an address
+  the framework has, so when it joins an account whose password it did not vouch for, that password is
+  removed and its sessions end. Otherwise someone could sign up with your email in advance, wait for you
+  to arrive with Google, and keep a way into the account you then fill.
 - **Not yet**: email verification and password-reset emails, which need an email service. A lost password
   is `fishtea account reset <email>` (removes it, ends every session); signing up again with the same
   email sets a new one and keeps the profile and saves.
+- **What that costs.** Without verification, signing up proves nothing about the address. Anyone may sign
+  up as an email that has a customer row and no way in yet (one a checkout or `becomeKnown` made, or one an
+  operator reset) and becomes that customer: its profile, its saves, and every answer a call scopes to
+  `customer_id`. Where customer rows hold anything personal, turn on Google and treat password sign-up
+  as unverified until email verification exists. [Access](access.html#what-is-still-open) tracks it.
 
 Routes, all under `/account` and all refusing a change without the `x-fishtea-visitor` header: `GET /me`,
 `POST /signup`, `/login`, `/logout`, `/password`, `PUT /profile`, `DELETE /` (with

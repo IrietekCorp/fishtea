@@ -98,8 +98,14 @@ id short enough to guess.
   cookie'd change. `FISHTEA_OPERATOR_TOKEN` remains the *script* door for the TUI and `fishtea notify`,
   and a new application gets a random one rather than a shared constant. See
   [Running it](operating.html#admin).
+- **Signing up proves nothing about the address.** With no email verification, a password sign-up for an
+  email that already has a customer row (from a checkout, a `becomeKnown`, an operator's reset) becomes
+  that customer. The fix is verification, which needs an email service; until then Google, which does
+  verify, is the safer door. Google no longer keeps a password it did not vouch for: joining such an
+  account removes it and ends its sessions. [Running it](operating.html#visitor-accounts) has the detail.
 - **The rate limiter is in-memory per process**, so it does not survive a restart or bind across
-  replicas. It is a nuisance filter, not a control.
+  replicas. It counts the client's real address now ([Running it](operating.html#limits)), not the
+  leftmost `X-Forwarded-For` the client writes, and visitor ids alongside it.
 
 ## If you add roles
 

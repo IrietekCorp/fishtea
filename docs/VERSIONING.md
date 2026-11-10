@@ -139,13 +139,15 @@ edit you made before tracking began.
 ## Installing and switching framework versions
 
 ```bash
-./install.sh --from /path/to/fishtea                 # build from a checkout — the only route today
+./install.sh --from /path/to/fishtea                 # build from a checkout: the only route today
 ```
 
-That is the only route while the beta is closed: no release binaries are published at `fishtea.io`, so
-the installer's download path has nothing to fetch and `fishtea upgrade` says so and points at `--from`.
-The same script serves both; once releases are published it will also install from the site and take a
-version argument, with no change to what lands on disk.
+That is the only route until release binaries are published at `fishtea.io`: the installer's download
+path has nothing to fetch yet, and `fishtea upgrade` says so and points at `--from`. The same script
+serves both; once releases are published it will also install from the site and take a version
+argument, with no change to what lands on disk. A download is checked against the release's
+`SHA256SUMS` and refused when it cannot be: no checksum file, no line for the tarball, or no tool to
+hash it with. A self-hosted mirror without checksums says so with `FISHTEA_INSECURE_DOWNLOAD=1`.
 
 The layout is deliberate:
 
@@ -200,3 +202,50 @@ Publishing is deliberately not automated:
 ```bash
 bun run release 1.2.0 && bun test packages && git commit -am "Release 1.2.0" && git tag v1.2.0
 ```
+
+## The layers underneath
+
+The framework's own version is one number. Underneath it are other people's: Bun, Postgres with
+pgvector, the needle classifier, the npm packages for the server, the browser and the styles, and the
+components adapted from shadcn/ui and 21st.dev. Each moves on its own schedule, and each is wrong in its
+own way when it does. `bun run deps` is the one place that knows all of them.
+
+```bash
+bun run deps                              # every layer: what is pinned, what is newer, what moves it
+bun run deps bun 1.4.4                    # env.ts, .bun-version and Dockerfile.core, together
+bun run deps postgres pgvector/pgvector:0.8.8-pg18-trixie
+bun run deps classifier 3.2.10            # cactus-needle in packages/classifier/requirements.txt
+bun run deps npm vite@^8.3.7              # in every workspace that declares it
+bun run deps components --record          # after porting an upstream change by hand
+```
+
+Every pin has one source and a test that holds the copies to it: `BUN_VERSION` and `POSTGRES_IMAGE` in
+`packages/cli/src/env.ts`, with `scripts/pins.test.ts` and `scripts/postgres.test.ts` failing when a
+Dockerfile, a compose file, CI or the docs disagree. Exact versions only, because a floating tag is a
+build that changes underneath you: `oven/bun:1` floated for months while CI ran an exact Bun.
+
+Moving a layer prints its gates rather than running them, because some are judgements:
+
+| Layer | Before it is a release |
+|---|---|
+| Bun | the suite, the typecheck, the walkthrough, `build-release` (the binary is Bun too), the images |
+| Postgres | recreate the test database from the new image, the suite; a new **major** is a dump and restore for every application, and the release notes say so |
+| classifier | `fishtea eval` on every labelled set, before and after (the floor was measured on the old engine), and the bench, since latency is decode length |
+| npm | the suite, the typecheck, the walkthrough, `bun audit`, and each application's ui built against it |
+| components | the walkthrough, whose a11y suite runs axe on every vessel |
+
+The components are rewrites, not copies (shadcn's button gained `write` and `chip`), so upstream can never
+be merged in. `packages/ui/src/components/provenance.json` records where each came from, its licence
+and a fingerprint of upstream; `deps` reports when upstream has moved, and a person ports what is worth
+porting. 21st.dev serves component source only to signed-in accounts and publishes no licence in its
+registry, so those are checked by hand and reported as unknown until someone records one.
+
+CI fails on any published advisory (`bun audit`), which is how a layer that needs moving announces it.
+
+### What reaches an application
+
+An application builds on the framework's images, so most layers arrive with `fishtea update`. Two do not,
+because they are the application's own files: the Postgres its `docker-compose.yml` names, and the Bun
+its own Dockerfiles (a `deploy/Dockerfile`, say) build from. `fishtea doctor` reads both. A different
+PostgreSQL **major** fails, since pgdata does not move between majors; anything else is drift worth
+naming and nothing more, because an application may pin its own build on purpose.

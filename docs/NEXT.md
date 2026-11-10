@@ -23,9 +23,9 @@ parts and per-call budgets.
   `docs/DEPLOY.md`. Redeploy is `bun run deploy`. The site is built from the design system's tokens
   (`docs/design/tokens.json` → `static/tokens.generated.css`); `site.css` hand-writes no colour and a
   test fails on any hex literal in it.
-- **The site publishes no way to install.** While the beta is closed there is no `/install` and no
-  `/releases` — absent, not unlinked — and every route in is the application form on `/beta`. One
-  variable reopens it: `PUBLISH_INSTALL=1 bun run deploy`.
+- **The source is public; the binaries are not yet.** There is no `/install` and no `/releases` (absent,
+  not unlinked), so the way in is a checkout and `install.sh --from`. One variable opens the download
+  path once tarballs exist: `PUBLISH_INSTALL=1 bun run deploy`.
 
 ### Picking up after a restart
 

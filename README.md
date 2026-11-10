@@ -19,9 +19,9 @@ fishtea new myshop --template ecommerce --interactive
 cd myshop && fishtea up
 ```
 
-> **Closed beta.** There is no public install command and nothing is published at `fishtea.io` to
-> download — the binary and the source come with the invitation.
-> [Apply for access](https://fishtea.io/beta).
+> **Open source, Apache-2.0.** Release binaries are not published yet, so install from a checkout:
+> `git clone https://github.com/IrietekCorp/fishtea && ./fishtea/install.sh --from ./fishtea`.
+> [Getting started](docs/GETTING-STARTED.md) has the rest.
 
 That is a running application: Postgres with pgvector, a needle3 classifier pool, the core, and a browser
 UI — none of it hand-written.

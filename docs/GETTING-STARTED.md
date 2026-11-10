@@ -9,15 +9,15 @@ Postgres and the classifier are **services**, not files, so they are never bundl
 
 ## Install
 
-FishTea is in **closed beta**, so there is no public install command: nothing is published at
-`fishtea.io`, and the installer and the checkout come with your invitation.
-[Apply for access](https://fishtea.io/beta) and you will get both.
-
-With the checkout, this produces the standalone binary:
+FishTea is open source (Apache-2.0). Release binaries are not published at `fishtea.io` yet, so the
+route in is a checkout, which also produces the standalone binary:
 
 ```bash
+git clone https://github.com/IrietekCorp/fishtea
 ./fishtea/install.sh --from ./fishtea
 ```
+
+You need [Bun](https://bun.sh) (the version in `.bun-version`) and Docker for Postgres and the classifier.
 
 That puts `fishtea` in `~/.fishtea/bin`, keeping every version you install side by side so
 `fishtea use <version>` can put any of them back. Builds exist for linux-x64, linux-arm64, darwin-x64,

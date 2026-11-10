@@ -167,10 +167,10 @@ returns a bare `403 The caller does not have permission` even to a project Owner
 
 ## Releases
 
-**Nothing is published while the beta is closed.** `bun run site` writes no `install` and no `releases/`,
-so `https://fishtea.io/install` is a 404 rather than an unlinked page — a route nobody has to guess is
-not hidden by leaving it out of the navigation. The binary and the checkout go out with the invitation
-instead, which is what the application form on `/beta` is for.
+**No binaries are published yet.** The source is public; the release tarballs are not. `bun run site`
+writes no `install` and no `releases/`, so `https://fishtea.io/install` is a 404 rather than an unlinked
+page: a route nobody has to guess is not hidden by leaving it out of the navigation. Until it opens, the
+way in is a checkout and `install.sh --from`.
 
 Both download paths already fail well against a host with nothing on it, and both name the fallback:
 
