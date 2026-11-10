@@ -170,6 +170,24 @@ export function vesselFor(shape: ShapeDef, spec: Spec): VesselName {
 
 // ── zod ──────────────────────────────────────────────────────────────────────
 
+/**
+ * What a visitor reads when a field is wrong. The engine puts each issue's message into the form that
+ * lets them fix it, so it is written the way the rest of the product speaks ("a number", not "expected
+ * number, received NaN"). zod 4's defaults are for developers; this package is the only one that
+ * imports zod, so setting it here sets it for the framework and for nothing else.
+ */
+const NOUN: Record<string, string> = { number: "a number", int: "a whole number", string: "text", boolean: "yes or no", date: "a date", array: "a list", object: "a set of fields" };
+export function plainIssue(iss: { code?: string; expected?: unknown; input?: unknown; format?: string; values?: unknown[] }): string | undefined {
+  if (iss.code === "invalid_type") {
+    if (iss.input === undefined || iss.input === null) return "Required"; // the word the form itself uses (vessels/form.tsx)
+    return `This should be ${NOUN[String(iss.expected)] ?? String(iss.expected)}.`;
+  }
+  if (iss.code === "invalid_format" && iss.format === "email") return "This should be an email address.";
+  if (iss.code === "invalid_value" && Array.isArray(iss.values)) return `This should be one of: ${iss.values.map(String).join(", ")}.`;
+  return undefined; // the rest (too_small, too_big, custom) keep zod's own, which already name the bound
+}
+z.config({ customError: plainIssue });
+
 function zodScalar(ref: TypeRef): ZodTypeAny {
   switch (ref.base) {
     case "int": return z.number().int();
@@ -195,7 +213,7 @@ export function zodFor(t: TypeSpec, spec: Spec, opts: { lenient?: boolean } = {}
     inner = z.object(shape).passthrough();
   } else if (ref.entity) {
     const e = getEntity(spec, ref.base);
-    if (!e || depth > 3) inner = z.record(z.any());
+    if (!e || depth > 3) inner = z.record(z.string(), z.any());
     else {
       const shape: Record<string, ZodTypeAny> = {};
       for (const [k, f] of Object.entries(e.fields)) {
@@ -211,7 +229,7 @@ export function zodFor(t: TypeSpec, spec: Spec, opts: { lenient?: boolean } = {}
 }
 
 /** Schema for a shape's validated input (server-side, before any plan runs). */
-export function inputSchema(shape: ShapeDef, spec: Spec): ZodTypeAny {
+export function inputSchema(shape: ShapeDef, spec: Spec): z.ZodType<Record<string, unknown>> {
   const fields: Record<string, ZodTypeAny> = {};
   for (const [k, t] of Object.entries(shape.input)) {
     const ref = parseType(t);

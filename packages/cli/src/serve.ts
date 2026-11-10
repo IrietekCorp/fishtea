@@ -83,7 +83,8 @@ export async function serve(app: App, flags: Flags, dir: string) {
       return { ok: true, version: r.version, migrationNeeded: section === "entities" && next.hashes.entities !== current.hashes.entities };
     },
   });
-  Bun.serve({ hostname: host, port, fetch: server.fetch, idleTimeout: 255 });
+  // The routes refuse a body past BODY_LIMIT; this is the backstop for anything that reaches Bun first.
+  Bun.serve({ hostname: host, port, fetch: server.fetch, idleTimeout: 255, maxRequestBodySize: 2 * 1024 * 1024 });
   // Everything printed from here has to describe the port actually bound, not the one asked for.
   const publicFlags: Flags = moved ? { ...flags, port: String(port) } : flags;
   const urls = reachableUrls(host, port);

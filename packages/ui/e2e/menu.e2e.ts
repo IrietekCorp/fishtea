@@ -133,7 +133,7 @@ test.describe("7 · Pills", () => {
     await pills(page).nth(1).hover();
     const card = page.locator(".ft-menu__card").nth(1);
     await expect(card).toHaveAttribute("data-show", "true");
-    await expect(card).toContainText("Turn 2");
+    await expect(card).toContainText("something warmer"); // the second turn's own words: 1.8.13 dropped the "Turn n" label
     await expect(card).toContainText("Rewind here");
     // since v1: the card holds while the pointer crosses onto it, and goes when it leaves both
     const box = (await card.boundingBox())!;

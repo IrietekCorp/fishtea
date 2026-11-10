@@ -41,7 +41,8 @@ import { snake } from "./calls/index.ts";
 
 export const ACCOUNT_DAYS = 30;
 const MAX_FAILED = 5, LOCK_MINUTES = 15;
-const PHOTO_MAX = 400_000, JSON_MAX = 8_000, TEXT_MAX = 2_000;
+export const PHOTO_MAX = 400_000;
+const JSON_MAX = 8_000, TEXT_MAX = 2_000;
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

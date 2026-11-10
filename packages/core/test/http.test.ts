@@ -2,7 +2,7 @@
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { resolve } from "node:path";
 import { loadApp } from "@fishtea/spec";
-import { connect, migrate, seed, reset, Engine, LexicalClassifier, createServer } from "../src/index.ts";
+import { connect, migrate, seed, reset, Engine, LexicalClassifier, createServer, BODY_LIMIT, PHOTO_MAX } from "../src/index.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const URL = process.env.FISHTEA_TEST_DATABASE_URL ?? "postgres://fishtea:fishtea@localhost:5434/fishtea";
@@ -248,4 +248,46 @@ describe("the visitor cookie", () => {
     expect(c).toContain("fishtea_visitor=");
     expect(c).not.toMatch(/;\s*Secure/i);
   });
+});
+
+describe("how much a request may carry", () => {
+  const post = (path: string, bytes: number, headers: Record<string, string> = {}) =>
+    fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify({ text: "x".repeat(bytes) }) });
+
+  test("a visitor's utterance past the limit is refused before anything parses it", async () => {
+    const r = await post("/utter", BODY_LIMIT.visitor + 1);
+    expect(r.status).toBe(413);
+    expect(await r.json()).toEqual({ error: "request body too large" });
+  });
+
+  test("an utterance as long as a pasted job description still arrives", async () => {
+    const r = await post("/utter", 20_000);
+    expect(r.status).toBe(200);
+  });
+
+  test("an operator may post a spec-sized body, and no more than the operator limit", async () => {
+    const auth = { "x-fishtea-operator": OP };
+    expect((await post("/op/utter", 200_000, auth)).status).not.toBe(413);
+    expect((await post("/op/utter", BODY_LIMIT.operator + 1, auth)).status).toBe(413);
+  });
+
+  test("a body that hides its size (chunked, no content-length) is held to the same limit", async () => {
+    const chunk = new TextEncoder().encode("x".repeat(16 * 1024));
+    let sent = 0;
+    const body = new ReadableStream({ pull(ctl) { if (sent > BODY_LIMIT.visitor * 2) return ctl.close(); sent += chunk.length; ctl.enqueue(chunk); } });
+    const r = await fetch(`${base}/utter`, { method: "POST", headers: { "content-type": "application/json" }, body, duplex: "half" } as RequestInit);
+    expect(r.status).toBe(413);
+  });
+});
+
+test("an operator utterance naming no known shape is a 400 that says so, not a 500", async () => {
+  const r = await fetch(`${base}/op/utter`, { method: "POST", headers: { "content-type": "application/json", "x-fishtea-operator": OP }, body: JSON.stringify({ shape: "op.nope" }) });
+  expect(r.status).toBe(400);
+  expect((await r.json()).error).toContain("op.nope");
+});
+
+test("the account limit admits the largest photo a profile may hold, with its fields", () => {
+  // the photo travels as a data URL inside JSON beside the profile's other fields
+  expect(BODY_LIMIT.account).toBeGreaterThan(PHOTO_MAX + 16_000);
+  expect(BODY_LIMIT.visitor).toBeLessThan(BODY_LIMIT.account);
 });

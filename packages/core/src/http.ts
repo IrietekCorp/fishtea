@@ -5,6 +5,7 @@
  */
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -82,6 +83,15 @@ export interface ServerOptions {
   cors?: CorsPolicy;
 }
 
+/**
+ * How much a request may carry. A visitor sends an utterance or a form, and the longest real one is a job
+ * description pasted into `fitFor`; an account's profile carries its photo as a data URL, which
+ * accounts.ts caps at 400 kB; an operator may post a whole spec (the largest in use is 116 KB). Past these
+ * the request is refused before anything parses it: Bun's own ceiling is 128 MB, and the inputs it would
+ * reach are validated by zod, which is not where a body that size should first be noticed.
+ */
+export const BODY_LIMIT = { visitor: 64 * 1024, account: 512 * 1024, operator: 1024 * 1024 } as const;
+
 export function createServer(opts: ServerOptions) {
   const { engine } = opts;
   const rateLimit = limiter();
@@ -93,6 +103,13 @@ export function createServer(opts: ServerOptions) {
     allowMethods: ["GET", "POST", "OPTIONS"],
     maxAge: 600,
   }));
+  const tooLarge = (c: { json: (b: unknown, s: 413) => Response }) => c.json({ error: "request body too large" }, 413);
+  const visitorBody = bodyLimit({ maxSize: BODY_LIMIT.visitor, onError: tooLarge });
+  const accountBody = bodyLimit({ maxSize: BODY_LIMIT.account, onError: tooLarge });
+  const operatorBody = bodyLimit({ maxSize: BODY_LIMIT.operator, onError: tooLarge });
+  const under = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
+  app.use("*", (c, next) =>
+    (under(c.req.path, "/op") ? operatorBody : under(c.req.path, "/account") ? accountBody : visitorBody)(c, next));
 
   const accounts = new Accounts(engine.db, () => engine.app.spec);
   const ACCOUNT_COOKIE = "fishtea_account", OAUTH_COOKIE = "fishtea_oauth";
@@ -422,7 +439,10 @@ export function createServer(opts: ServerOptions) {
   op.get("/spec", (c) => c.json({ spec: engine.spec, hashes: engine.app.hashes, path: engine.app.specPath }));
   op.get("/tools", (c) => c.json({ consumer: engine.toolSpecs, operator: engine.operatorTools }));
   op.post("/utter", async (c) => {
-    const { shape, args } = await c.req.json();
+    const { shape, args } = await c.req.json().catch(() => ({}));
+    if (typeof shape !== "string" || !(shape === "op.restart" || shape === "op.editSection" || engine.app.spec.operator?.shapes?.[shape])) {
+      return c.json({ error: `unknown operator shape ${JSON.stringify(shape ?? null)}` }, 400);
+    }
     if (shape === "op.restart") { if (!opts.onRestart) return c.json({ error: "restart not wired" }, 501); await opts.onRestart(); return c.json({ kind: "answer", shape, vessel: "confirm", answer: { ok: true } }); }
     if (shape === "op.editSection") { if (!opts.onEditSection) return c.json({ error: "edit not wired" }, 501); return c.json({ kind: "answer", shape, vessel: "confirm", answer: await opts.onEditSection(args.section, args.patch) }); }
     return c.json(await engine.operate(shape, args ?? {}));

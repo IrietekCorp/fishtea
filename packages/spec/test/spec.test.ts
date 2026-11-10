@@ -164,3 +164,23 @@ describe("two shapes may not claim the same words", () => {
     expect(() => validateSpec(raw)).toThrow(/is contained in shapes.addToCart/);
   });
 });
+
+describe("what a visitor reads when a field is wrong", () => {
+  const { zodFor } = require("../src/derive.ts");
+  const spec = { entities: {} } as any;
+  const msg = (t: string, v: unknown) => zodFor(t, spec).safeParse(v).error?.issues[0]?.message;
+
+  test("in the product's words, never zod's", () => {
+    expect(msg("number", "abc")).toBe("This should be a number.");
+    expect(msg("int", 1.5)).toBe("This should be a whole number.");
+    expect(msg("email", "nope")).toBe("This should be an email address.");
+    expect(msg("string", undefined)).toBe("Required");
+    expect(msg("enum:red|blue", "green")).toBe("This should be one of: red, blue.");
+  });
+
+  test("nothing a visitor reads says NaN, received or expected", () => {
+    for (const [t, v] of [["number", "abc"], ["int", "x"], ["boolean", "yes"], ["string", 4], ["email", 7]] as const) {
+      expect(msg(t, v) ?? "").not.toMatch(/NaN|received|expected|Invalid input/);
+    }
+  });
+});

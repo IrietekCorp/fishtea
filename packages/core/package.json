@@ -15,7 +15,6 @@
   "dependencies": {
     "@fishtea/spec": "workspace:*",
     "hono": "^4.6.0",
-    "postgres": "^3.4.5",
-    "zod": "^3.23.8"
+    "postgres": "^3.4.5"
   }
 }
