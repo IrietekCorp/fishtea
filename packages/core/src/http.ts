@@ -6,6 +6,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
+import { clientAddress } from "./address.ts";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -43,13 +45,22 @@ export function allowOrigin(policy: CorsPolicy = {}): (origin: string) => string
   };
 }
 
-interface Bucket { tokens: number; at: number }
-/** A token bucket per key. One per server, so two servers in one process do not spend each other's. */
+interface Bucket { tokens: number; at: number; per: number }
+/**
+ * A token bucket per key. One per server, so two servers in one process do not spend each other's.
+ * A bucket that has refilled is the same as no bucket, so those are swept: keys come from addresses and
+ * visitor ids, which a client can mint at will, and an unswept map is memory the client gets to spend.
+ */
 function limiter() {
   const buckets = new Map<string, Bucket>();
+  let calls = 0;
+  const sweep = (now: number) => {
+    for (const [k, b] of buckets) if (b.tokens + ((now - b.at) / 60000) * b.per >= b.per) buckets.delete(k);
+  };
   return (key: string, perMinute = 120): boolean => {
     const now = Date.now();
-    const b = buckets.get(key) ?? { tokens: perMinute, at: now };
+    if (++calls % 1000 === 0 || buckets.size > 50_000) sweep(now);
+    const b = buckets.get(key) ?? { tokens: perMinute, at: now, per: perMinute };
     b.tokens = Math.min(perMinute, b.tokens + ((now - b.at) / 60000) * perMinute);
     b.at = now;
     if (b.tokens < 1) { buckets.set(key, b); return false; }
@@ -102,6 +113,15 @@ export function createServer(opts: ServerOptions) {
     allowHeaders: ["content-type", "x-fishtea-visitor", "x-fishtea-operator", "x-fishtea-tool", "x-fishtea-admin"],
     allowMethods: ["GET", "POST", "OPTIONS"],
     maxAge: 600,
+  }));
+  // What the core answers is JSON, redirects and an event stream: never something to sniff as HTML, to
+  // frame, or to leak a path from. The page itself is the ui's, and its headers are its server's
+  // (docs/DEPLOY.md has the Caddy lines).
+  app.use("*", secureHeaders({
+    xContentTypeOptions: "nosniff", xFrameOptions: "DENY", referrerPolicy: "strict-origin-when-cross-origin",
+    crossOriginResourcePolicy: false, crossOriginOpenerPolicy: false, crossOriginEmbedderPolicy: false,
+    originAgentCluster: false, xDnsPrefetchControl: false, xDownloadOptions: false, xPermittedCrossDomainPolicies: false,
+    strictTransportSecurity: false, xXssProtection: false,
   }));
   const tooLarge = (c: { json: (b: unknown, s: 413) => Response }) => c.json({ error: "request body too large" }, 413);
   const visitorBody = bodyLimit({ maxSize: BODY_LIMIT.visitor, onError: tooLarge });
@@ -157,6 +177,8 @@ export function createServer(opts: ServerOptions) {
   const secure = (c: any) => c.req.header("x-forwarded-proto") === "https" || new URL(c.req.url).protocol === "https:";
   // Secure whenever the visit is HTTPS, so the visitor's id is never sent in clear; plain-HTTP development
   // keeps working because the flag follows the request rather than being always on.
+  /** The asking address, as address.ts decides it: never the leftmost X-Forwarded-For, which the client wrote. */
+  const ipOf = (c: any): string => clientAddress(c.env?.requestIP?.(c.req.raw)?.address, c.req.header("x-forwarded-for"));
   const remember = (c: any, id: string) => setCookie(c, COOKIE, id, { path: "/", httpOnly: true, sameSite: "Lax", secure: secure(c), maxAge: 60 * 60 * 24 * 365 });
 
   app.get("/healthz", async (c) => c.json(await engine.health()));
@@ -164,6 +186,8 @@ export function createServer(opts: ServerOptions) {
   /** The homepage: pour(resume). */
   app.get("/", async (c) => {
     const v = visitorOf(c);
+    // Every resume with no live id writes a visitor row; a page load is one resume, so this is generous
+    if (!rateLimit(`resume:${ipOf(c)}`, 120)) return c.json({ error: "rate limited" }, 429);
     const res = await engine.resume({ visitorId: v.id, hadToken: v.hadToken, envelope: envelopeOf(c) });
     remember(c, res.visitor.id);
     return c.json(res);
@@ -173,7 +197,8 @@ export function createServer(opts: ServerOptions) {
     const v = visitorOf(c);
     // CSRF: cookie'd posts must also carry the custom header (a cross-site form cannot set it)
     if (getCookie(c, COOKIE) && !c.req.header("x-fishtea-visitor") && !c.req.header("content-type")?.includes("application/json")) return c.json({ error: "missing x-fishtea-visitor" }, 403);
-    if (!rateLimit(v.id ?? c.req.header("x-forwarded-for") ?? "anon")) return c.json({ error: "rate limited" }, 429);
+    // Per address as well as per visitor: an id is the client's to invent, and each new one is a new bucket.
+    if (!rateLimit(`addr:${ipOf(c)}`, 600) || !rateLimit(`utter:${v.id ?? ipOf(c)}`)) return c.json({ error: "rate limited" }, 429);
     let body = (await c.req.json().catch(() => ({}))) as Utterance & { branchFrom?: string };
     if (!("text" in body) && !("shape" in body) && !("arrive" in body)) return c.json({ error: "utterance needs text, shape or arrive" }, 400);
     if ("shape" in body && body.shape === "__retry") body = { text: String((body.args as any)?.text ?? "") } as any;
@@ -214,7 +239,7 @@ export function createServer(opts: ServerOptions) {
   // never carries the visitor in its URL; a beacon cannot set headers, so its body may name the visitor —
   // the same allowance /events makes for EventSource. A destination is followed only when the named turn
   // published it, so neither form is an open redirect.
-  const echoLimit = (c: any, v: { id: string | null }) => rateLimit(`echo:${v.id ?? ipOf(c)}`, 240);
+  const echoLimit = (c: any, v: { id: string | null }) => rateLimit(`addr:${ipOf(c)}`, 600) && rateLimit(`echo:${v.id ?? ipOf(c)}`, 240);
   app.get("/echo", async (c) => {
     const v = visitorOf(c);
     if (!echoLimit(c, v)) return c.text("Too many requests", 429);
@@ -276,7 +301,6 @@ export function createServer(opts: ServerOptions) {
   if (opts.schedule) jobs.schedule().catch((e) => opts.log?.(`job schedule did not start: ${e.message}`));
   const reports = new Reports(engine);
   const sameToken = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
-  const ipOf = (c: any) => c.req.header("x-forwarded-for")?.split(",")[0].trim() ?? "local";
 
   const opAuth = new Hono();
   opAuth.post("/login", async (c) => {

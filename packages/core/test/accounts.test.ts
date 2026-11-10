@@ -130,12 +130,21 @@ describe("accounts", () => {
     process.env.GOOGLE_CLIENT_ID = "client-1"; process.env.GOOGLE_CLIENT_SECRET = "secret";
     const jwt = (claims: object) => `x.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
     const answer = (claims: object) => (async () => new Response(JSON.stringify({ id_token: jwt(claims) }))) as unknown as typeof fetch;
-    const good = { iss: "https://accounts.google.com", aud: "client-1", sub: "g-123", email: "ada@example.com", email_verified: true, exp: Date.now() / 1000 + 600, name: "Ada G" };
+    const good = { iss: "https://accounts.google.com", aud: "client-1", sub: "g-123", email: "early@example.com", email_verified: true, exp: Date.now() / 1000 + 600, name: "Ada G" };
     const accounts = new Accounts(db, () => app.spec);
+    expect((await post("/signup", { email: "early@example.com", password: PW })).status).toBe(200);
+    const before = (await post("/login", { email: "early@example.com", password: PW })).status;
     const r = await accounts.signInWithGoogle("code", "http://x/cb", answer(good));
     expect(r.ok).toBe(true);
-    const [a] = await db`SELECT a.google_sub, a.password_hash IS NOT NULL AS pw FROM fishtea.account a JOIN business.customer c ON c.id = a.customer_id WHERE c.email = 'ada@example.com'`;
-    expect(a).toMatchObject({ google_sub: "g-123", pw: true });
+    // early@example.com already had a password, set by whoever signed up: nothing checked the mailbox. Google
+    // is the first proof the address is theirs, so that password goes, and so does every session it opened.
+    const [a] = await db`SELECT a.google_sub, a.password_hash IS NOT NULL AS pw, (SELECT count(*)::int FROM fishtea.account_session s WHERE s.customer_id = a.customer_id) AS sessions
+      FROM fishtea.account a JOIN business.customer c ON c.id = a.customer_id WHERE c.email = 'early@example.com'`;
+    expect(before).toBe(200);
+    expect(a).toMatchObject({ google_sub: "g-123", pw: false, sessions: 1 });   // only the session Google just opened
+    expect((await post("/login", { email: "early@example.com", password: PW })).status).toBe(401);
+    // and signing in with Google again, once linked, leaves the account alone
+    expect((await accounts.signInWithGoogle("code", "http://x/cb", answer(good))).ok).toBe(true);
     const fresh = await accounts.signInWithGoogle("code", "http://x/cb", answer({ ...good, sub: "g-9", email: "new@example.com", name: "New" }));
     expect(fresh.ok).toBe(true);
     expect((await accounts.me((fresh as any).customerId))!.profile.name).toBe("New");

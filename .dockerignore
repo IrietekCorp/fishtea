@@ -1,0 +1,12 @@
+# The images install their own dependencies from bun.lock; nothing built or installed on the host goes in.
+**/node_modules
+.git
+dist
+site/dist
+**/test-results
+**/playwright-report
+**/blob-report
+**/.venv
+**/__pycache__
+.env
+.firebase

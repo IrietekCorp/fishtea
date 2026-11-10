@@ -9,7 +9,8 @@ COPY package.json bun.lock* tsconfig.json ./
 COPY packages ./packages
 # builtin plugins: the ui bundle imports a builtin shell or view through @fishtea/plugins
 COPY plugins ./plugins
-RUN bun install --frozen-lockfile || bun install
+# Exactly what bun.lock says, or the build fails: a fallback to a fresh resolve made images unreproducible.
+RUN bun install --frozen-lockfile
 
 # The application directory is mounted at /app at runtime, so one image serves any spec.
 FROM base AS core

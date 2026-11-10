@@ -67,6 +67,17 @@ describe("signing in", () => {
     expect(codes.slice(10)).toEqual([429, 429]);
   });
 
+  test("inventing an address per attempt does not reset the limit", async () => {
+    // As it arrives behind a proxy: the attacker wrote a fresh address each time, and the proxy appended
+    // the one it actually saw. The leftmost entry was once taken as the client, so this was unlimited.
+    const strict = Bun.serve({ port: 0, fetch: createServer({ engine, operatorToken: OP }).fetch });
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i++) codes.push((await fetch(`http://localhost:${strict.port}/op/auth/login`, {
+      method: "POST", headers: { ...json, "x-forwarded-for": `6.6.6.${i}, 203.0.113.9` }, body: JSON.stringify({ username: "nobody", password: "x" }) })).status);
+    strict.stop(true);
+    expect(codes.slice(10)).toEqual([429, 429]);
+  });
+
   test("the first operator signs in on the given password, and can do nothing but change it", async () => {
     const r = await signIn(DEFAULT_OPERATOR, DEFAULT_PASSWORD);
     expect(r.status).toBe(200);

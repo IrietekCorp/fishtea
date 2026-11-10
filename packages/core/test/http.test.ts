@@ -291,3 +291,10 @@ test("the account limit admits the largest photo a profile may hold, with its fi
   expect(BODY_LIMIT.account).toBeGreaterThan(PHOTO_MAX + 16_000);
   expect(BODY_LIMIT.visitor).toBeLessThan(BODY_LIMIT.account);
 });
+
+test("what the core answers is never sniffed as a page, framed, or given a full referrer", async () => {
+  const r = await fetch(`${base}/healthz`);
+  expect(r.headers.get("x-content-type-options")).toBe("nosniff");
+  expect(r.headers.get("x-frame-options")).toBe("DENY");
+  expect(r.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+});

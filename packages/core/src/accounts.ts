@@ -303,6 +303,15 @@ export class Accounts {
     let customerId: string | null = a?.customer_id ?? null;
     if (!customerId) {
       customerId = (await this.customerByEmail(email)) ?? (await this.createCustomer(email, typeof claims.name === "string" ? claims.name : null));
+      // A password set before Google ever vouched for this address was set by whoever typed it: signing up
+      // checks nobody's mailbox. Google is the first proof of ownership, so a password it finds is dropped
+      // and every session it opened ends. Otherwise someone could sign up as you in advance, wait for you
+      // to arrive with Google, and keep their password into the account you then fill (pre-hijacking).
+      const [prior] = await this.db`SELECT password_hash FROM fishtea.account WHERE customer_id = ${customerId} AND google_sub IS NULL`;
+      if (prior?.password_hash) {
+        await this.db`UPDATE fishtea.account SET password_hash = NULL, failed = 0, locked_until = NULL WHERE customer_id = ${customerId}`;
+        await this.db`DELETE FROM fishtea.account_session WHERE customer_id = ${customerId}`;
+      }
       await this.db`INSERT INTO fishtea.account (customer_id, google_sub) VALUES (${customerId}, ${sub})
                     ON CONFLICT (customer_id) DO UPDATE SET google_sub = ${sub}`;
       if (typeof claims.name === "string" && "name" in this.entity().fields)
