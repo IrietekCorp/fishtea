@@ -1,6 +1,11 @@
 {
   "name": "fishtea",
   "version": "1.8.14",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IrietekCorp/fishtea.git"
+  },
   "private": true,
   "type": "module",
   "description": "Describe a business once in JSON; derive the data layer, the classifier's tool list, the planner, the vessels and the operator console from it.",

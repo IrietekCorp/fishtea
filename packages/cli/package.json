@@ -1,6 +1,12 @@
 {
   "name": "@fishtea/cli",
   "version": "1.8.14",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IrietekCorp/fishtea.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "bin": {
     "fishtea": "./src/index.ts"

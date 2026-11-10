@@ -56,6 +56,8 @@ export const RUNTIME_FILES = [
   "templates", "plugins", "packages",
   "package.json", "bun.lock", "tsconfig.json",
   "Dockerfile.core", "Dockerfile.classifier", "docker-compose.yml",
+  // Apache-2.0 section 4: whoever redistributes the work hands on the licence and the NOTICE with it
+  "LICENSE", "NOTICE", ".bun-version",
 ];
 
 export async function build(target: Target, o: { outDir: string; quiet?: boolean } = { outDir: join(HOME, "dist") }): Promise<string> {

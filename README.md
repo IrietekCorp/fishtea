@@ -195,3 +195,8 @@ Tests run against a real Postgres. Keep them that way.
 - Generated applications live outside the framework checkout.
 - Every classify call has a hard budget. Past it the pour is `ask`, never a dumber brain.
 - Tests run against a real Postgres.
+
+## Licence
+
+Apache-2.0: see `LICENSE` and `NOTICE`. Security reports go privately, as `SECURITY.md` describes;
+everything else is in `CONTRIBUTING.md`.

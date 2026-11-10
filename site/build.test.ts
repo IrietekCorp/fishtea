@@ -247,9 +247,9 @@ describe("links", () => {
     expect(html).toContain('id="beta-form"');
     // A visible plain address as well, so someone without a mail client is not stuck.
     expect(html).toContain("mailto:shawn@irietek.com");
-    // And no personal Gmail anywhere on the site.
+    // And no personal mailbox anywhere on the site: the project's address is the only one it publishes.
     for (const f of readdirSync(OUT, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".html"))) {
-      expect({ page: f, leaks: read(f).includes("shawn.jr.stewart@gmail.com") }).toEqual({ page: f, leaks: false });
+      expect({ page: f, leaks: /@gmail\.com/i.test(read(f)) }).toEqual({ page: f, leaks: false });
     }
   });
 

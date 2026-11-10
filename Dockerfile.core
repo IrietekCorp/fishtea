@@ -1,7 +1,9 @@
 # Core and UI share one image and one dependency install; the service picks a stage with `target:`.
 # Name the stages explicitly: a build with no target gets the *last* stage, which is how the core service
 # once ended up running Vite.
-FROM oven/bun:1 AS base
+# The Bun this framework is tested on: .bun-version, which CI reads too. scripts/pins.test.ts holds them together.
+ARG BUN_VERSION=1.4.2
+FROM oven/bun:${BUN_VERSION} AS base
 WORKDIR /fishtea
 COPY package.json bun.lock* tsconfig.json ./
 COPY packages ./packages

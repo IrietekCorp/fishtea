@@ -1,0 +1,8 @@
+FishTea
+Copyright 2026 Irietek
+
+This product includes software developed at Irietek (https://fishtea.io).
+
+Parts of packages/ui/src/components/ui are adapted from shadcn/ui (https://ui.shadcn.com), MIT licence.
+Parts of packages/ui/src/present are adapted from components published on 21st.dev, each under the
+licence its author gave it; the source of each is named where it is used.

@@ -10,6 +10,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 
 /**
+ * The Bun the framework is tested on. `.bun-version` says the same for CI (setup-bun reads it) and
+ * Dockerfile.core's `BUN_VERSION` for the images; scripts/pins.test.ts fails when any of them disagree,
+ * because `oven/bun:1` floated for months while CI ran an exact version. Move it with `bun run deps`.
+ */
+export const BUN_VERSION = "1.4.2";
+
+/**
  * The Postgres this framework is tested on, pinned exactly, in one place.
  *
  * Every other site reads this: the generated application's compose (new.ts), the framework's own
