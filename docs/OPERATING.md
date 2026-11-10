@@ -146,8 +146,12 @@ ui's, served by whatever an application puts in front (Caddy, in the application
 headers are that server's to send. `/admin` is part of that page, and a page that can be framed can be
 clicked through without the operator knowing, so at least:
 
+`defer` matters when the same site also proxies the core: without it Caddy adds its copy beside the
+core's, and every proxied answer carries each header twice.
+
 ```
 header {
+	defer
 	X-Content-Type-Options nosniff
 	X-Frame-Options DENY
 	Referrer-Policy strict-origin-when-cross-origin
