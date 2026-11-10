@@ -20,7 +20,7 @@ import { readManifest } from "./manifest.ts";
 import { deriveCorpus, installModel, MODELS_DIR, modelStaleness, personaSubsets, readManifest as readTuneManifest, readModelRecord, staleness, writeCorpus } from "./tune.ts";
 import { baselinePath, caseDigest, checkCases, compare, coverage, floorSweep, headless, loadCases, readBaseline, recommendFloor, runCases, score, writeBaseline, casesPath, REFUSAL_TAGS } from "./eval.ts";
 import { present } from "./present.ts";
-import { DEFAULT_APP_ID, POSTGRES_IMAGE, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, composePostgres, databaseUrl, nextFreePort, postgresMajor, publicHost, publicUrl, redact, type Flags } from "./env.ts";
+import { BUN_VERSION, DEFAULT_APP_ID, POSTGRES_IMAGE, appBun, SetupError, bindHost, bindPort, checkDatabase, classifierUrl, composePostgres, databaseUrl, nextFreePort, postgresMajor, publicHost, publicUrl, redact, type Flags } from "./env.ts";
 
 /**
  * The framework's own files. Resolved by @fishtea/spec so that a source checkout, a compiled binary and a
@@ -541,6 +541,14 @@ async function main() {
           ? `${site.file} names PostgreSQL ${site.major}, the framework is tested on ${want} — pgdata does not move between majors, so this is a dump and restore (docs/OPERATING.md)`
           : `${site.file} · ${site.image}` + pc.yellow(` (the framework pins ${POSTGRES_IMAGE})`)]);
       }
+      // Bun in the application's own Dockerfiles. Never a failure: every Bun builds, and a pin that is
+      // not the framework's may be deliberate. A floating tag is the drift worth naming.
+      for (const site of appBun(dir)) {
+        rows.push(["bun", true, site.agrees ? `${site.file} · oven/bun:${site.tag}`
+          : `${site.file} · oven/bun:${site.tag}` + pc.yellow(site.floats
+            ? ` floats: it builds on whatever Bun that tag means today; the framework is tested on ${BUN_VERSION}`
+            : ` (the framework is tested on ${BUN_VERSION})`)]);
+      }
       // A tuned classifier is trained against the shapes and personas of one spec. When those move, the
       // model is answering yesterday's question, and nothing else in the system would say so.
       if (app) {
@@ -873,7 +881,7 @@ async function main() {
   fishtea validate            validate spec.json and print section hashes
   fishtea visitors prune      visitors only tooling produced (headless, present, tests); --yes deletes them
   fishtea present [shape…]    how each answer is laid out (rules.present, or derived); --live asks a running core
-  fishtea doctor              check the spec, the database, the classifier, the binding and Postgres
+  fishtea doctor              check the spec, the database, the classifier, the binding, Postgres and Bun
   fishtea tune data [--trail] [--per-shape 4]
                               derive a training corpus for this application's own classifier
   fishtea tune status         is the corpus, and any installed model, still about this spec?

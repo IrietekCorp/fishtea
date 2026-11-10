@@ -6,7 +6,7 @@
  */
 import { networkInterfaces } from "node:os";
 import { createServer } from "node:net";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 
 /**
@@ -68,6 +68,33 @@ export function composePostgres(appDir: string): PostgresSite[] {
     } catch { continue; } // an unparseable compose is `bun run up`'s problem to report, not this row's
     if (typeof image !== "string" || !image) continue;
     out.push({ file: rel, image, agrees: image === POSTGRES_IMAGE, major: postgresMajor(image) });
+  }
+  return out;
+}
+
+export type BunSite = { file: string; tag: string; agrees: boolean; floats: boolean };
+
+/**
+ * The Bun an application's own Dockerfiles build from. The framework's images take BUN_VERSION, but an
+ * application that deploys its own image (a `deploy/Dockerfile`, say) wrote its own `FROM`, and
+ * `fishtea update` never touches it, so it drifts the way the Postgres pin did. A floating tag
+ * (`oven/bun:1`) is the usual case: it builds, on whatever Bun that tag meant that day.
+ */
+export function appBun(appDir: string): BunSite[] {
+  const out: BunSite[] = [];
+  for (const dir of [".", "deploy"]) {
+    const abs = join(appDir, dir);
+    if (!existsSync(abs)) continue;
+    for (const f of readdirSync(abs).filter((f) => /^Dockerfile(\..+)?$/.test(f)).sort()) {
+      const rel = dir === "." ? f : join(dir, f);
+      let src = "";
+      try { src = readFileSync(join(abs, f), "utf8"); } catch { continue; }
+      const args = Object.fromEntries([...src.matchAll(/^ARG (\w+)=(\S+)/gm)].map((m) => [m[1], m[2]]));
+      for (const m of src.matchAll(/^FROM oven\/bun:(\S+)/gm)) {
+        const tag = m[1].replace(/^\$\{?(\w+)\}?$/, (_, k) => args[k] ?? m[1]);
+        out.push({ file: rel, tag, agrees: tag === BUN_VERSION, floats: !/^\d+\.\d+\.\d+(-|$)/.test(tag) });
+      }
+    }
   }
   return out;
 }

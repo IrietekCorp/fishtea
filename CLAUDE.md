@@ -17,11 +17,12 @@ bun run dev --app templates/ecommerce # core on :3000 (FISHTEA_INTENT=needle + C
 bun run tui --app templates/ecommerce # operator console
 bun run up                        # docker compose: db + classifier + core + ui for FISHTEA_APP_DIR (default templates/ecommerce)
 bun fishtea templates && bun fishtea new myapp --template ecommerce --answers a.json   # scaffold beside fishtea, never inside it
-bun fishtea doctor --app templates/ecommerce            # spec, database, classifier, binding, framework pin, Postgres
+bun fishtea doctor --app templates/ecommerce            # spec, database, classifier, binding, framework pin, Postgres, Bun
 bun fishtea version | versions | use <v> | upgrade [--from <checkout>]
 bun fishtea update [--dry-run|--adopt]                  # move an application to this framework
 bun fishtea plugin list|info|add|remove|create|promote
 bun run release <v> [--check]                           # the only writer of every version site
+bun run deps [bun|postgres|classifier|npm|components]   # every layer underneath: what is pinned, what is newer, move one
 bun run build-release [--install] [--tarball]           # compile the binary + stage runtime files
 bun run site [--serve]                                  # fishtea.io into site/dist
 bun run deploy                                          # build + push to Firebase Hosting (docs/DEPLOY.md)

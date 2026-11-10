@@ -57,6 +57,10 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # A published advisory against anything installed fails the build. bun run deps names the move.
+      - name: No known advisories
+        run: bun audit
+
       # The second half of the health check, from where the tests sit: connect over TCP through the
       # framework's own connect(), and install the vector extension every migration opens with. A cold
       # database fails here in seconds instead of as thirty-one files of ECONNREFUSED after a typecheck.
@@ -76,3 +80,17 @@ jobs:
 
       - name: Test
         run: bun run test
+
+      # The browser walkthrough: the a11y suite, the menu and the visitor's path, against a real stack.
+      # Required here, so a skip fails rather than passing quietly.
+      - name: Browser for the walkthrough
+        working-directory: packages/ui
+        run: bunx playwright install --with-deps chromium
+
+      - name: Walkthrough
+        env:
+          FISHTEA_E2E_REQUIRED: "1"
+          PGPASSWORD: fishtea
+        run: |
+          psql -h localhost -p 5434 -U fishtea -d fishtea -c 'CREATE DATABASE fishteae2e'
+          bun run e2e

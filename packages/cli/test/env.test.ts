@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
-import { bindHost, bindPort, classifierUrl, databaseUrl, isInside, nextFreePort, portFree, portWasChosen, publicHost, reachableUrls, redact, resolvePort, SetupError, workspaceRoot, DEFAULT_APP_ID, POSTGRES_IMAGE, composePostgres, postgresMajor } from "../src/env.ts";
+import { bindHost, bindPort, classifierUrl, databaseUrl, isInside, nextFreePort, portFree, portWasChosen, publicHost, reachableUrls, redact, resolvePort, SetupError, workspaceRoot, DEFAULT_APP_ID, POSTGRES_IMAGE, composePostgres, postgresMajor, appBun, BUN_VERSION } from "../src/env.ts";
 import { targetDir, scaffold } from "../src/new.ts";
 
 const HOME = resolve(import.meta.dir, "../../..");
@@ -299,5 +299,35 @@ describe("the Postgres an application's compose names", () => {
     // Nothing is claimed from a tag that does not say, so doctor warns instead of failing.
     expect(postgresMajor("postgres:latest")).toBeNull();
     expect(postgresMajor("mysql:8")).toBeNull();
+  });
+});
+
+describe("the Bun an application's own Dockerfiles build from", () => {
+  const app = (files: Record<string, string>) => {
+    const d = temp();
+    for (const [f, body] of Object.entries(files)) { mkdirSync(dirname(join(d, f)), { recursive: true }); writeFileSync(join(d, f), body); }
+    return d;
+  };
+
+  test("a floating tag is named as floating; an exact one agrees or does not", () => {
+    const d = app({
+      "deploy/Dockerfile": "FROM oven/bun:1 AS framework\nFROM caddy:2-alpine AS web\n",
+      "Dockerfile": `FROM oven/bun:${BUN_VERSION}\n`,
+      "deploy/Dockerfile.worker": "FROM oven/bun:1.0.0-slim\n",
+    });
+    expect(appBun(d)).toEqual([
+      { file: "Dockerfile", tag: BUN_VERSION, agrees: true, floats: false },
+      { file: "deploy/Dockerfile", tag: "1", agrees: false, floats: true },
+      { file: "deploy/Dockerfile.worker", tag: "1.0.0-slim", agrees: false, floats: false },
+    ]);
+  });
+
+  test("an ARG the FROM reads is followed to its value", () => {
+    const d = app({ "Dockerfile": `ARG BUN_VERSION=${BUN_VERSION}\nFROM oven/bun:\${BUN_VERSION} AS base\n` });
+    expect(appBun(d)).toEqual([{ file: "Dockerfile", tag: BUN_VERSION, agrees: true, floats: false }]);
+  });
+
+  test("an application with no Dockerfile of its own gets no row", () => {
+    expect(appBun(app({ "spec.json": "{}" }))).toEqual([]);
   });
 });

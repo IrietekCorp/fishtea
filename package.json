@@ -29,6 +29,7 @@
     "test": "bun test packages scripts",
     "typecheck": "bun packages/ui/scripts/ensure-generated.ts && bunx tsc -p tsconfig.json --noEmit && bunx tsc -p packages/ui/tsconfig.json --noEmit",
     "release": "bun scripts/release.ts",
+    "deps": "bun scripts/deps.ts",
     "update": "bun packages/cli/src/index.ts update",
     "build-release": "bun scripts/build-release.ts",
     "site": "bun site/build.ts",

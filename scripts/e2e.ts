@@ -14,7 +14,8 @@
  *   bun run e2e --no-stack       something is already running; just drive it
  *
  * Exit codes: 0 pass or skipped-with-reason, 1 a real failure. A skip is not a pass, and it says so
- * loudly — but it does not fail a pipeline that was never able to run it in the first place.
+ * loudly — but it does not fail a pipeline that was never able to run it in the first place, unless
+ * FISHTEA_E2E_REQUIRED=1 says this one was (CI does).
  */
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -34,10 +35,13 @@ const OP_TOKEN = process.env.FISHTEA_OPERATOR_TOKEN ?? "e2e-operator-token";
 const UI_URL = `http://localhost:${UI_PORT}`;
 
 const log = (s: string) => console.log(`  ${s}`);
+/** Where the browser tests are the gate (CI sets FISHTEA_E2E_REQUIRED=1), a skip is a failure: a suite that
+ * could quietly not run is how a stale assertion survived a release unseen. */
+const REQUIRED = process.env.FISHTEA_E2E_REQUIRED === "1";
 function skip(why: string, fix: string): never {
-  console.log(`\n⚠ skipped: ${why}`);
+  console.log(`\n${REQUIRED ? "✗ required but" : "⚠"} skipped: ${why}`);
   console.log(`  ${fix}\n`);
-  process.exit(0);
+  process.exit(REQUIRED ? 1 : 0);
 }
 
 /** Poll until a URL answers, or give up. */

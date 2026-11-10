@@ -1,0 +1,139 @@
+{
+  "note": "What packages/ui adapted from whom. bun run deps reports a licence that is unknown and an upstream that has moved; bun run deps components --record refreshes upstream after a port. 21st.dev serves component source only to signed-in accounts, so those are checked by hand.",
+  "sources": [
+    {
+      "file": "packages/ui/src/components/ui/alert-dialog.tsx",
+      "from": "shadcn/ui alert-dialog",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/alert-dialog.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "b3dfb83e54ed8c82"
+    },
+    {
+      "file": "packages/ui/src/components/ui/alert.tsx",
+      "from": "shadcn/ui alert",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/alert.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "d03dcae5cdb63c38"
+    },
+    {
+      "file": "packages/ui/src/components/ui/badge.tsx",
+      "from": "shadcn/ui badge",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/badge.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "13a9380dfff853ee"
+    },
+    {
+      "file": "packages/ui/src/components/ui/button.tsx",
+      "from": "shadcn/ui button",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/button.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "79dd6f75f8136394"
+    },
+    {
+      "file": "packages/ui/src/components/ui/card.tsx",
+      "from": "shadcn/ui card",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/card.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "ef8305b12c3112da"
+    },
+    {
+      "file": "packages/ui/src/components/ui/checkbox.tsx",
+      "from": "shadcn/ui checkbox",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/checkbox.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "ba0ac64064e2d8fa"
+    },
+    {
+      "file": "packages/ui/src/components/ui/input.tsx",
+      "from": "shadcn/ui input",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/input.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "0c9457181f6ddc80"
+    },
+    {
+      "file": "packages/ui/src/components/ui/label.tsx",
+      "from": "shadcn/ui label",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/label.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "344bde38b8531615"
+    },
+    {
+      "file": "packages/ui/src/components/ui/separator.tsx",
+      "from": "shadcn/ui separator",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/separator.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "ad7d5403fe337160"
+    },
+    {
+      "file": "packages/ui/src/components/ui/table.tsx",
+      "from": "shadcn/ui table",
+      "registry": "https://ui.shadcn.com/r/styles/new-york-v4/table.json",
+      "licence": "MIT",
+      "note": "rewritten to the theme tokens, not copied: watch upstream, port by hand",
+      "upstream": "bd1a9fc83a5a2149"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev cubby-ui/timeline",
+      "licence": null,
+      "note": "timeline: the rail, markers, company-led entry"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev shadcnui-blocks/timeline-02",
+      "licence": null,
+      "note": "timeline: badges"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev hirael/feature-08",
+      "licence": null,
+      "note": "features: hairline frame, survey marks, spotlight. Credited as MIT in Present.tsx, but 21st.dev now lists feature-08 under mohammadshehadeh: confirm the author and the licence"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev designali-in/stats-2",
+      "licence": null,
+      "note": "stats: big figure"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev ephraimduncan/stats-cards-with-links",
+      "licence": null,
+      "note": "stats: link footer"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev cnippet-dev/v-toggle-10",
+      "licence": null,
+      "note": "facets: chips with counts, a total, Clear"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev diarmuradi/faq-11",
+      "licence": null,
+      "note": "faq: accordions in columns by group"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev cnippet-dev/v-meter-6",
+      "licence": null,
+      "note": "chips: a level drawn on its scale"
+    },
+    {
+      "file": "packages/ui/src/present/Present.tsx",
+      "from": "21st.dev slide-cn/timeline",
+      "licence": null,
+      "note": "steps: numbered markers"
+    }
+  ]
+}

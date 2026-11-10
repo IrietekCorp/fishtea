@@ -17,6 +17,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { POSTGRES_IMAGE, POSTGRES_READY } from "../packages/cli/src/env.ts";
+import { POSTGRES_SITES } from "./deps.ts";
 
 const HOME = resolve(import.meta.dir, "..");
 const read = (rel: string) => readFileSync(join(HOME, rel), "utf8");
@@ -25,7 +26,8 @@ const read = (rel: string) => readFileSync(join(HOME, rel), "utf8");
 const images = (text: string) => [...text.matchAll(/pgvector\/pgvector:[\w.-]+/g)].map((m) => m[0]);
 
 /** The operational sites: a stack this repository actually brings up, or tells someone how to. */
-const SITES = ["docker-compose.yml", ".github/workflows/ci.yml", "CLAUDE.md", "README.md"];
+// The files that name the image without importing it; env.ts is the source. One list, shared with `bun run deps`.
+const SITES = POSTGRES_SITES.filter((f) => f !== "packages/cli/src/env.ts");
 
 describe("the Postgres pin", () => {
   test("is exact, so it cannot move underneath anyone", () => {
